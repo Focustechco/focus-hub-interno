@@ -1,0 +1,481 @@
+import React, { useState, useMemo } from 'react';
+import { User, Task, CheckIn, Post, Sector, Role, Screen, DailyChecklistItem } from '../types';
+import { ClipboardIcon, ClockIcon, NewspaperIcon, TrendingUpIcon, CalendarIcon, LogInIcon, CheckCircle2Icon, FileTextIcon, TrophyIcon, CheckSquareIcon2 } from '../components/icons';
+import {
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    Tooltip as RechartsTooltip,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Legend
+} from 'recharts';
+import { motion } from 'framer-motion';
+
+
+interface DashboardScreenProps {
+    currentUser: User;
+    tasks: Task[];
+    checkIns: CheckIn[];
+    posts: Post[];
+    users: User[];
+    setActiveScreen: (screen: Screen) => void;
+    dailyChecklistItems: DailyChecklistItem[];
+    setDailyChecklistItems: (items: DailyChecklistItem[] | ((prev: DailyChecklistItem[]) => DailyChecklistItem[])) => void;
+    setTaskViewOverride: (view: 'board' | 'checklist' | 'calendar' | null) => void;
+}
+
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride }) => {
+    const [selectedSector, setSelectedSector] = useState<'Comercial' | 'Criativo' | 'Tech' | 'all'>('all');
+
+    // Upcoming Event Data
+    const upcomingTasks = tasks
+        .filter(t =>
+            t.assigneeId === currentUser.id &&
+            t.status !== 'concluida' &&
+            t.dueDate
+        )
+        .map(t => ({ ...t, dueDateObj: new Date(t.dueDate!) }))
+        .filter(t => {
+            if (!t.dueDate) return false;
+            // Use string comparison YYYY-MM-DD to avoid timezone issues
+            const todayStr = new Date().toISOString().split('T')[0];
+            const taskDateStr = t.dueDate.split('T')[0];
+            return taskDateStr >= todayStr;
+        }) // Only future events (including today)
+        .sort((a, b) => {
+            // Sort by full date time if available, or just date string
+            const dateA = new Date(a.dueDate!).getTime();
+            const dateB = new Date(b.dueDate!).getTime();
+            return dateA - dateB;
+        });
+
+    const nextEvent = upcomingTasks[0];
+
+    const formatEventDate = (dateString?: string): string => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(today.getDate() + 1);
+
+        const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+
+        if (date.toDateString() === today.toDateString()) {
+            return `Hoje, às ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+        }
+        if (date.toDateString() === tomorrow.toDateString()) {
+            return `Amanhã, às ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+        }
+
+        const dateOptions: Intl.DateTimeFormatOptions = {
+            day: 'numeric',
+            month: 'long',
+        };
+        if (date.getFullYear() !== today.getFullYear()) {
+            dateOptions.year = 'numeric';
+        }
+
+        return `${date.toLocaleDateString('pt-BR', dateOptions)}, ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+    };
+
+
+    // Check-in data
+    const myLastCheckIn = checkIns
+        .filter(c => c.userId === currentUser.id)
+        .sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime())[0];
+    const isCheckedIn = myLastCheckIn && !myLastCheckIn.checkOutTime;
+
+    // Mural data
+    const latestPost = posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+    const latestPostAuthor = users.find(u => u.id === latestPost?.authorId);
+
+    // --- Daily Summary Data (Admin only) ---
+    const isToday = (dateStr: string) => new Date(dateStr).toDateString() === new Date().toDateString();
+    const checkInsToday = (checkIns || []).filter(c => isToday(c.checkInTime)).length;
+    const tasksCompletedToday = 7; // Mocked data as requested
+    const lastReport = checkIns
+        .filter(c => c.dailyReport && c.checkOutTime)
+        .sort((a, b) => new Date(b.checkOutTime!).getTime() - new Date(a.checkOutTime!).getTime())[0];
+    const reportAuthor = lastReport ? users.find(u => u.id === lastReport.userId) : null;
+
+
+    // --- Chart Data ---
+
+    // 1. Pie Chart: Tasks by Status (all tasks)
+    const tasksByStatus = tasks.reduce((acc, task) => {
+        if (task.status === 'pendente') acc.pendente++;
+        else if (task.status === 'em_progresso') acc.emProgresso++;
+        else if (task.status === 'concluida') acc.concluida++;
+        return acc;
+    }, { pendente: 0, emProgresso: 0, concluida: 0 });
+
+    const pieData = [
+        { name: 'Pendentes', value: tasksByStatus.pendente },
+        { name: 'Em Progresso', value: tasksByStatus.emProgresso },
+        { name: 'Concluídas', value: tasksByStatus.concluida },
+    ];
+    const PIE_COLORS: { [key: string]: string } = {
+        'Pendentes': '#FFBB28',
+        'Em Progresso': '#00ADEF',
+        'Concluídas': '#00C49F'
+    };
+
+    // 2. Bar Chart: Productivity by Sector (completed tasks)
+    const completedTasksBySector = useMemo(() => tasks.reduce((acc, task) => {
+        if (task.status === 'concluida') {
+            const assignee = users.find(u => u.id === task.assigneeId);
+            if (assignee) {
+                if (!acc[assignee.sector]) {
+                    acc[assignee.sector] = 0;
+                }
+                acc[assignee.sector]++;
+            }
+        }
+        return acc;
+    }, {} as Record<Sector, number>), [tasks, users]);
+
+    const barData = useMemo(() => {
+        const allData = [
+            { name: 'Comercial', tarefas: completedTasksBySector['Comercial'] || 0 },
+            { name: 'Criativo', tarefas: completedTasksBySector['Criativo'] || 0 },
+            { name: 'Tech', tarefas: completedTasksBySector['Tech'] || 0 },
+        ];
+
+        if (selectedSector === 'all') {
+            return allData;
+        }
+
+        return allData.filter(d => d.name === selectedSector);
+    }, [completedTasksBySector, selectedSector]);
+
+    const SECTOR_COLORS: { [key: string]: string } = {
+        Comercial: '#FF6B00',
+        Criativo: '#7A00FF',
+        Tech: '#00ADEF',
+    };
+
+    const cardVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: (i: number) => ({
+            opacity: 1,
+            y: 0,
+            transition: {
+                delay: i * 0.1,
+                duration: 0.5,
+                ease: 'easeOut'
+            }
+        })
+    };
+
+    // --- Daily Checklist Data ---
+    const todayStr = new Date().toISOString().split('T')[0];
+    const myDailyTasks = dailyChecklistItems.filter(item => item.userId === currentUser.id && item.date === todayStr);
+    const myCompletedDailyTasks = myDailyTasks.filter(item => item.completed);
+    const dailyProgress = (myDailyTasks || []).length > 0 ? (myCompletedDailyTasks.length / myDailyTasks.length) * 100 : 0;
+    const incompleteDailyTasks = myDailyTasks.filter(item => !item.completed).slice(0, 5);
+
+    const handleToggleDailyTask = (taskId: string) => {
+        setDailyChecklistItems(prev =>
+            prev.map(item =>
+                item.id === taskId ? { ...item, completed: !item.completed } : item
+            )
+        );
+    };
+
+    return (
+        <div>
+            <h1 className="text-3xl font-bold mb-2">Bem-vindo(a) de volta, {currentUser.name.split(' ')[0]}!</h1>
+            <p className="text-[#B3B3B3] mb-8">Aqui está um resumo das suas atividades e da sua equipe.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Agenda Summary */}
+                <motion.div
+                    custom={0}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    whileHover={{ y: -5, scale: 1.02 }}
+                    className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex flex-col justify-between min-h-[170px]">
+                    <div>
+                        <div className="flex items-start">
+                            <div className="bg-[#FF6B00]/20 p-3 rounded-full mr-4">
+                                <CalendarIcon className="w-6 h-6 text-[#FF6B00]" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Próximo Evento</h3>
+                                {nextEvent ? (
+                                    <div className="mt-2">
+                                        <p className="text-xl font-bold text-white truncate" title={nextEvent.title}>
+                                            {nextEvent.title}
+                                        </p>
+                                        <p className="text-sm text-[#B3B3B3] mt-1">
+                                            {formatEventDate(nextEvent.dueDate)}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-lg text-[#B3B3B3] mt-4">
+                                        Sua agenda está livre.
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setTaskViewOverride('calendar');
+                            setActiveScreen('tasks');
+                        }}
+                        className="mt-4 text-center text-sm font-semibold text-[#FF6B00] hover:underline"
+                    >
+                        Ver Agenda Completa
+                    </button>
+                </motion.div>
+
+                {/* Check-in Status */}
+                <motion.div
+                    custom={1}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    whileHover={{ y: -5, scale: 1.02 }}
+                    className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex items-start min-h-[170px]">
+                    <div className={`p-3 rounded-full mr-4 ${isCheckedIn ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                        <ClockIcon className={`w-6 h-6 ${isCheckedIn ? 'text-green-400' : 'text-red-400'}`} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-white">Status do Ponto</h3>
+                        {isCheckedIn ? (
+                            <>
+                                <p className="text-3xl font-bold mt-1 text-green-400">Ativo</p>
+                                <p className="text-sm text-[#B3B3B3] mt-1">
+                                    Check-in às {new Date(myLastCheckIn.checkInTime).toLocaleTimeString()}
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-3xl font-bold mt-1 text-red-400">Inativo</p>
+                                <p className="text-sm text-[#B3B3B3] mt-1">
+                                    {myLastCheckIn && myLastCheckIn.checkOutTime ? `Último check-out às ${new Date(myLastCheckIn.checkOutTime).toLocaleTimeString()}` : "Nenhum registro hoje."}
+                                </p>
+                            </>
+                        )}
+                    </div>
+                </motion.div>
+
+                {/* Latest Post */}
+                <motion.div
+                    custom={2}
+                    variants={cardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    whileHover={{ y: -5, scale: 1.02 }}
+                    className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex items-start min-h-[170px]">
+                    <div className="bg-[#00ADEF]/20 p-3 rounded-full mr-4">
+                        <NewspaperIcon className="w-6 h-6 text-[#00ADEF]" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-white">Último Post do Mural</h3>
+                        {latestPost ? (
+                            <>
+                                <p className="text-sm text-[#B3B3B3] mt-2 line-clamp-3">"{latestPost.content}"</p>
+                                <p className="text-xs text-right text-gray-400 mt-2">- {latestPostAuthor?.name || 'Desconhecido'}</p>
+                            </>
+                        ) : (
+                            <p className="text-sm text-[#B3B3B3] mt-2">Nenhum post no mural ainda.</p>
+                        )}
+                    </div>
+                </motion.div>
+            </div>
+
+            {/* NEW SECTION: Daily Checklist */}
+            <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold flex items-center"><CheckSquareIcon2 className="w-5 h-5 mr-2 text-white" /> Minhas Tarefas do Dia</h2>
+                    <button onClick={() => setActiveScreen('tasks')} className="text-sm font-semibold text-[#FF6B00] hover:underline">
+                        Ver todas
+                    </button>
+                </div>
+                {(myDailyTasks || []).length > 0 ? (
+                    <>
+                        <div className="w-full bg-[#2E2E2E] rounded-full h-2.5 mb-4">
+                            <motion.div
+                                className="bg-[#FF6B00] h-2.5 rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${dailyProgress}%` }}
+                                transition={{ duration: 1, ease: "circOut" }}
+                            />
+                        </div>
+                        <p className="text-sm text-center text-[#B3B3B3] mb-4">
+                            Você concluiu {Math.round(dailyProgress)}% do seu checklist de hoje!
+                        </p>
+                        <ul className="space-y-3">
+                            {incompleteDailyTasks.map(task => (
+                                <li key={task.id} className="flex items-center p-3 bg-[#2E2E2E] rounded-md transition-colors hover:bg-[#3a3a3a]">
+                                    <input
+                                        type="checkbox"
+                                        checked={task.completed}
+                                        onChange={() => handleToggleDailyTask(task.id)}
+                                        className="h-5 w-5 rounded bg-[#1C1C1C] border-gray-600 text-[#FF6B00] focus:ring-[#FF8C33] cursor-pointer"
+                                    />
+                                    <span className={`ml-3 font-semibold ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>{task.text}</span>
+                                </li>
+                            ))}
+                            {(incompleteDailyTasks || []).length === 0 && (myDailyTasks || []).length > 0 && (
+                                <p className="text-center text-green-400 font-semibold p-4">🎉 Todas as tarefas do dia foram concluídas!</p>
+                            )}
+                        </ul>
+                    </>
+                ) : (
+                    <p className="text-center text-[#B3B3B3] py-4">Nenhuma tarefa adicionada ao seu checklist de hoje. Vá para a tela de Tarefas para adicionar.</p>
+                )}
+            </motion.div>
+
+            <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
+                <h2 className="text-xl font-bold mb-4">Minhas Tarefas Pendentes</h2>
+                {(tasks || []).filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').length > 0 ? (
+                    <ul className="space-y-3">
+                        {tasks.filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').slice(0, 5).map(task => (
+                            <li key={task.id} className="flex justify-between items-center p-3 bg-[#2E2E2E] rounded-md">
+                                <span className="font-semibold">{task.title}</span>
+                                <span className={`px-2 py-1 text-xs rounded-full capitalize font-semibold ${task.priority === 'alta' ? 'bg-red-500/20 text-red-400' :
+                                    task.priority === 'media' ? 'bg-yellow-500/20 text-yellow-400' :
+                                        'bg-green-500/20 text-green-400'
+                                    }`}>
+                                    {task.priority}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <p className="text-center text-[#B3B3B3]">Você não tem tarefas pendentes. Bom trabalho!</p>
+                )}
+            </motion.div>
+
+            {/* NEW SECTION: Daily Summary (Admin only) */}
+            {currentUser.role === Role.ADMIN && (
+                <motion.div custom={5} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
+                    <h2 className="text-xl font-bold mb-4 flex items-center">
+                        <CalendarIcon className="w-5 h-5 mr-2 text-[#B3B3B3]" />
+                        Resumo do Dia
+                    </h2>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
+                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center">
+                            <LogInIcon className="w-8 h-8 text-green-400 mb-2" />
+                            <p className="text-3xl font-bold">{checkInsToday}</p>
+                            <p className="text-sm text-[#B3B3B3] mt-1">Check-ins Hoje</p>
+                        </div>
+                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center">
+                            <CheckCircle2Icon className="w-8 h-8 text-[#00ADEF] mb-2" />
+                            <p className="text-3xl font-bold">{tasksCompletedToday}</p>
+                            <p className="text-sm text-[#B3B3B3] mt-1">Tarefas Concluídas</p>
+                        </div>
+                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
+                            <FileTextIcon className="w-8 h-8 text-[#7A00FF] mb-2" />
+                            {lastReport && reportAuthor ? (
+                                <>
+                                    <p className="text-lg font-bold truncate" title={reportAuthor.name}>{reportAuthor.name}</p>
+                                    <a href="#" className="text-sm text-[#00ADEF] hover:underline" onClick={(e) => e.preventDefault()}>Último Relatório</a>
+                                </>
+                            ) : (
+                                <div className='flex flex-col items-center justify-center h-full'>
+                                    <p className="text-sm text-[#B3B3B3]">Nenhum relatório</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
+                            <TrophyIcon className="w-8 h-8 text-yellow-400 mb-2" />
+                            <p className="text-sm text-white italic leading-tight">"🚀 A cada entrega, um passo mais perto da meta!"</p>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+
+            {/* SECTION: Indicators and Graphs */}
+            <div className="mt-8">
+                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                    <TrendingUpIcon className="w-6 h-6 mr-2 text-[#B3B3B3]" />
+                    Visão Geral do Desempenho da Equipe
+                </h2>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Task Progress Chart */}
+                    <motion.div custom={currentUser.role === Role.ADMIN ? 6 : 5} variants={cardVariants} initial="hidden" animate="visible" className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
+                        <h3 className="text-lg font-semibold text-white mb-4">Progresso das Tarefas</h3>
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <PieChart>
+                                    <Pie
+                                        data={pieData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={80}
+                                        outerRadius={110}
+                                        fill="#8884d8"
+                                        paddingAngle={5}
+                                        dataKey="value"
+                                        label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
+                                    >
+                                        {pieData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={PIE_COLORS[entry.name]} />
+                                        ))}
+                                    </Pie>
+                                    <RechartsTooltip
+                                        contentStyle={{ backgroundColor: '#2E2E2E', border: 'none', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#FFFFFF' }}
+                                    />
+                                    <Legend formatter={(value, entry) => <span className="text-white">{value}</span>} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
+
+                    {/* Productivity by Sector Chart */}
+                    <motion.div custom={currentUser.role === Role.ADMIN ? 7 : 6} variants={cardVariants} initial="hidden" animate="visible" className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
+                            <h3 className="text-lg font-semibold text-white">Produtividade por Setor</h3>
+                            <div className="flex items-center gap-1 bg-[#0E0E0E] p-1 rounded-md self-start sm:self-center">
+                                {(['all', 'Comercial', 'Criativo', 'Tech'] as const).map(sector => (
+                                    <button
+                                        key={sector}
+                                        onClick={() => setSelectedSector(sector)}
+                                        className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${selectedSector === sector ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'
+                                            }`}
+                                    >
+                                        {sector === 'all' ? 'Todos' : sector}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <BarChart data={barData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#2E2E2E" />
+                                    <XAxis dataKey="name" stroke="#B3B3B3" />
+                                    <YAxis stroke="#B3B3B3" />
+                                    <RechartsTooltip
+                                        contentStyle={{ backgroundColor: '#2E2E2E', border: 'none', borderRadius: '8px' }}
+                                        itemStyle={{ color: '#FFFFFF' }}
+                                        cursor={{ fill: '#2E2E2E' }}
+                                    />
+                                    <Bar dataKey="tarefas" name="Tarefas Concluídas" fill="#8884d8">
+                                        {barData.map((entry) => (
+                                            <Cell key={`cell-${entry.name}`} fill={SECTOR_COLORS[entry.name]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </motion.div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default DashboardScreen;
