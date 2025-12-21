@@ -51,14 +51,32 @@ router.get('/access-groups', async (req, res) => {
         const groupsResult = await pool.query('SELECT * FROM access_groups ORDER BY created_at DESC');
         const groups = groupsResult.rows;
 
-        for (let group of groups) {
+        // Map to frontend expected format
+        const mappedGroups = await Promise.all(groups.map(async (group) => {
             const credsResult = await pool.query('SELECT * FROM access_credentials WHERE group_id = $1', [group.id]);
-            group.credentials = credsResult.rows;
-        }
 
-        res.json(groups);
+            // Map credentials to frontend expected format (links)
+            const links = credsResult.rows.map(cred => ({
+                id: cred.id,
+                nome: cred.service_name,
+                link: cred.url || '',
+                icon: 'LinkIcon',
+                descricao: cred.notes || '',
+                login: cred.username || '',
+                senha: cred.password || '',
+                isFavorite: cred.is_favorite || false
+            }));
+
+            return {
+                id: group.id,
+                name: group.name,
+                links: links
+            };
+        }));
+
+        res.json(mappedGroups);
     } catch (err) {
-        console.error(err);
+        console.error('[GET /access-groups] Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
@@ -68,15 +86,22 @@ router.post('/access-groups', async (req, res) => {
     const { title, description, category } = req.body;
     try {
         const id = 'ag' + Date.now();
+        // Use 'title' from frontend but store as 'name' in DB
         const result = await pool.query(
-            'INSERT INTO access_groups (id, title, description, category) VALUES ($1, $2, $3, $4) RETURNING *',
+            'INSERT INTO access_groups (id, name, description, category) VALUES ($1, $2, $3, $4) RETURNING *',
             [id, title, description, category]
         );
         const newGroup = result.rows[0];
-        newGroup.credentials = [];
-        res.status(201).json(newGroup);
+
+        // Return in frontend expected format
+        res.status(201).json({
+            id: newGroup.id,
+            name: newGroup.name,
+            title: newGroup.name, // Also include title for compatibility
+            links: []
+        });
     } catch (err) {
-        console.error(err);
+        console.error('[POST /access-groups] Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
