@@ -13,6 +13,10 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy for Render (and other reverse proxies)
+// This is required for express-rate-limit to work correctly behind a proxy
+app.set('trust proxy', 1);
+
 // BLOCKER #2: Configure CORS with allowed origins
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',')
