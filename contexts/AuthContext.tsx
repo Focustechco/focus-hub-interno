@@ -68,10 +68,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setLoading(true);
         setError(null);
         try {
+            console.log('[Auth] Sending registration request...');
             const response = await api.post('/auth/register', userData);
+            console.log('[Auth] Registration response:', response.data);
 
             // Check if registration is pending approval
             if (response.data.pending) {
+                setLoading(false);
                 return { pending: true, message: response.data.message };
             }
 
@@ -82,12 +85,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 setUser(user);
             }
 
+            setLoading(false);
             return { pending: false };
         } catch (err: any) {
+            console.error('[Auth] Registration error:', err);
             setError(err.response?.data?.message || 'Registration failed');
-            throw err;
-        } finally {
             setLoading(false);
+            throw err;
         }
     };
 
