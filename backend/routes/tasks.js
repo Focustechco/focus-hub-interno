@@ -180,4 +180,38 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/tasks/:id - Delete a task
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+
+    console.log('[DELETE /tasks/:id] Deleting task:', id);
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        // Delete subtasks first (even though CASCADE should handle it)
+        await client.query('DELETE FROM subtasks WHERE task_id = $1', [id]);
+
+        // Delete the task
+        const result = await client.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
+
+        if (result.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        await client.query('COMMIT');
+        console.log('[DELETE /tasks/:id] Task deleted successfully:', id);
+        res.json({ message: 'Task deleted', id });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('[DELETE /tasks/:id] Error deleting task:', err.message);
+        res.status(500).json({ message: 'Server error', error: err.message });
+    } finally {
+        client.release();
+    }
+});
+
 module.exports = router;
+

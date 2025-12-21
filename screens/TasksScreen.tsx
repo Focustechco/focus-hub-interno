@@ -189,10 +189,16 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
         handleCloseModal();
     };
 
-    const handleDeleteTask = (taskId: string) => {
+    const handleDeleteTask = async (taskId: string) => {
         if (window.confirm('Tem certeza que deseja excluir esta tarefa?')) {
             if (isOnline) {
-                setTasks(prev => prev.filter(t => t.id !== taskId));
+                try {
+                    await api.delete(`/tasks/${taskId}`);
+                    setTasks(prev => prev.filter(t => t.id !== taskId));
+                } catch (error) {
+                    console.error('Failed to delete task:', error);
+                    alert('Erro ao excluir tarefa.');
+                }
             } else {
                 console.log("[Offline] Excluindo tarefa offline.");
                 setTasks(prev => prev.filter(t => t.id !== taskId));
