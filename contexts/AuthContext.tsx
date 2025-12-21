@@ -10,6 +10,7 @@ interface AuthContextData {
     logout: () => void;
     register: (userData: any) => Promise<void>;
     checkAuth: () => Promise<void>;
+    updateUser: (updatedUser: User) => void;
 }
 
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -79,8 +80,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
     };
 
+    // Update current user (for profile updates)
+    const updateUser = (updatedUser: User) => {
+        if (user && user.id === updatedUser.id) {
+            setUser(updatedUser);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, error, login, logout, register, checkAuth }}>
+        <AuthContext.Provider value={{ user, loading, error, login, logout, register, checkAuth, updateUser }}>
             {children}
         </AuthContext.Provider>
     );

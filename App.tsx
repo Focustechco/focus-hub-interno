@@ -32,7 +32,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 const App: React.FC = () => {
     console.log('App Render: Check for infinite loop');
-    const { user: currentUser, login, logout, loading: authLoading } = useAuth();
+    const { user: currentUser, login, logout, loading: authLoading, updateUser } = useAuth();
     const [activeScreen, setActiveScreen] = useLocalStorage<Screen>('activeScreen', 'dashboard');
 
     // Temporary: Keep using local storage for data until we implement full backend sync
@@ -165,8 +165,11 @@ const App: React.FC = () => {
 
     const handleUpdateUser = async (updatedUser: User) => {
         try {
-            // Optimistic update
+            // Optimistic update for users list
             setUsers(prevUsers => prevUsers.map(u => u.id === updatedUser.id ? updatedUser : u));
+
+            // Update current user in auth context if editing own profile
+            updateUser(updatedUser);
 
             await api.put(`/users/${updatedUser.id}`, updatedUser);
         } catch (error) {
