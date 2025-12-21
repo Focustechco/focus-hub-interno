@@ -24,6 +24,7 @@ CREATE TABLE users (
   job_title VARCHAR(100),
   bio TEXT,
   join_date DATE DEFAULT CURRENT_DATE,
+  is_approved BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
