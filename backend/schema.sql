@@ -104,10 +104,13 @@ CREATE TABLE daily_checklist (
 -- Step 9: Create Focus Links table
 CREATE TABLE focus_links (
   id VARCHAR(255) PRIMARY KEY,
-  url TEXT NOT NULL,
-  label VARCHAR(255) NOT NULL,
-  category VARCHAR(100),
+  title VARCHAR(255) NOT NULL,
   description TEXT,
+  url TEXT NOT NULL,
+  icon VARCHAR(50),
+  category VARCHAR(100),
+  user_id VARCHAR(255) REFERENCES users(id),
+  is_favorite BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

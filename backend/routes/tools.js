@@ -8,25 +8,49 @@ const { pool } = require('../config/db');
 router.get('/links', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM focus_links ORDER BY created_at DESC');
-        res.json(result.rows);
+
+        // Map database fields to frontend expected format
+        const links = result.rows.map(row => ({
+            id: row.id,
+            title: row.title,
+            description: row.description || '',
+            link: row.url, // Map 'url' to 'link' for frontend
+            icon: row.icon || 'Target',
+            isFavorite: row.is_favorite || false
+        }));
+
+        res.json(links);
     } catch (err) {
-        console.error(err);
+        console.error('[GET /tools/links] Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
 
 // POST /api/tools/links - Create a link
 router.post('/links', async (req, res) => {
-    const { title, url, category, icon, userId } = req.body;
+    const { title, description, link, url, category, icon, userId } = req.body;
+    // Frontend sends 'link', so handle both 'link' and 'url'
+    const finalUrl = link || url;
+
     try {
         const id = 'l' + Date.now();
         const result = await pool.query(
-            'INSERT INTO focus_links (id, title, url, category, icon, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [id, title, url, category, icon, userId]
+            'INSERT INTO focus_links (id, title, description, url, icon, category, user_id, is_favorite) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [id, title, description || '', finalUrl, icon || 'Target', category, userId, false]
         );
-        res.status(201).json(result.rows[0]);
+
+        const row = result.rows[0];
+        // Return in frontend expected format
+        res.status(201).json({
+            id: row.id,
+            title: row.title,
+            description: row.description || '',
+            link: row.url,
+            icon: row.icon || 'Target',
+            isFavorite: row.is_favorite || false
+        });
     } catch (err) {
-        console.error(err);
+        console.error('[POST /tools/links] Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
