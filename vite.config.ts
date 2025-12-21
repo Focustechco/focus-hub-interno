@@ -7,7 +7,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '.', '');
+  // Load env from root directory
+  const env = loadEnv(mode, process.cwd(), '');
+
+  // Get API key from either .env.local or process.env (Vercel)
+  const apiKey = env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || '';
+
   return {
     server: {
       port: 5173,
@@ -15,8 +20,8 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      'process.env.API_KEY': JSON.stringify(apiKey),
+      'process.env.GEMINI_API_KEY': JSON.stringify(apiKey)
     },
     resolve: {
       alias: {
