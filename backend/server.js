@@ -53,6 +53,8 @@ const apiLimiter = rateLimit({
     message: { message: 'Muitas requisições. Tente novamente em 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
+    // Disable X-Forwarded-For validation (we already have trust proxy set)
+    validate: { xForwardedForHeader: false }
 });
 app.use('/api/', apiLimiter);
 
