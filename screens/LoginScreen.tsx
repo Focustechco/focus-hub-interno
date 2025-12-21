@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Role } from '../types';
-import { ShieldIcon, UserIcon, BriefcaseIcon, LockIcon } from '../components/icons';
+import { ShieldIcon, UserIcon, BriefcaseIcon, LockIcon, CheckCircle2Icon } from '../components/icons';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 
@@ -18,6 +18,8 @@ const roleConfig = {
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
     const { login, register, error: authError, loading } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
+    const [registrationSuccess, setRegistrationSuccess] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
 
     // Form states
     const [name, setName] = useState('');
@@ -40,7 +42,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 await login(email, password);
                 // onLogin will be triggered by the parent component observing the user state
             } else {
-                await register({
+                const result = await register({
                     name,
                     email,
                     password,
@@ -48,11 +50,69 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                     sector,
                     jobTitle
                 });
+
+                // Show success screen if registration is pending
+                if (result?.pending) {
+                    setRegistrationSuccess(true);
+                    setSuccessMessage(result.message || 'Cadastro realizado! Aguarde aprovação.');
+                }
             }
         } catch (err) {
             console.error(err);
         }
     };
+
+    // Show success screen after registration
+    if (registrationSuccess) {
+        return (
+            <div className="min-h-screen bg-[#0E0E0E] flex flex-col items-center justify-center text-white p-4">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.5 }}
+                    className="bg-[#1C1C1C] p-8 rounded-2xl shadow-2xl shadow-green-500/10 w-full max-w-md text-center"
+                >
+                    <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                        className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6"
+                    >
+                        <CheckCircle2Icon className="w-12 h-12 text-green-500" />
+                    </motion.div>
+
+                    <h1 className="text-2xl font-bold mb-4 text-green-400">Cadastro Enviado!</h1>
+
+                    <p className="text-[#B3B3B3] mb-6">
+                        {successMessage}
+                    </p>
+
+                    <div className="bg-[#2E2E2E] p-4 rounded-lg mb-6">
+                        <p className="text-sm text-[#B3B3B3]">
+                            📧 Em breve você receberá um email confirmando sua aprovação.
+                        </p>
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            setRegistrationSuccess(false);
+                            setIsLogin(true);
+                            // Reset form
+                            setName('');
+                            setEmail('');
+                            setPassword('');
+                            setSelectedRole(null);
+                            setSector('');
+                            setJobTitle('');
+                        }}
+                        className="w-full bg-[#FF6B00] hover:bg-[#FF8C33] text-white font-bold py-3 rounded-lg transition-all"
+                    >
+                        Voltar para Login
+                    </button>
+                </motion.div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#0E0E0E] flex flex-col items-center justify-center text-white p-4">

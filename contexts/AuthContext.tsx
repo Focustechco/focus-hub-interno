@@ -8,7 +8,7 @@ interface AuthContextData {
     error: string | null;
     login: (email: string, password: string) => Promise<void>;
     logout: () => void;
-    register: (userData: any) => Promise<void>;
+    register: (userData: any) => Promise<{ pending?: boolean; message?: string }>;
     checkAuth: () => Promise<void>;
     updateUser: (updatedUser: User) => void;
 }
@@ -64,14 +64,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
-    const register = async (userData: any): Promise<void> => {
+    const register = async (userData: any): Promise<{ pending?: boolean; message?: string }> => {
         setLoading(true);
         setError(null);
         try {
             const response = await api.post('/auth/register', userData);
+
+            // Check if registration is pending approval
+            if (response.data.pending) {
+                return { pending: true, message: response.data.message };
+            }
+
+            // Auto-login if registration is immediate (legacy behavior)
             const { token, user } = response.data;
-            localStorage.setItem('token', token);
-            setUser(user);
+            if (token && user) {
+                localStorage.setItem('token', token);
+                setUser(user);
+            }
+
+            return { pending: false };
         } catch (err: any) {
             setError(err.response?.data?.message || 'Registration failed');
             throw err;
