@@ -3,6 +3,7 @@ import { Task, User } from '../types';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/icons';
 import { DndContext, DragEndEvent, useDraggable, useDroppable, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import api from '../services/api';
 
 interface CalendarViewProps {
     tasks: Task[];
@@ -15,28 +16,27 @@ const DraggableTaskItem: React.FC<{ task: Task, onTaskClick: (task: Task) => voi
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: task.id,
     });
-    
+
     const style = {
         transform: CSS.Translate.toString(transform),
         opacity: isDragging ? 0.5 : 1,
         zIndex: isDragging ? 1000 : 'auto',
         touchAction: 'none', // Prevents scrolling on mobile while dragging
     };
-    
+
     return (
-        <div 
-            ref={setNodeRef} 
-            style={style} 
-            {...listeners} 
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
             {...attributes}
             onClick={() => onTaskClick(task)}
             className="text-xs text-left p-1 bg-[#2E2E2E] rounded cursor-grab active:cursor-grabbing hover:bg-[#3a3a3a] truncate"
             title={task.title}
         >
-            <span className={`inline-block w-2 h-2 rounded-full mr-1 ${
-                task.priority === 'alta' ? 'bg-red-500' :
+            <span className={`inline-block w-2 h-2 rounded-full mr-1 ${task.priority === 'alta' ? 'bg-red-500' :
                 task.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'
-            }`}></span>
+                }`}></span>
             {task.title}
         </div>
     );
@@ -54,12 +54,11 @@ const DroppableDayCell: React.FC<{
     const { setNodeRef, isOver } = useDroppable({ id: dateKey });
 
     return (
-        <div 
+        <div
             ref={setNodeRef}
-            className={`relative pt-2 border border-[#2E2E2E] rounded-md min-h-[120px] transition-colors ${
-                isCurrentMonth ? (isOver ? 'bg-[#3a3a3a]' : 'bg-[#1C1C1C]') : 'bg-[#0E0E0E]'
-            }`}
-             onClick={(e) => {
+            className={`relative pt-2 border border-[#2E2E2E] rounded-md min-h-[120px] transition-colors ${isCurrentMonth ? (isOver ? 'bg-[#3a3a3a]' : 'bg-[#1C1C1C]') : 'bg-[#0E0E0E]'
+                }`}
+            onClick={(e) => {
                 // Prevent opening modal if clicking on a task itself
                 if ((e.target as HTMLElement).closest('[role="button"]')) return;
                 onAddTask(day);
@@ -118,7 +117,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-    
+
     const startDate = new Date(startOfMonth);
     startDate.setDate(startDate.getDate() - startDate.getDay());
 
@@ -134,29 +133,52 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
 
     const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
     const today = new Date();
-    
+
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
-            setTasks((prevTasks) => {
-                return prevTasks.map((task) => {
-                    if (task.id === active.id) {
-                        const originalDueDate = task.dueDate;
-                        const newDatePart = String(over.id);
-                        let newDueDate = newDatePart;
+            const taskToUpdate = tasks.find(t => t.id === active.id);
+            if (!taskToUpdate) return;
 
-                        // Preserve time if it exists
-                        if (originalDueDate && originalDueDate.includes('T')) {
-                            const timePart = originalDueDate.split('T')[1];
-                            newDueDate = `${newDatePart}T${timePart}`;
-                        }
-                        
-                        return { ...task, dueDate: newDueDate };
-                    }
-                    return task;
-                });
+            const newDatePart = String(over.id);
+            let newDueDate = newDatePart;
+
+            // Preserve time if it exists
+            if (taskToUpdate.dueDate && taskToUpdate.dueDate.includes('T')) {
+                const timePart = taskToUpdate.dueDate.split('T')[1];
+                newDueDate = `${newDatePart}T${timePart}`;
+            }
+
+            const updatedTask = { ...taskToUpdate, dueDate: newDueDate };
+
+            // Update local state optimistically
+            setTasks((prevTasks) =>
+                prevTasks.map((task) =>
+                    task.id === active.id ? updatedTask : task
+                )
+            );
+
+            // Persist to backend
+            api.put(`/tasks/${taskToUpdate.id}`, {
+                title: updatedTask.title,
+                description: updatedTask.description,
+                status: updatedTask.status,
+                priority: updatedTask.priority,
+                assigneeId: updatedTask.assigneeId,
+                estimatedTime: updatedTask.estimatedTime,
+                dueDate: updatedTask.dueDate,
+                subtasks: updatedTask.subtasks || []
+            }).catch(err => {
+                console.error('Failed to update task date:', err);
+                // Revert on failure
+                setTasks((prevTasks) =>
+                    prevTasks.map((t) =>
+                        t.id === active.id ? taskToUpdate : t
+                    )
+                );
+                alert('Erro ao salvar data da tarefa. Tente novamente.');
             });
         }
     };
