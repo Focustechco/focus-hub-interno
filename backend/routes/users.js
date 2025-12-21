@@ -26,18 +26,21 @@ router.get('/', async (req, res) => {
     }
 });
 
-// PUT /api/users/:id - Update a user
+// PUT /api/users/:id - Update a user (including avatar)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, role, sector, jobTitle, bio } = req.body;
+    const { name, role, sector, jobTitle, bio, avatarUrl } = req.body;
+
+    console.log('[PUT /users/:id] Updating user:', id);
+    console.log('[PUT /users/:id] Has avatarUrl:', !!avatarUrl);
 
     try {
         const result = await pool.query(
             `UPDATE users 
-             SET name = $1, role = $2, sector = $3, job_title = $4, bio = $5
-             WHERE id = $6
+             SET name = $1, role = $2, sector = $3, job_title = $4, bio = $5, avatar_url = $6
+             WHERE id = $7
              RETURNING id, name, email, role, avatar_url, sector, job_title, bio, join_date`,
-            [name, role, sector, jobTitle, bio, id]
+            [name, role, sector, jobTitle, bio, avatarUrl, id]
         );
 
         if (result.rows.length === 0) {
@@ -57,9 +60,10 @@ router.put('/:id', async (req, res) => {
             joinDate: row.join_date
         };
 
+        console.log('[PUT /users/:id] User updated successfully:', id);
         res.json(updatedUser);
     } catch (err) {
-        console.error(err);
+        console.error('[PUT /users/:id] Error:', err);
         res.status(500).json({ message: 'Server error' });
     }
 });
