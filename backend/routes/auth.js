@@ -149,10 +149,13 @@ router.get('/me', async (req, res) => {
 router.post('/register', async (req, res) => {
     const { name, email, password, role, sector, jobTitle } = req.body;
 
+    console.log('[Register] Starting registration for:', email);
+
     try {
         // Check if user already exists
         const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
         if (userCheck.rows.length > 0) {
+            console.log('[Register] User already exists:', email);
             return res.status(400).json({ message: 'User already exists' });
         }
 
@@ -162,6 +165,8 @@ router.post('/register', async (req, res) => {
 
         // Insert new user with is_approved = false (pending)
         const id = 'u' + Date.now();
+        console.log('[Register] Inserting user with id:', id);
+
         const newUser = await pool.query(
             `INSERT INTO users (id, name, email, password, role, sector, job_title, join_date, avatar_url, is_approved)
              VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8, $9)
@@ -169,17 +174,23 @@ router.post('/register', async (req, res) => {
             [id, name, email, hashedPassword, (role || 'USER').toUpperCase(), sector, jobTitle, `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}`, false]
         );
 
-        // Send approval email to admin
-        await sendApprovalEmail(newUser.rows[0]);
+        console.log('[Register] User inserted successfully:', id);
 
-        // Return success message (user cannot login until approved)
+        // Send approval email to admin (non-blocking - don't wait for it)
+        sendApprovalEmail(newUser.rows[0]).catch(err => {
+            console.error('[Register] Email sending failed (non-blocking):', err.message);
+        });
+
+        // Return success message immediately
+        console.log('[Register] Returning success response');
         res.status(201).json({
             message: 'Cadastro realizado com sucesso! Seu acesso está pendente de aprovação. Você receberá um email quando for aprovado.',
             pending: true
         });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        console.error('[Register] Error:', err.message);
+        console.error('[Register] Stack:', err.stack);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
 
