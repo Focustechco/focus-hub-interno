@@ -32,6 +32,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 
 
+// Force deploy: 2023-12-23
 const App: React.FC = () => {
     console.log('App Render: Check for infinite loop');
     const { user: currentUser, login, logout, loading: authLoading, updateUser } = useAuth();
