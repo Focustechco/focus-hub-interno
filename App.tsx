@@ -18,6 +18,8 @@ import {
     OfflineAction,
 } from './types';
 import LoginScreen from './screens/LoginScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen';
 import Layout from './components/Layout';
 import DashboardScreen from './screens/DashboardScreen';
 import CheckInScreen from './screens/CheckInScreen';
@@ -183,12 +185,47 @@ const App: React.FC = () => {
         return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando...</div>;
     }
 
+    // Check for reset-password token in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const resetToken = urlParams.get('token');
+    const isResetPasswordPage = window.location.pathname.includes('reset-password') || resetToken;
+
+    // State for forgot password screen
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+
     if (!currentUser) {
-        // We need to pass the users list to LoginScreen so the user can still "select" a user to login as
-        // But ideally we should change LoginScreen to be a real form.
-        // For now, let's inject emails into the users list so handleLogin works
+        // Show reset password screen if token is present
+        if (isResetPasswordPage && resetToken) {
+            return (
+                <ResetPasswordScreen
+                    token={resetToken}
+                    onBackToLogin={() => {
+                        // Clear URL and reload
+                        window.history.replaceState({}, document.title, '/');
+                        window.location.reload();
+                    }}
+                />
+            );
+        }
+
+        // Show forgot password screen
+        if (showForgotPassword) {
+            return (
+                <ForgotPasswordScreen
+                    onBackToLogin={() => setShowForgotPassword(false)}
+                />
+            );
+        }
+
+        // Show login screen
         const usersWithEmails = users.map(u => ({ ...u, email: `${u.id}@focus.co` }));
-        return <LoginScreen onLogin={handleLogin} users={usersWithEmails} />;
+        return (
+            <LoginScreen
+                onLogin={handleLogin}
+                users={usersWithEmails}
+                onForgotPassword={() => setShowForgotPassword(true)}
+            />
+        );
     }
 
     const renderScreen = () => {

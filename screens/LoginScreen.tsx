@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 
 interface LoginScreenProps {
     onLogin: (user: User) => void;
+    onForgotPassword?: () => void;
     users: User[]; // Kept for compatibility but not used for simulation anymore
 }
 
@@ -15,7 +16,7 @@ const roleConfig = {
     [Role.COLLABORATOR]: { label: 'Colaborador', icon: UserIcon }
 };
 
-const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) => {
     const { login, register, error: authError, loading } = useAuth();
     const [isLogin, setIsLogin] = useState(true);
     const [registrationSuccess, setRegistrationSuccess] = useState(false);
@@ -158,6 +159,18 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                         <label className="text-sm font-medium text-[#B3B3B3]">Senha</label>
                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
                     </div>
+
+                    {isLogin && onForgotPassword && (
+                        <div className="text-right">
+                            <button
+                                type="button"
+                                onClick={onForgotPassword}
+                                className="text-sm text-[#B3B3B3] hover:text-[#FF6B00] transition"
+                            >
+                                Esqueci minha senha
+                            </button>
+                        </div>
+                    )}
 
                     {!isLogin && (
                         <>

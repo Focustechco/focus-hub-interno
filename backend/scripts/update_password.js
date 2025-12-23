@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 async function resetPassword() {
     const email = 'gabrielsbrana13@gmail.com';
-    const newPassword = '123456';
+    const newPassword = '1234';
 
     try {
         const salt = await bcrypt.genSalt(10);

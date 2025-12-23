@@ -229,5 +229,125 @@ router.put('/approve/:id', async (req, res) => {
     }
 });
 
+// POST /api/auth/forgot-password - Request password reset
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    console.log('[ForgotPassword] Request for:', email);
+
+    try {
+        // Check if user exists
+        const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+        const user = result.rows[0];
+
+        if (!user) {
+            // Don't reveal if user exists or not for security
+            return res.json({ message: 'Se o email existir, você receberá instruções de recuperação.' });
+        }
+
+        // Generate reset token (simple approach - use JWT)
+        const resetToken = jwt.sign(
+            { id: user.id, email: user.email, type: 'password-reset' },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        // Store token in database (optional - for extra security you could store a hash)
+        await pool.query(
+            'UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL \'1 hour\' WHERE id = $2',
+            [resetToken, user.id]
+        );
+
+        // Send reset email
+        try {
+            const transporter = createTransporter();
+            const resetLink = `${APP_URL}/reset-password?token=${resetToken}`;
+
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER || 'noreply@focushub.com',
+                to: email,
+                subject: '[Focus Hub] Recuperação de Senha',
+                html: `
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #FF6B00;">🔐 Recuperação de Senha</h2>
+                        <p>Olá ${user.name},</p>
+                        <p>Você solicitou a recuperação da sua senha no Focus Hub.</p>
+                        <p>Clique no botão abaixo para criar uma nova senha:</p>
+                        <p style="text-align: center; margin: 30px 0;">
+                            <a href="${resetLink}" style="background-color: #FF6B00; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                                Redefinir Senha
+                            </a>
+                        </p>
+                        <p style="color: #666; font-size: 12px;">
+                            Este link expira em 1 hora. Se você não solicitou esta recuperação, ignore este email.
+                        </p>
+                    </div>
+                `
+            });
+            console.log('[ForgotPassword] Email sent successfully to:', email);
+        } catch (emailErr) {
+            console.error('[ForgotPassword] Email error:', emailErr.message);
+            // Don't fail the request if email fails - return token for manual use
+        }
+
+        res.json({
+            message: 'Se o email existir, você receberá instruções de recuperação.',
+            // In dev, also return the token for testing
+            ...(process.env.NODE_ENV === 'development' && { resetToken })
+        });
+    } catch (err) {
+        console.error('[ForgotPassword] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// POST /api/auth/reset-password - Reset password with token
+router.post('/reset-password', async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    console.log('[ResetPassword] Attempting password reset');
+
+    try {
+        // Verify token
+        let decoded;
+        try {
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (decoded.type !== 'password-reset') {
+                return res.status(400).json({ message: 'Token inválido.' });
+            }
+        } catch (jwtErr) {
+            console.error('[ResetPassword] Token invalid:', jwtErr.message);
+            return res.status(400).json({ message: 'Token expirado ou inválido.' });
+        }
+
+        // Check if token matches in database
+        const result = await pool.query(
+            'SELECT * FROM users WHERE id = $1 AND reset_token = $2 AND reset_token_expires > NOW()',
+            [decoded.id, token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(400).json({ message: 'Token expirado ou já utilizado.' });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+        // Update password and clear reset token
+        await pool.query(
+            'UPDATE users SET password = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
+            [hashedPassword, decoded.id]
+        );
+
+        console.log('[ResetPassword] Password reset successful for user:', decoded.id);
+        res.json({ message: 'Senha alterada com sucesso! Você já pode fazer login.' });
+    } catch (err) {
+        console.error('[ResetPassword] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;
+
 

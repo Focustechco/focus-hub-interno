@@ -25,6 +25,8 @@ CREATE TABLE users (
   bio TEXT,
   join_date DATE DEFAULT CURRENT_DATE,
   is_approved BOOLEAN DEFAULT TRUE,
+  reset_token TEXT,
+  reset_token_expires TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
