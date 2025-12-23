@@ -151,7 +151,8 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
 
                     // Notifications would be handled by backend ideally, or here
                 } else {
-                    const isEditing = !!editingTask;
+                    // Treat as editing only if it has an ID and it's not a temporary one from Calendar creation
+                    const isEditing = !!editingTask && !!editingTask.id && !editingTask.id.toString().startsWith('new-');
                     let savedTask: Task;
 
                     if (isEditing) {
