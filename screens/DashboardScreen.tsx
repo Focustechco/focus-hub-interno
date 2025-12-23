@@ -32,6 +32,18 @@ interface DashboardScreenProps {
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride }) => {
     const [selectedSector, setSelectedSector] = useState<'Comercial' | 'Criativo' | 'Tech' | 'all'>('all');
 
+    // Helper function to parse date string properly
+    // If date is YYYY-MM-DD only, treat it as local date (not UTC)
+    const parseDateAsLocal = (dateString: string): Date => {
+        if (dateString.includes('T')) {
+            // Has time component, parse normally
+            return new Date(dateString);
+        }
+        // Date only: parse as local date to avoid timezone shift
+        const [year, month, day] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    };
+
     // Upcoming Event Data
     const upcomingTasks = tasks
         .filter(t =>
@@ -39,37 +51,37 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
             t.status !== 'concluida' &&
             t.dueDate
         )
-        .map(t => ({ ...t, dueDateObj: new Date(t.dueDate!) }))
+        .map(t => ({ ...t, dueDateObj: parseDateAsLocal(t.dueDate!) }))
         .filter(t => {
             if (!t.dueDate) return false;
             // Use string comparison YYYY-MM-DD to avoid timezone issues
-            const todayStr = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
             const taskDateStr = t.dueDate.split('T')[0];
             return taskDateStr >= todayStr;
         }) // Only future events (including today)
         .sort((a, b) => {
-            // Sort by full date time if available, or just date string
-            const dateA = new Date(a.dueDate!).getTime();
-            const dateB = new Date(b.dueDate!).getTime();
-            return dateA - dateB;
+            // Sort by dueDateObj which is already correctly parsed
+            return a.dueDateObj.getTime() - b.dueDateObj.getTime();
         });
 
     const nextEvent = upcomingTasks[0];
 
     const formatEventDate = (dateString?: string): string => {
         if (!dateString) return '';
-        const date = new Date(dateString);
+        const date = parseDateAsLocal(dateString);
         const today = new Date();
         const tomorrow = new Date();
         tomorrow.setDate(today.getDate() + 1);
 
         const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' };
+        const hasTime = dateString.includes('T');
 
         if (date.toDateString() === today.toDateString()) {
-            return `Hoje, às ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+            return hasTime ? `Hoje, às ${date.toLocaleTimeString('pt-BR', timeOptions)}` : 'Hoje';
         }
         if (date.toDateString() === tomorrow.toDateString()) {
-            return `Amanhã, às ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+            return hasTime ? `Amanhã, às ${date.toLocaleTimeString('pt-BR', timeOptions)}` : 'Amanhã';
         }
 
         const dateOptions: Intl.DateTimeFormatOptions = {
@@ -80,7 +92,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
             dateOptions.year = 'numeric';
         }
 
-        return `${date.toLocaleDateString('pt-BR', dateOptions)}, ${date.toLocaleTimeString('pt-BR', timeOptions)}`;
+        const dateStr = date.toLocaleDateString('pt-BR', dateOptions);
+        return hasTime ? `${dateStr}, ${date.toLocaleTimeString('pt-BR', timeOptions)}` : dateStr;
     };
 
 

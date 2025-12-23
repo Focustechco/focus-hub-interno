@@ -113,20 +113,43 @@ const App: React.FC = () => {
     const [offlineActionQueue, setOfflineActionQueue] = useLocalStorage<OfflineAction[]>('offlineActionQueue', []);
 
     useEffect(() => {
-        const syncData = () => {
+        const syncData = async () => {
             if (isOnline && offlineActionQueue && offlineActionQueue.length > 0) {
                 console.log(`[Sync] Conexão restaurada. Sincronizando ${offlineActionQueue.length} ações.`);
 
-                // Em uma aplicação real, aqui você enviaria a fila de ações para o servidor.
-                // Para esta simulação, vamos apenas "finalizar" as tarefas, removendo o status offline.
+                // Coletar IDs de tarefas deletadas offline
+                const deletedTaskIds = offlineActionQueue
+                    .filter(action => action.type === 'DELETE_TASK')
+                    .map(action => action.payload);
 
-                const syncedTasks = tasks.map(task => {
-                    if (task.isOffline) {
-                        const { isOffline, ...syncedTask } = task; // Remove the isOffline flag
-                        return syncedTask;
+                // Processar a fila de ações offline
+                for (const action of offlineActionQueue) {
+                    try {
+                        if (action.type === 'DELETE_TASK') {
+                            await api.delete(`/tasks/${action.payload}`);
+                            console.log(`[Sync] Tarefa ${action.payload} deletada no servidor.`);
+                        } else if (action.type === 'UPDATE_TASK') {
+                            await api.put(`/tasks/${action.payload.id}`, action.payload);
+                            console.log(`[Sync] Tarefa ${action.payload.id} atualizada no servidor.`);
+                        } else if (action.type === 'CREATE_TASK') {
+                            await api.post('/tasks', action.payload);
+                            console.log(`[Sync] Tarefa criada no servidor.`);
+                        }
+                    } catch (err) {
+                        console.error(`[Sync] Erro ao sincronizar ação:`, action, err);
                     }
-                    return task;
-                });
+                }
+
+                // Atualizar tasks locais removendo as deletadas e o flag isOffline
+                const syncedTasks = tasks
+                    .filter(task => !deletedTaskIds.includes(task.id))
+                    .map(task => {
+                        if (task.isOffline) {
+                            const { isOffline, ...syncedTask } = task;
+                            return syncedTask;
+                        }
+                        return task;
+                    });
 
                 setTasks(syncedTasks);
                 setOfflineActionQueue([]); // Limpa a fila

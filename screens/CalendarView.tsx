@@ -50,7 +50,11 @@ const DroppableDayCell: React.FC<{
     onTaskClick: (task: Task) => void;
     onAddTask: (date: Date) => void;
 }> = ({ day, isCurrentMonth, isToday, tasks, onTaskClick, onAddTask }) => {
-    const dateKey = day.toISOString().split('T')[0];
+    // Use local date components to avoid timezone issues
+    const year = day.getFullYear();
+    const month = String(day.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(day.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${dayNum}`;
     const { setNodeRef, isOver } = useDroppable({ id: dateKey });
 
     return (
@@ -118,11 +122,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
 
+    // Ajustar para semana começando na segunda-feira (modelo brasileiro)
     const startDate = new Date(startOfMonth);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
+    const startDayOfWeek = startOfMonth.getDay(); // 0 = Dom, 1 = Seg, ...
+    const daysToSubtract = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    startDate.setDate(startDate.getDate() - daysToSubtract);
 
     const endDate = new Date(endOfMonth);
-    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+    const endDayOfWeek = endOfMonth.getDay();
+    const daysToAdd = endDayOfWeek === 0 ? 0 : 7 - endDayOfWeek;
+    endDate.setDate(endDate.getDate() + daysToAdd);
 
     const days = [];
     let dayIterator = new Date(startDate);
@@ -131,7 +140,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
         dayIterator.setDate(dayIterator.getDate() + 1);
     }
 
-    const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const weekDays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
     const today = new Date();
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -204,7 +213,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
                     {days.map((day, index) => {
                         const isCurrentMonth = day.getMonth() === currentDate.getMonth();
                         const isToday = day.toDateString() === today.toDateString();
-                        const dateKey = day.toISOString().split('T')[0];
+                        // Use local date components to avoid timezone issues
+                        const year = day.getFullYear();
+                        const month = String(day.getMonth() + 1).padStart(2, '0');
+                        const dayNum = String(day.getDate()).padStart(2, '0');
+                        const dateKey = `${year}-${month}-${dayNum}`;
                         const dayTasks = tasksByDate.get(dateKey) || [];
 
                         return (
@@ -215,17 +228,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users, onTaskClick, 
                                 isToday={isToday}
                                 tasks={dayTasks}
                                 onTaskClick={onTaskClick}
-                                onAddTask={(date) => onTaskClick({
-                                    id: '', // Temporary ID, will be replaced on save
-                                    title: '',
-                                    description: '',
-                                    status: 'pendente',
-                                    priority: 'media',
-                                    assigneeId: '',
-                                    estimatedTime: 60,
-                                    createdAt: new Date().toISOString(),
-                                    dueDate: date.toISOString().split('T')[0],
-                                })}
+                                onAddTask={(date) => {
+                                    // Use local date format to avoid timezone issues
+                                    const y = date.getFullYear();
+                                    const m = String(date.getMonth() + 1).padStart(2, '0');
+                                    const d = String(date.getDate()).padStart(2, '0');
+                                    const localDate = `${y}-${m}-${d}`;
+
+                                    onTaskClick({
+                                        id: `new-${Date.now()}`, // Temporary ID for new task
+                                        title: '',
+                                        description: '',
+                                        status: 'pendente',
+                                        priority: 'media',
+                                        assigneeId: '',
+                                        estimatedTime: 60,
+                                        createdAt: new Date().toISOString(),
+                                        dueDate: localDate,
+                                    });
+                                }}
                             />
                         );
                     })}
