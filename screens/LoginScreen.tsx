@@ -160,11 +160,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                         <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
                     </div>
 
-                    {isLogin && onForgotPassword && (
+                    {isLogin && (
                         <div className="text-right">
                             <button
                                 type="button"
-                                onClick={onForgotPassword}
+                                onClick={() => onForgotPassword?.()}
                                 className="text-sm text-[#B3B3B3] hover:text-[#FF6B00] transition"
                             >
                                 Esqueci minha senha
