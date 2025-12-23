@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { User, Role, Task, CheckIn } from '../types';
-import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon } from '../components/icons';
+import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon, CheckCircle2Icon, XIcon } from '../components/icons';
 import ProfileModal from '../components/ProfileModal';
+import api from '../services/api';
 
 interface AdminScreenProps {
     currentUser: User;
@@ -15,6 +16,43 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [reportSearchTerm, setReportSearchTerm] = useState('');
+
+    // Estados para aprovação de usuários
+    const [pendingUsers, setPendingUsers] = useState<any[]>([]);
+    const [loadingPending, setLoadingPending] = useState(false);
+    const [approvingUser, setApprovingUser] = useState<string | null>(null);
+
+    // Buscar usuários pendentes ao carregar
+    useEffect(() => {
+        if (currentUser.role === Role.ADMIN) {
+            fetchPendingUsers();
+        }
+    }, [currentUser.role]);
+
+    const fetchPendingUsers = async () => {
+        setLoadingPending(true);
+        try {
+            const response = await api.get('/auth/pending');
+            setPendingUsers(response.data);
+        } catch (error) {
+            console.error('Erro ao buscar usuários pendentes:', error);
+        } finally {
+            setLoadingPending(false);
+        }
+    };
+
+    const handleApproveUser = async (userId: string, approved: boolean) => {
+        setApprovingUser(userId);
+        try {
+            await api.put(`/auth/approve/${userId}`, { approved });
+            // Remover da lista local
+            setPendingUsers(prev => prev.filter(u => u.id !== userId));
+        } catch (error) {
+            console.error('Erro ao processar aprovação:', error);
+        } finally {
+            setApprovingUser(null);
+        }
+    };
 
     const handleOpenProfileModal = (user: User) => {
         setSelectedUser(user);
@@ -81,6 +119,74 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                 </div>
             </div>
 
+            {/* Seção de Aprovação de Usuários Pendentes */}
+            {pendingUsers.length > 0 && (
+                <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 p-6 rounded-lg shadow-md mb-8">
+                    <h2 className="text-xl font-bold mb-4 flex items-center text-yellow-400">
+                        <ShieldIcon className="w-5 h-5 mr-2" />
+                        🔔 Solicitações Pendentes de Aprovação ({pendingUsers.length})
+                    </h2>
+                    <div className="space-y-4">
+                        {pendingUsers.map(user => (
+                            <div key={user.id} className="bg-[#1C1C1C] p-4 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <img
+                                        src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`}
+                                        alt={user.name}
+                                        className="w-12 h-12 rounded-full border-2 border-yellow-500/50"
+                                    />
+                                    <div>
+                                        <p className="font-semibold text-white">{user.name}</p>
+                                        <p className="text-sm text-[#B3B3B3]">{user.email}</p>
+                                        <div className="flex gap-4 mt-1 text-xs text-[#B3B3B3]">
+                                            <span>📁 {user.sector || 'Setor não informado'}</span>
+                                            <span>💼 {user.job_title || 'Cargo não informado'}</span>
+                                        </div>
+                                        <p className="text-xs text-[#B3B3B3] mt-1">
+                                            📅 Solicitado em: {user.join_date ? new Date(user.join_date).toLocaleDateString('pt-BR') : 'Data não disponível'}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 w-full sm:w-auto">
+                                    <button
+                                        onClick={() => handleApproveUser(user.id, true)}
+                                        disabled={approvingUser === user.id}
+                                        className="flex-1 sm:flex-none bg-green-500 hover:bg-green-600 disabled:bg-green-500/50 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        {approvingUser === user.id ? (
+                                            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                            </svg>
+                                        ) : (
+                                            <CheckCircle2Icon className="w-4 h-4" />
+                                        )}
+                                        Aprovar
+                                    </button>
+                                    <button
+                                        onClick={() => handleApproveUser(user.id, false)}
+                                        disabled={approvingUser === user.id}
+                                        className="flex-1 sm:flex-none bg-red-500 hover:bg-red-600 disabled:bg-red-500/50 text-white font-semibold py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        <XIcon className="w-4 h-4" />
+                                        Rejeitar
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {loadingPending && (
+                <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md mb-8 flex items-center justify-center">
+                    <svg className="animate-spin h-6 w-6 mr-3 text-[#FF6B00]" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    <span>Carregando solicitações pendentes...</span>
+                </div>
+            )}
             <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md">
                 <h2 className="text-xl font-bold mb-4">Lista de Usuários</h2>
                 <div className="overflow-x-auto">
