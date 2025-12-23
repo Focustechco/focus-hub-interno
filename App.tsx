@@ -32,7 +32,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 
 
-// Force deploy: 2024-12-23 v2 - forgot password fix
+// Force deploy: 2024-12-23 v3 - forgot password fix - main branch
 const App: React.FC = () => {
     console.log('App Render: Check for infinite loop');
     const { user: currentUser, login, logout, loading: authLoading, updateUser } = useAuth();
