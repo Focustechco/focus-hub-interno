@@ -311,8 +311,12 @@ router.post('/forgot-password', async (req, res) => {
             });
         }
     } catch (err) {
-        console.error('[ForgotPassword] Error:', err);
-        res.status(500).json({ message: 'Server error' });
+        console.error('[ForgotPassword] General Error:', err.message);
+        console.error('[ForgotPassword] Stack:', err.stack);
+        res.status(500).json({
+            message: 'Erro interno do servidor',
+            error: err.message
+        });
     }
 });
 
