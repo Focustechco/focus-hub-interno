@@ -49,6 +49,9 @@ const App: React.FC = () => {
     const [dailyChecklistItems, setDailyChecklistItems] = useLocalStorage<DailyChecklistItem[]>('dailyChecklist', []);
     const [taskViewOverride, setTaskViewOverride] = useState<'board' | 'checklist' | 'calendar' | null>(null);
 
+    // State for forgot password screen
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+
     // Fetch all data in parallel for better performance
     useEffect(() => {
         if (!currentUser) return;
@@ -189,9 +192,6 @@ const App: React.FC = () => {
     const urlParams = new URLSearchParams(window.location.search);
     const resetToken = urlParams.get('token');
     const isResetPasswordPage = window.location.pathname.includes('reset-password') || resetToken;
-
-    // State for forgot password screen
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
 
     if (!currentUser) {
         // Show reset password screen if token is present
