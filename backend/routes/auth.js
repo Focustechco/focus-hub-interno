@@ -260,11 +260,22 @@ router.post('/forgot-password', async (req, res) => {
 
         // Send reset email
         try {
+            // Validate email configuration first
+            if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+                console.error('[ForgotPassword] EMAIL_USER or EMAIL_PASS not configured!');
+                return res.status(500).json({
+                    message: 'Serviço de email não configurado. Entre em contato com o administrador.'
+                });
+            }
+
             const transporter = createTransporter();
             const resetLink = `${APP_URL}/reset-password?token=${resetToken}`;
 
+            console.log('[ForgotPassword] Attempting to send email to:', email);
+            console.log('[ForgotPassword] Using EMAIL_USER:', process.env.EMAIL_USER);
+
             await transporter.sendMail({
-                from: process.env.EMAIL_USER || 'noreply@focushub.com',
+                from: process.env.EMAIL_USER,
                 to: email,
                 subject: '[Focus Hub] Recuperação de Senha',
                 html: `
@@ -285,16 +296,20 @@ router.post('/forgot-password', async (req, res) => {
                 `
             });
             console.log('[ForgotPassword] Email sent successfully to:', email);
+
+            res.json({
+                message: 'Email de recuperação enviado! Verifique sua caixa de entrada e spam.'
+            });
         } catch (emailErr) {
             console.error('[ForgotPassword] Email error:', emailErr.message);
-            // Don't fail the request if email fails - return token for manual use
-        }
+            console.error('[ForgotPassword] Full error:', emailErr);
 
-        res.json({
-            message: 'Se o email existir, você receberá instruções de recuperação.',
-            // In dev, also return the token for testing
-            ...(process.env.NODE_ENV === 'development' && { resetToken })
-        });
+            // Return actual error to user
+            return res.status(500).json({
+                message: 'Erro ao enviar email. Verifique se o email está correto ou tente novamente mais tarde.',
+                error: process.env.NODE_ENV === 'development' ? emailErr.message : undefined
+            });
+        }
     } catch (err) {
         console.error('[ForgotPassword] Error:', err);
         res.status(500).json({ message: 'Server error' });
