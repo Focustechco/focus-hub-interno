@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Role, Task, CheckIn } from '../types';
-import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon, CheckCircle2Icon, XIcon } from '../components/icons';
+import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon, CheckCircle2Icon, XIcon, PlusIcon, Trash2Icon } from '../components/icons';
 import ProfileModal from '../components/ProfileModal';
 import api from '../services/api';
 
@@ -10,10 +10,13 @@ interface AdminScreenProps {
     tasks: Task[];
     checkIns: CheckIn[];
     onUpdateUser: (user: User) => void;
+    onDeleteUser: (userId: string) => void;
+    onCreateUser: (user: Partial<User>) => Promise<void>;
 }
 
-const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, checkIns, onUpdateUser }) => {
+const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, checkIns, onUpdateUser, onDeleteUser, onCreateUser }) => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [reportSearchTerm, setReportSearchTerm] = useState('');
 
@@ -64,6 +67,17 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
         setIsProfileModalOpen(false);
     };
 
+    const handleDeleteUser = (userId: string) => {
+        if (window.confirm("Tem certeza que deseja excluir este usuário?")) {
+            onDeleteUser(userId);
+        }
+    };
+
+    const handleCreateUser = async (userData: any) => {
+        await onCreateUser(userData);
+        setIsCreateUserModalOpen(false);
+    };
+
     if (currentUser.role !== Role.ADMIN) {
         return (
             <div className="text-center p-8">
@@ -94,8 +108,18 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
 
     return (
         <div>
-            <h1 className="text-3xl font-bold mb-2">Painel do Administrador</h1>
-            <p className="text-[#B3B3B3] mb-8">Visão geral do sistema e gerenciamento de usuários.</p>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">Painel do Administrador</h1>
+                    <p className="text-[#B3B3B3]">Visão geral do sistema e gerenciamento de usuários.</p>
+                </div>
+                <button
+                    onClick={() => setIsCreateUserModalOpen(true)}
+                    className="bg-[#FF6B00] hover:bg-[#FF8C33] text-white font-bold py-2 px-4 rounded-lg flex items-center"
+                >
+                    <PlusIcon className="w-5 h-5 mr-2" /> Novo Usuário
+                </button>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md flex items-start">
@@ -214,8 +238,9 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                                             {user.role}
                                         </span>
                                     </td>
-                                    <td className="p-3">
+                                    <td className="p-3 flex items-center gap-3">
                                         <button onClick={() => handleOpenProfileModal(user)} className="text-sm text-[#FF6B00] hover:underline">Editar</button>
+                                        <button onClick={() => handleDeleteUser(user.id)} className="text-sm text-red-500 hover:text-red-400" title="Excluir"><Trash2Icon className="w-4 h-4" /></button>
                                     </td>
                                 </tr>
                             ))}
@@ -279,6 +304,104 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                     currentUserRole={currentUser.role}
                 />
             )}
+
+            {isCreateUserModalOpen && (
+                <CreateUserModal
+                    isOpen={isCreateUserModalOpen}
+                    onClose={() => setIsCreateUserModalOpen(false)}
+                    onSave={handleCreateUser}
+                />
+            )}
+        </div>
+    );
+};
+
+interface CreateUserModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (data: any) => Promise<void>;
+}
+
+const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: '',
+        role: 'USER',
+        sector: 'Comercial',
+        jobTitle: '',
+        bio: ''
+    });
+    const [isSaving, setIsSaving] = useState(false);
+
+    if (!isOpen) return null;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSaving(true);
+        try {
+            await onSave(formData);
+            onClose();
+        } catch (error) {
+            console.error("Error creating user:", error);
+            alert("Erro ao criar usuário.");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1C1C1C] rounded-lg shadow-xl w-full max-w-lg p-6 relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-[#B3B3B3] hover:text-white">
+                    <XIcon className="w-6 h-6" />
+                </button>
+                <h2 className="text-2xl font-bold mb-4 text-[#FF6B00]">Novo Usuário</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="text-sm font-medium text-[#B3B3B3]">Nome</label>
+                        <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md" required />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-[#B3B3B3]">Email</label>
+                        <input type="email" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md" required />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-[#B3B3B3]">Senha</label>
+                        <input type="password" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md" required />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Cargo</label>
+                            <input type="text" value={formData.jobTitle} onChange={e => setFormData({ ...formData, jobTitle: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md" required />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Setor</label>
+                            <select value={formData.sector} onChange={e => setFormData({ ...formData, sector: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md">
+                                {['Comercial', 'Criativo', 'Tech', 'Administração', 'Financeiro'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-[#B3B3B3]">Função (Role)</label>
+                        <select value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md">
+                            <option value="USER">Usuário (Padrão)</option>
+                            <option value="ADMIN">Administrador</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-[#B3B3B3]">Bio (Opcional)</label>
+                        <textarea value={formData.bio} onChange={e => setFormData({ ...formData, bio: e.target.value })} rows={2} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md" />
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a]">Cancelar</button>
+                        <button type="submit" disabled={isSaving} className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33] disabled:opacity-50">
+                            {isSaving ? 'Salvando...' : 'Criar Usuário'}
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };

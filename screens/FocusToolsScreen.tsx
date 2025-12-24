@@ -143,7 +143,32 @@ const FocusToolsScreen: React.FC = () => {
                     )
                 );
             } else if (mode === 'edit' && linkData.id) {
-                // Update not implemented in backend yet, just local state update for now
+                // API Call to update credential
+                const res = await api.put(`/tools/credentials/${linkData.id}`, {
+                    serviceName: linkData.nome,
+                    username: linkData.login,
+                    password: linkData.senha,
+                    url: linkData.link,
+                    notes: linkData.descricao,
+                    isFavorite: linkData.isFavorite
+                });
+
+                setAccessGroups(prevGroups =>
+                    prevGroups.map(group =>
+                        group.id === groupId ? {
+                            ...group,
+                            links: group.links.map(link =>
+                                link.id === linkData.id ? (res.data as AccessLink) : link
+                            )
+                        } : group
+                    )
+                );
+            }
+        } catch (err) {
+            console.error("Failed to save access link:", err);
+            alert("Erro ao salvar acesso.");
+            // Fallback to local state update logic if needed
+            if (mode === 'edit' && linkData.id) {
                 setAccessGroups(prevGroups =>
                     prevGroups.map(group =>
                         group.id === groupId ? {
@@ -155,17 +180,34 @@ const FocusToolsScreen: React.FC = () => {
                     )
                 );
             }
-        } catch (err) {
-            console.error("Failed to save access link:", err);
-            alert("Erro ao salvar acesso (usando fallback local).");
-            // Fallback to local state update logic if API fails
-            if (mode === 'create') {
-                const newLink: AccessLink = { ...linkData, id: `acc-${Date.now()}` } as AccessLink;
-                setAccessGroups(prev => prev.map(g => g.id === groupId ? { ...g, links: [...g.links, newLink] } : g));
-            }
         }
 
         handleCloseAccessModal();
+    };
+
+    const handleDeleteAccessLink = async (linkId: string, groupId: string) => {
+        if (!window.confirm("Tem certeza que deseja remover este acesso?")) return;
+
+        try {
+            await api.delete(`/tools/credentials/${linkId}`);
+            setAccessGroups(prev => prev.map(g => g.id === groupId ? { ...g, links: g.links.filter(l => l.id !== linkId) } : g));
+        } catch (err) {
+            console.error("Failed to delete access link:", err);
+            alert("Erro ao remover acesso.");
+        }
+    };
+
+    const handleDeleteAccessGroup = async (groupId: string) => {
+        if (!window.confirm("Tem certeza que deseja remover este grupo? Isso apagará todos os acessos dentro dele.")) return;
+
+        try {
+            await api.delete(`/tools/access-groups/${groupId}`);
+            setAccessGroups(prev => prev.filter(g => g.id !== groupId));
+            if (openGroupId === groupId) setOpenGroupId(null);
+        } catch (err) {
+            console.error("Failed to delete access group:", err);
+            alert("Erro ao remover grupo.");
+        }
     };
 
     const handleAddNewGroup = async () => {
@@ -328,7 +370,7 @@ const FocusToolsScreen: React.FC = () => {
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 -mr-2">
                 {activeTab === 'links' && <LinksTabContent links={filteredLinks} onToggleFavorite={handleToggleFavorite} onOpenModal={handleOpenLinkModal} onDelete={handleDeleteLink} searchTerm={searchTerm} setSearchTerm={setSearchTerm} showFavorites={showFavorites} setShowFavorites={setShowFavorites} />}
                 {activeTab === 'content' && <ContentTabContent content={filteredContent} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categoryConfig={contentCategoryConfig} iconMap={contentIconMap} />}
-                {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} />}
+                {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} onDeleteGroup={handleDeleteAccessGroup} onDeleteLink={handleDeleteAccessLink} />}
                 {activeTab === 'integrations' && <IntegrationsTabContent />}
             </div>
             {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} />}
@@ -385,7 +427,7 @@ const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelect
     </div>
 );
 
-const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGroupId, onOpenModal, onAddNewGroup }) => (
+const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGroupId, onOpenModal, onAddNewGroup, onDeleteGroup, onDeleteLink }) => (
     <div className="max-w-4xl mx-auto">
         <div className="flex justify-end mb-4">
             <button onClick={onAddNewGroup} className="flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors text-sm">
@@ -403,7 +445,15 @@ const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGr
                             {openGroupId === group.id ? <FolderOpenIcon className="w-5 h-5 text-[#FF6B00]" /> : <FolderIcon className="w-5 h-5 text-[#FF6B00]" />}
                             <span>{group.name}</span>
                         </div>
-                        <span className="text-sm text-[#B3B3B3]">{group.links.length} links</span>
+                        <div className="flex items-center gap-3">
+                            <span className="text-sm text-[#B3B3B3]">{group.links.length} links</span>
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteGroup(group.id); }}
+                                className="p-1 text-gray-500 hover:text-red-500 hover:bg-[#2E2E2E] rounded transition-colors"
+                            >
+                                <Trash2Icon className="w-4 h-4" />
+                            </button>
+                        </div>
                     </button>
                     <AnimatePresence>
                         {openGroupId === group.id && (
@@ -421,11 +471,17 @@ const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGr
                                             <button
                                                 key={link.id}
                                                 onClick={() => onOpenModal({ mode: 'edit', groupId: group.id, link: link })}
-                                                className="w-full flex items-center gap-3 text-left p-3 bg-[#2E2E2E] hover:bg-[#3a3a3a] transition-colors rounded-lg"
+                                                className="w-full flex items-center gap-3 text-left p-3 bg-[#2E2E2E] hover:bg-[#3a3a3a] transition-colors rounded-lg group"
                                             >
                                                 <Icon className="w-4 h-4 text-[#FF6B00] flex-shrink-0" />
                                                 <span className="flex-grow truncate">{link.nome}</span>
                                                 {link.isFavorite && <StarIcon className="w-4 h-4 text-yellow-400 fill-current flex-shrink-0" />}
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onDeleteLink(link.id, group.id); }}
+                                                    className="p-1 text-gray-500 hover:text-red-500 hover:bg-[#1C1C1C] rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2Icon className="w-4 h-4" />
+                                                </button>
                                             </button>
                                         );
                                     })}

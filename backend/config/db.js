@@ -11,7 +11,12 @@ const pool = new Pool({
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
-pool.on('connect', () => {
+pool.on('connect', (client) => {
+    client.query("SET timezone TO 'America/Sao_Paulo'", (err) => {
+        if (err) {
+            console.error('Error setting timezone:', err);
+        }
+    });
     console.log('Connected to the PostgreSQL database');
 });
 

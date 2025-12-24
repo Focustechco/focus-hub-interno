@@ -231,6 +231,29 @@ const App: React.FC = () => {
         }
     };
 
+    const handleDeleteUser = async (userId: string) => {
+        try {
+            await api.delete(`/users/${userId}`);
+            setUsers(prev => prev.filter(u => u.id !== userId));
+        } catch (error) {
+            console.error("Failed to delete user:", error);
+            alert("Erro ao excluir usuário.");
+        }
+    };
+
+    const handleCreateUser = async (userData: Partial<User>) => {
+        try {
+            // Ensure bio is not undefined if not provided to avoid issues? Backend handles it.
+            const res = await api.post('/users', userData);
+            setUsers(prev => [...prev, res.data]);
+            alert("Usuário criado com sucesso!");
+        } catch (error) {
+            console.error("Failed to create user:", error);
+            // Rethrow so modal can handle it (stay open)
+            throw error;
+        }
+    };
+
     if (authLoading) {
         return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando...</div>;
     }
@@ -307,7 +330,7 @@ const App: React.FC = () => {
                 return <FocusToolsScreen />;
             case 'admin':
                 if (currentUser.role === Role.ADMIN) {
-                    return <AdminScreen currentUser={currentUser} users={users} tasks={tasks} checkIns={checkIns} onUpdateUser={handleUpdateUser} />;
+                    return <AdminScreen currentUser={currentUser} users={users} tasks={tasks} checkIns={checkIns} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} onCreateUser={handleCreateUser} />;
                 }
                 // Fallback for non-admin trying to access admin screen
                 return <DashboardScreen {...dashboardProps} />;

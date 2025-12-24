@@ -134,4 +134,19 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/checkins/:id - Delete a check-in
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM check_ins WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Check-in not found' });
+        }
+        res.json({ message: 'Check-in deleted', id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;

@@ -63,16 +63,34 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT /api/posts/:id - Update a post (e.g. toggle pin)
+// PUT /api/posts/:id - Update a post (e.g. toggle pin or content)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { isPinned } = req.body;
+    const { isPinned, content } = req.body;
 
     try {
-        const result = await pool.query(
-            'UPDATE posts SET is_pinned = $1 WHERE id = $2 RETURNING *',
-            [isPinned, id]
-        );
+        let query = 'UPDATE posts SET ';
+        const values = [];
+        let valueIndex = 1;
+
+        if (isPinned !== undefined) {
+            query += `is_pinned = $${valueIndex}, `;
+            values.push(isPinned);
+            valueIndex++;
+        }
+
+        if (content !== undefined) {
+            query += `content = $${valueIndex}, `;
+            values.push(content);
+            valueIndex++;
+        }
+
+        // Remove trailing comma and space
+        query = query.slice(0, -2);
+        query += ` WHERE id = $${valueIndex} RETURNING *`;
+        values.push(id);
+
+        const result = await pool.query(query, values);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Post not found' });
@@ -96,6 +114,21 @@ router.put('/:id', async (req, res) => {
         };
 
         res.json(updatedPost);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DELETE /api/posts/:id - Delete a post
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM posts WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Post not found' });
+        }
+        res.json({ message: 'Post deleted', id });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });

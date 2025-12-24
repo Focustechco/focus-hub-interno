@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { User, Post, Notification, NotificationType, NotificationPreferences, Role } from '../types';
-import { SendIcon, UserIcon, StarIcon } from '../components/icons';
+import { SendIcon, UserIcon, StarIcon, Trash2Icon, EditIcon } from '../components/icons';
 import { formatDate } from '../src/utils/formatters';
 import api from '../services/api';
 
@@ -16,6 +16,8 @@ interface MuralScreenProps {
 
 const MuralScreen: React.FC<MuralScreenProps> = ({ currentUser, posts, users, setPosts, setNotifications, notificationPreferences }) => {
     const [newPostContent, setNewPostContent] = useState('');
+    const [editingPostId, setEditingPostId] = useState<string | null>(null);
+    const [editContent, setEditContent] = useState('');
 
     const handlePostSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -77,6 +79,38 @@ const MuralScreen: React.FC<MuralScreenProps> = ({ currentUser, posts, users, se
         }
     };
 
+    const handleDeletePost = async (postId: string) => {
+        if (!window.confirm("Tem certeza que deseja excluir esta publicação?")) return;
+
+        try {
+            setPosts(prev => prev.filter(p => p.id !== postId));
+            await api.delete(`/posts/${postId}`);
+        } catch (error) {
+            console.error("Failed to delete post:", error);
+            alert("Erro ao excluir publicação.");
+        }
+    };
+
+    const handleStartEdit = (post: Post) => {
+        setEditingPostId(post.id);
+        setEditContent(post.content);
+    };
+
+    const handleSaveEdit = async (postId: string) => {
+        if (!editContent.trim()) return;
+
+        try {
+            // Optimistic
+            setPosts(prev => prev.map(p => p.id === postId ? { ...p, content: editContent.trim() } : p));
+            setEditingPostId(null);
+
+            await api.put(`/posts/${postId}`, { content: editContent.trim() });
+        } catch (error) {
+            console.error("Failed to update post:", error);
+            alert("Erro ao atualizar publicação.");
+        }
+    };
+
     const sortedPosts = [...posts].sort((a, b) => {
         if (a.isPinned && !b.isPinned) return -1;
         if (!a.isPinned && b.isPinned) return 1;
@@ -128,19 +162,49 @@ const MuralScreen: React.FC<MuralScreenProps> = ({ currentUser, posts, users, se
 
                             <div className="absolute top-5 right-5 flex items-center gap-2">
                                 {currentUser.role === Role.ADMIN && (
-                                    <button
-                                        onClick={() => handleTogglePin(post.id)}
-                                        className="p-1 rounded-full text-gray-400 hover:text-white bg-[#2E2E2E]/50 hover:bg-[#2E2E2E]"
-                                        title={post.isPinned ? 'Desafixar post' : 'Fixar post'}
-                                    >
-                                        <StarIcon className={`w-5 h-5 transition-colors ${post.isPinned ? 'text-yellow-400 fill-current' : 'hover:text-yellow-400'}`} />
+                                    <>
+                                        <button
+                                            onClick={() => handleTogglePin(post.id)}
+                                            className="p-1 rounded-full text-gray-400 hover:text-white bg-[#2E2E2E]/50 hover:bg-[#2E2E2E]"
+                                            title={post.isPinned ? 'Desafixar post' : 'Fixar post'}
+                                        >
+                                            <StarIcon className={`w-5 h-5 transition-colors ${post.isPinned ? 'text-yellow-400 fill-current' : 'hover:text-yellow-400'}`} />
+                                        </button>
+                                        <button onClick={() => handleDeletePost(post.id)} className="p-1 text-gray-500 hover:text-red-500 bg-[#2E2E2E]/50 hover:bg-[#2E2E2E] rounded-full">
+                                            <Trash2Icon className="w-4 h-4" />
+                                        </button>
+                                    </>
+                                )}
+                                {(currentUser.id === post.authorId && currentUser.role !== Role.ADMIN) && (
+                                    <button onClick={() => handleDeletePost(post.id)} className="p-1 text-gray-500 hover:text-red-500 bg-[#2E2E2E]/50 hover:bg-[#2E2E2E] rounded-full">
+                                        <Trash2Icon className="w-4 h-4" />
                                     </button>
                                 )}
-                                {/* Fix: The 'title' prop is not valid on SVG components. Wrapped StarIcon in a span to apply the title for tooltip behavior. */}
+                                {(currentUser.id === post.authorId || currentUser.role === Role.ADMIN) && (
+                                    <button onClick={() => handleStartEdit(post)} className="p-1 text-gray-500 hover:text-white bg-[#2E2E2E]/50 hover:bg-[#2E2E2E] rounded-full">
+                                        <EditIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+
                                 {post.isPinned && currentUser.role !== Role.ADMIN && <span title="Post fixado"><StarIcon className="w-5 h-5 text-yellow-400 fill-current" /></span>}
                             </div>
 
-                            <p className="text-white whitespace-pre-wrap">{post.content}</p>
+                            {editingPostId === post.id ? (
+                                <div className="mt-2">
+                                    <textarea
+                                        value={editContent}
+                                        onChange={(e) => setEditContent(e.target.value)}
+                                        className="w-full p-2 bg-[#2E2E2E] rounded-md text-white mb-2"
+                                        rows={3}
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <button onClick={() => setEditingPostId(null)} className="px-3 py-1 bg-gray-600 rounded text-sm text-white hover:bg-gray-700">Cancelar</button>
+                                        <button onClick={() => handleSaveEdit(post.id)} className="px-3 py-1 bg-[#FF6B00] rounded text-sm text-white hover:bg-[#FF8C33]">Salvar</button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-white whitespace-pre-wrap">{post.content}</p>
+                            )}
                         </div>
                     );
                 })}

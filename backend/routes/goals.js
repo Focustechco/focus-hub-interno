@@ -123,4 +123,19 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// DELETE /api/goals/:id - Delete a goal
+router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM goals WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Goal not found' });
+        }
+        res.json({ message: 'Goal deleted', id });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;
