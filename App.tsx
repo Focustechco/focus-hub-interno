@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useAuth } from './hooks/useAuth';
 import api from './services/api';
@@ -32,9 +32,8 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 
 
-// Force deploy: 2024-12-23 v3 - forgot password fix - main branch
+// Force deploy: 2024-12-24 v4 - fix infinite loop
 const App: React.FC = () => {
-    console.log('App Render: Check for infinite loop');
     const { user: currentUser, login, logout, loading: authLoading, updateUser } = useAuth();
     const [activeScreen, setActiveScreen] = useLocalStorage<Screen>('activeScreen', 'dashboard');
 
@@ -100,7 +99,7 @@ const App: React.FC = () => {
 
     // Notification preferences derived from users
 
-    const initialPrefs = users.reduce((acc, user) => {
+    const initialPrefs = useMemo(() => users.reduce((acc, user) => {
         acc[user.id] = {
             [NotificationType.TASK_ASSIGNED]: true,
             [NotificationType.TASK_STATUS_CHANGED]: true,
@@ -108,7 +107,7 @@ const App: React.FC = () => {
             [NotificationType.TASK_DUE_SOON]: true,
         };
         return acc;
-    }, {} as { [userId: string]: NotificationPreferences });
+    }, {} as { [userId: string]: NotificationPreferences }), [users]);
 
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notificationPreferences, setNotificationPreferences] = useLocalStorage<{ [userId: string]: NotificationPreferences }>('notificationPreferences', initialPrefs);
