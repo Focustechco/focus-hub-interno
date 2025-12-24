@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User, Post, Notification, NotificationType, NotificationPreferences, Role } from '../types';
 import { SendIcon, UserIcon, StarIcon } from '../components/icons';
+import { formatDate } from '../src/utils/formatters';
 import api from '../services/api';
 
 interface MuralScreenProps {
@@ -121,7 +122,7 @@ const MuralScreen: React.FC<MuralScreenProps> = ({ currentUser, posts, users, se
                                 )}
                                 <div>
                                     <p className="font-semibold text-white">{author?.name || 'Usuário Desconhecido'}</p>
-                                    <p className="text-xs text-[#B3B3B3]">{new Date(post.createdAt).toLocaleString()}</p>
+                                    <p className="text-xs text-[#B3B3B3]">{formatDate(post.createdAt, true)}</p>
                                 </div>
                             </div>
 

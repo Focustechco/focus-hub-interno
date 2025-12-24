@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Task, User, Goal, Notification, NotificationPreferences, DailyChecklistItem, NotificationType, TaskStatus, TaskPriority, Role, OfflineAction, Subtask } from '../types';
 import { PlusIcon, FilterIcon, EditIcon, Trash2Icon, XIcon, SearchIcon, CalendarIcon, ClipboardIcon, CheckSquareIcon, CloudOffIcon, ClockIcon } from '../components/icons';
+import { formatDate } from '../src/utils/formatters';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import CalendarView from './CalendarView';
@@ -456,18 +457,7 @@ const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit:
     };
 
     const formattedDueDate = useMemo(() => {
-        if (!task.dueDate) return '';
-        const hasTime = task.dueDate.includes('T');
-
-        const date = hasTime
-            ? new Date(task.dueDate)
-            : new Date(...task.dueDate.split('-').map((val, i) => i === 1 ? parseInt(val) - 1 : parseInt(val)) as [number, number, number]);
-
-        if (hasTime) {
-            return date.toLocaleString('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-        } else {
-            return date.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' });
-        }
+        return formatDate(task.dueDate, task.dueDate?.includes('T'));
     }, [task.dueDate]);
 
     return (

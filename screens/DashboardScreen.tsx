@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { User, Task, CheckIn, Post, Sector, Role, Screen, DailyChecklistItem } from '../types';
 import api from '../services/api';
 import { ClipboardIcon, ClockIcon, NewspaperIcon, TrendingUpIcon, CalendarIcon, LogInIcon, CheckCircle2Icon, FileTextIcon, TrophyIcon, CheckSquareIcon2, Trash2Icon } from '../components/icons';
+import { formatDate } from '../src/utils/formatters';
 import {
     ResponsiveContainer,
     PieChart,
@@ -63,25 +64,20 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
             // If the task date is in the future, include it
             if (taskDateStr > todayStr) return true;
 
-            // If the task date is today, check if the time has passed
+            // If the task date is today, include it REGARDLESS of time (so "Agenda" shows everything for today)
             if (taskDateStr === todayStr) {
-                // If the task has a specific time, check if it's still in the future
-                if (t.dueDate.includes('T')) {
-                    return t.dueDateObj.getTime() > now.getTime();
-                }
-                // If no specific time (all-day event), include it for the whole day
                 return true;
             }
 
             // If the task date is in the past, exclude it
             return false;
-        }) // Only future events (including today's if time hasn't passed)
+        }) // Only future events OR today's events
         .sort((a, b) => {
             // Sort by dueDateObj which is already correctly parsed
             return a.dueDateObj.getTime() - b.dueDateObj.getTime();
         });
 
-    const nextEvent = upcomingTasks[0];
+    const nextEvent = upcomingTasks[0]; // Not used but kept for ref
 
     const formatEventDate = (dateString?: string): string => {
         if (!dateString) return '';
@@ -100,16 +96,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
             return hasTime ? `Amanhã, às ${date.toLocaleTimeString('pt-BR', timeOptions)}` : 'Amanhã';
         }
 
-        const dateOptions: Intl.DateTimeFormatOptions = {
-            day: 'numeric',
-            month: 'long',
-        };
-        if (date.getFullYear() !== today.getFullYear()) {
-            dateOptions.year = 'numeric';
-        }
-
-        const dateStr = date.toLocaleDateString('pt-BR', dateOptions);
-        return hasTime ? `${dateStr}, ${date.toLocaleTimeString('pt-BR', timeOptions)}` : dateStr;
+        // Use standard formatter for other dates
+        return formatDate(dateString, hasTime);
     };
 
 

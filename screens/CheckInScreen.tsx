@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { User, CheckIn } from '../types';
 import { ClockIcon, LogInIcon, LogOutIcon, FileTextIcon, SendIcon } from '../components/icons';
+import { formatDate } from '../src/utils/formatters';
 import api from '../services/api';
 
 interface CheckInScreenProps {
@@ -102,7 +103,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                 <div>
                     <h2 className="text-xl font-bold">Seu Status Atual</h2>
                     {isCheckedIn ? (
-                        <p className="text-green-400 font-semibold">Ativo desde {new Date(myLastCheckIn.checkInTime).toLocaleTimeString()}</p>
+                        <p className="text-green-400 font-semibold">Ativo desde {formatDate(myLastCheckIn.checkInTime, true)}</p>
                     ) : (
                         <p className="text-red-400 font-semibold">Inativo</p>
                     )}
@@ -151,8 +152,8 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                                             <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
                                             {user.name}
                                         </td>
-                                        <td className="p-3">{new Date(checkIn.checkInTime).toLocaleString()}</td>
-                                        <td className="p-3">{checkIn.checkOutTime ? new Date(checkIn.checkOutTime).toLocaleString() : '—'}</td>
+                                        <td className="p-3">{formatDate(checkIn.checkInTime, true)}</td>
+                                        <td className="p-3">{checkIn.checkOutTime ? formatDate(checkIn.checkOutTime, true) : '—'}</td>
                                         <td className="p-3">
                                             <span className={`px-2 py-1 text-xs rounded-full font-semibold ${isUserCheckedIn ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                                                 }`}>
