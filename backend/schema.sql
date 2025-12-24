@@ -139,4 +139,16 @@ CREATE TABLE access_credentials (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Step 12: Create Notifications table
+CREATE TABLE notifications (
+  id VARCHAR(255) PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id),
+  type VARCHAR(50) NOT NULL,
+  message TEXT NOT NULL,
+  link_to VARCHAR(50) DEFAULT 'dashboard',
+  is_read BOOLEAN DEFAULT FALSE,
+  task_id VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Done! All tables created successfully.

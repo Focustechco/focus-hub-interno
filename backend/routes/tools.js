@@ -55,6 +55,43 @@ router.post('/links', async (req, res) => {
     }
 });
 
+// PUT /api/tools/links/:id - Update a link
+router.put('/links/:id', async (req, res) => {
+    const { id } = req.params;
+    const { title, description, link, url, icon, isFavorite } = req.body;
+    const finalUrl = link || url;
+
+    try {
+        const result = await pool.query(
+            `UPDATE focus_links 
+             SET title = COALESCE($1, title), 
+                 description = COALESCE($2, description), 
+                 url = COALESCE($3, url), 
+                 icon = COALESCE($4, icon),
+                 is_favorite = COALESCE($5, is_favorite)
+             WHERE id = $6 RETURNING *`,
+            [title, description, finalUrl, icon, isFavorite, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Link não encontrado' });
+        }
+
+        const row = result.rows[0];
+        res.json({
+            id: row.id,
+            title: row.title,
+            description: row.description || '',
+            link: row.url,
+            icon: row.icon || 'Target',
+            isFavorite: row.is_favorite || false
+        });
+    } catch (err) {
+        console.error('[PUT /tools/links/:id] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // DELETE /api/tools/links/:id - Delete a link
 router.delete('/links/:id', async (req, res) => {
     const { id } = req.params;
@@ -130,6 +167,52 @@ router.post('/access-groups', async (req, res) => {
     }
 });
 
+// PUT /api/tools/access-groups/:id - Update a group
+router.put('/access-groups/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, title, description, category } = req.body;
+    const finalName = name || title;
+
+    try {
+        const result = await pool.query(
+            `UPDATE access_groups 
+             SET name = COALESCE($1, name), 
+                 description = COALESCE($2, description), 
+                 category = COALESCE($3, category)
+             WHERE id = $4 RETURNING *`,
+            [finalName, description, category, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Grupo não encontrado' });
+        }
+
+        res.json({
+            id: result.rows[0].id,
+            name: result.rows[0].name,
+            links: [] // Simplified - caller should refetch if needed
+        });
+    } catch (err) {
+        console.error('[PUT /access-groups/:id] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DELETE /api/tools/access-groups/:id - Delete a group (cascade deletes credentials)
+router.delete('/access-groups/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM access_groups WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Grupo não encontrado' });
+        }
+        res.json({ message: 'Grupo deletado', id });
+    } catch (err) {
+        console.error('[DELETE /access-groups/:id] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 // POST /api/tools/access-groups/:id/credentials - Add credential
 router.post('/access-groups/:id/credentials', async (req, res) => {
     const { id: groupId } = req.params;
@@ -147,4 +230,59 @@ router.post('/access-groups/:id/credentials', async (req, res) => {
     }
 });
 
+// PUT /api/tools/credentials/:id - Update credential
+router.put('/credentials/:id', async (req, res) => {
+    const { id } = req.params;
+    const { serviceName, username, password, url, notes, isFavorite } = req.body;
+
+    try {
+        const result = await pool.query(
+            `UPDATE access_credentials 
+             SET service_name = COALESCE($1, service_name), 
+                 username = COALESCE($2, username), 
+                 password = COALESCE($3, password),
+                 url = COALESCE($4, url),
+                 notes = COALESCE($5, notes),
+                 is_favorite = COALESCE($6, is_favorite)
+             WHERE id = $7 RETURNING *`,
+            [serviceName, username, password, url, notes, isFavorite, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Credencial não encontrada' });
+        }
+
+        const cred = result.rows[0];
+        res.json({
+            id: cred.id,
+            nome: cred.service_name,
+            link: cred.url || '',
+            icon: 'LinkIcon',
+            descricao: cred.notes || '',
+            login: cred.username || '',
+            senha: cred.password || '',
+            isFavorite: cred.is_favorite || false
+        });
+    } catch (err) {
+        console.error('[PUT /credentials/:id] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// DELETE /api/tools/credentials/:id - Delete credential
+router.delete('/credentials/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await pool.query('DELETE FROM access_credentials WHERE id = $1 RETURNING id', [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Credencial não encontrada' });
+        }
+        res.json({ message: 'Credencial deletada', id });
+    } catch (err) {
+        console.error('[DELETE /credentials/:id] Error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
 module.exports = router;
+

@@ -85,8 +85,9 @@ const FocusToolsScreen: React.FC = () => {
         api.get('/tools/links')
             .then(res => setLinks(res.data))
             .catch(err => {
-                console.error("Failed to fetch links, using mock:", err);
-                setLinks(MOCK_LINKS);
+                console.error("Failed to fetch links:", err);
+                // Show empty state instead of MOCK_DATA
+                setLinks([]);
             });
 
         // Fetch Access Groups
@@ -96,9 +97,9 @@ const FocusToolsScreen: React.FC = () => {
                 if (res.data.length > 0) setOpenGroupId(res.data[0].id);
             })
             .catch(err => {
-                console.error("Failed to fetch access groups, using mock:", err);
-                setAccessGroups(MOCK_ACCESS_GROUPS);
-                if (MOCK_ACCESS_GROUPS.length > 0) setOpenGroupId(MOCK_ACCESS_GROUPS[0].id);
+                console.error("Failed to fetch access groups:", err);
+                // Show empty state instead of MOCK_DATA
+                setAccessGroups([]);
             });
     }, []);
     const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
@@ -231,37 +232,28 @@ const FocusToolsScreen: React.FC = () => {
     const handleSaveLink = async (linkData: Omit<LinkItem, 'id' | 'isFavorite'> & { id?: string }) => {
         try {
             if (editingLink) {
-                // Update not implemented in backend yet
-                setLinks(prev => prev.map(l => l.id === editingLink.id ? { ...editingLink, ...linkData } : l));
+                // Update via API
+                const res = await api.put(`/tools/links/${editingLink.id}`, {
+                    title: linkData.title,
+                    description: linkData.description,
+                    link: linkData.link,
+                    icon: linkData.icon
+                });
+                setLinks(prev => prev.map(l => l.id === editingLink.id ? res.data : l));
             } else {
                 const res = await api.post('/tools/links', {
                     title: linkData.title,
+                    description: linkData.description,
                     url: linkData.link,
-                    category: 'General', // Default
-                    icon: linkData.icon,
-                    userId: 'current-user' // Should come from context
+                    category: 'General',
+                    icon: linkData.icon
                 });
 
-                const newLink: LinkItem = {
-                    id: res.data.id,
-                    isFavorite: false,
-                    ...linkData
-                };
-                setLinks(prev => [newLink, ...prev]);
+                setLinks(prev => [res.data, ...prev]);
             }
         } catch (err) {
             console.error("Failed to save link:", err);
-            // Fallback
-            if (editingLink) {
-                setLinks(prev => prev.map(l => l.id === editingLink.id ? { ...editingLink, ...linkData } : l));
-            } else {
-                const newLink: LinkItem = {
-                    id: `link-${Date.now()}`,
-                    isFavorite: false,
-                    ...linkData
-                };
-                setLinks(prev => [newLink, ...prev]);
-            }
+            alert("Erro ao salvar link.");
         }
         handleCloseLinkModal();
     };
@@ -279,8 +271,21 @@ const FocusToolsScreen: React.FC = () => {
         }
     };
 
-    const handleToggleFavorite = (linkId: string) => {
-        setLinks(prev => prev.map(l => l.id === linkId ? { ...l, isFavorite: !l.isFavorite } : l));
+    const handleToggleFavorite = async (linkId: string) => {
+        const link = links.find(l => l.id === linkId);
+        if (!link) return;
+
+        const newFavorite = !link.isFavorite;
+        // Optimistic update
+        setLinks(prev => prev.map(l => l.id === linkId ? { ...l, isFavorite: newFavorite } : l));
+
+        try {
+            await api.put(`/tools/links/${linkId}`, { isFavorite: newFavorite });
+        } catch (err) {
+            console.error("Failed to toggle favorite:", err);
+            // Revert
+            setLinks(prev => prev.map(l => l.id === linkId ? { ...l, isFavorite: !newFavorite } : l));
+        }
     };
 
     const contentIconMap: { [key in ContentType]: React.FC<any> } = {

@@ -71,6 +71,8 @@ app.use('/api/posts', authMiddleware, require('./routes/posts'));
 app.use('/api/goals', authMiddleware, require('./routes/goals'));
 app.use('/api/users', authMiddleware, require('./routes/users'));
 app.use('/api/tools', authMiddleware, require('./routes/tools'));
+app.use('/api/daily-checklist', authMiddleware, require('./routes/dailyChecklist'));
+app.use('/api/notifications', authMiddleware, require('./routes/notifications'));
 
 // Health check and root routes
 app.get('/', (req, res) => {

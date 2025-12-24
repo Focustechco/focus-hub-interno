@@ -54,12 +54,26 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
         .map(t => ({ ...t, dueDateObj: parseDateAsLocal(t.dueDate!) }))
         .filter(t => {
             if (!t.dueDate) return false;
-            // Use string comparison YYYY-MM-DD to avoid timezone issues
-            const today = new Date();
-            const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const taskDateStr = t.dueDate.split('T')[0];
-            return taskDateStr >= todayStr;
-        }) // Only future events (including today)
+
+            // If the task date is in the future, include it
+            if (taskDateStr > todayStr) return true;
+
+            // If the task date is today, check if the time has passed
+            if (taskDateStr === todayStr) {
+                // If the task has a specific time, check if it's still in the future
+                if (t.dueDate.includes('T')) {
+                    return t.dueDateObj.getTime() > now.getTime();
+                }
+                // If no specific time (all-day event), include it for the whole day
+                return true;
+            }
+
+            // If the task date is in the past, exclude it
+            return false;
+        }) // Only future events (including today's if time hasn't passed)
         .sort((a, b) => {
             // Sort by dueDateObj which is already correctly parsed
             return a.dueDateObj.getTime() - b.dueDateObj.getTime();

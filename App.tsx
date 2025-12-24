@@ -47,7 +47,7 @@ const App: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [dataLoading, setDataLoading] = useState(false);
     const [dataError, setDataError] = useState<string | null>(null);
-    const [dailyChecklistItems, setDailyChecklistItems] = useLocalStorage<DailyChecklistItem[]>('dailyChecklist', []);
+    const [dailyChecklistItems, setDailyChecklistItems] = useState<DailyChecklistItem[]>([]);
     const [taskViewOverride, setTaskViewOverride] = useState<'board' | 'checklist' | 'calendar' | null>(null);
 
     // State for forgot password screen
@@ -62,12 +62,15 @@ const App: React.FC = () => {
             setDataError(null);
 
             try {
-                const [tasksRes, checkInsRes, postsRes, goalsRes, usersRes] = await Promise.all([
+                const todayStr = new Date().toISOString().split('T')[0];
+                const [tasksRes, checkInsRes, postsRes, goalsRes, usersRes, checklistRes, notificationsRes] = await Promise.all([
                     api.get('/tasks').catch(e => ({ data: [], error: e })),
                     api.get('/checkins').catch(e => ({ data: [], error: e })),
                     api.get('/posts').catch(e => ({ data: [], error: e })),
                     api.get('/goals').catch(e => ({ data: [], error: e })),
-                    api.get('/users').catch(e => ({ data: [], error: e }))
+                    api.get('/users').catch(e => ({ data: [], error: e })),
+                    api.get(`/daily-checklist?userId=${currentUser.id}&date=${todayStr}`).catch(e => ({ data: [], error: e })),
+                    api.get(`/notifications?userId=${currentUser.id}`).catch(e => ({ data: [], error: e }))
                 ]);
 
                 setTasks(Array.isArray(tasksRes.data) ? tasksRes.data : []);
@@ -75,9 +78,11 @@ const App: React.FC = () => {
                 setPosts(Array.isArray(postsRes.data) ? postsRes.data : []);
                 setGoals(Array.isArray(goalsRes.data) ? goalsRes.data : []);
                 setUsers(Array.isArray(usersRes.data) ? usersRes.data : []);
+                setDailyChecklistItems(Array.isArray(checklistRes.data) ? checklistRes.data : []);
+                setNotifications(Array.isArray(notificationsRes.data) ? notificationsRes.data : []);
 
                 // Check if any request failed
-                const errors = [tasksRes, checkInsRes, postsRes, goalsRes, usersRes]
+                const errors = [tasksRes, checkInsRes, postsRes, goalsRes, usersRes, checklistRes, notificationsRes]
                     .filter((res: any) => res.error);
                 if (errors.length > 0) {
                     console.error('Some data failed to load:', errors);
@@ -105,8 +110,27 @@ const App: React.FC = () => {
         return acc;
     }, {} as { [userId: string]: NotificationPreferences });
 
-    const [notifications, setNotifications] = useLocalStorage<Notification[]>('notifications', []);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notificationPreferences, setNotificationPreferences] = useLocalStorage<{ [userId: string]: NotificationPreferences }>('notificationPreferences', initialPrefs);
+
+    // Polling for new notifications every 30 seconds
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const pollNotifications = async () => {
+            try {
+                const res = await api.get(`/notifications?userId=${currentUser.id}`);
+                if (Array.isArray(res.data)) {
+                    setNotifications(res.data);
+                }
+            } catch (err) {
+                console.error('Failed to poll notifications:', err);
+            }
+        };
+
+        const intervalId = setInterval(pollNotifications, 30000);
+        return () => clearInterval(intervalId);
+    }, [currentUser]);
 
     // Offline state management
     const isOnline = useOnlineStatus();
