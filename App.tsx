@@ -327,7 +327,7 @@ const App: React.FC = () => {
                 return <GoalsScreen goals={goals} users={users} setGoals={setGoals} />;
             case 'focus-tools':
                 if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
-                return <FocusToolsScreen />;
+                return <FocusToolsScreen currentUser={currentUser} />;
             case 'admin':
                 if (currentUser.role === Role.ADMIN) {
                     return <AdminScreen currentUser={currentUser} users={users} tasks={tasks} checkIns={checkIns} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} onCreateUser={handleCreateUser} />;

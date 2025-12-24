@@ -18,9 +18,10 @@ router.get('/', async (req, res) => {
             authorName: row.author_name,
             authorAvatar: row.author_avatar,
             content: row.content,
-            timestamp: row.timestamp,
+            createdAt: row.timestamp, // Map timestamp to createdAt
             likes: row.likes,
-            comments: row.comments || [] // Assuming comments are stored as JSONB or similar, simplified for now
+            isPinned: row.is_pinned || false, // Map is_pinned to isPinned
+            comments: row.comments || []
         }));
         res.json(posts);
     } catch (err) {
@@ -36,8 +37,8 @@ router.post('/', async (req, res) => {
     try {
         const id = 'p' + Date.now();
         const result = await pool.query(
-            `INSERT INTO posts (id, author_id, content, timestamp, likes, comments)
-             VALUES ($1, $2, $3, NOW(), 0, '[]')
+            `INSERT INTO posts (id, author_id, content, timestamp, likes, comments, is_pinned)
+             VALUES ($1, $2, $3, NOW(), 0, '[]', false)
              RETURNING *`,
             [id, authorId, content]
         );
@@ -51,8 +52,9 @@ router.post('/', async (req, res) => {
             authorName: user.name,
             authorAvatar: user.avatar_url,
             content: result.rows[0].content,
-            timestamp: result.rows[0].timestamp,
+            createdAt: result.rows[0].timestamp, // Map timestamp to createdAt
             likes: result.rows[0].likes,
+            isPinned: false,
             comments: []
         };
 

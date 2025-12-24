@@ -215,37 +215,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
         }
     };
 
-    // DEBUG COMPONENT - REMOVE AFTER FIX
-    const debugInfo = (
-        <div style={{ backgroundColor: '#000', color: '#0f0', padding: '15px', marginBottom: '20px', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', border: '1px solid #0f0', zIndex: 9999, position: 'relative' }}>
-            <h3 style={{ fontWeight: 'bold', borderBottom: '1px solid #0f0', marginBottom: '5px' }}>🛠️ DEBUG MODE ACTIVATED</h3>
-            <p><strong>User:</strong> {currentUser?.name} ({currentUser?.role}) ID: {currentUser?.id}</p>
-            <p><strong>Date:</strong> Today (Str): {new Date().toISOString().split('T')[0]} | Now (ISO): {new Date().toISOString()}</p>
-            <p><strong>Stats:</strong> Total Tasks: {tasks.length} | Upcoming Filtered: {upcomingTasks.length}</p>
-
-            <div style={{ marginTop: '10px', maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid #333' }}>
-                <strong>First 5 Tasks in 'tasks' prop:</strong>
-                {tasks.length === 0 ? <p>NO TASKS RECEIVED</p> : tasks.slice(0, 5).map(t => (
-                    <div key={t.id} style={{ borderBottom: '1px solid #333', padding: '2px 0' }}>
-                        [{t.status}] <strong>{t.title}</strong><br />
-                        Due: "{t.dueDate}" (By: {t.assigneeId})
-                    </div>
-                ))}
-            </div>
-            <div style={{ marginTop: '10px', maxHeight: '150px', overflowY: 'auto', color: 'yellow', borderTop: '1px solid #333' }}>
-                <strong>First 3 'upcomingTasks' (Filtered):</strong>
-                {upcomingTasks.slice(0, 3).map(t => (
-                    <div key={t.id} style={{ borderBottom: '1px solid #333', padding: '2px 0' }}>
-                        [{t.status}] <strong>{t.title}</strong> - {t.dueDate}
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+    // const debugInfo = null;
 
     return (
         <div>
-            {debugInfo}
+            {/* {debugInfo} */}
             <h1 className="text-3xl font-bold mb-2">Bem-vindo(a) de volta, {currentUser.name.split(' ')[0]}!</h1>
             <p className="text-[#B3B3B3] mb-8">Aqui está um resumo das suas atividades e da sua equipe.</p>
 

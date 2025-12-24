@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import api from '../services/api';
-import { LinkItem, ContentItem, ContentType, ContentCategory, AccessGroup, AccessLink } from '../types';
+import { LinkItem, ContentItem, ContentType, ContentCategory, AccessGroup, AccessLink, User } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CameraIcon, CodeIcon, EditIcon, ExternalLinkIcon, FileTextIcon, GlobeIcon, NewspaperIcon,
@@ -62,7 +62,11 @@ const accessIconMap: { [key in AccessLink['icon']]: React.FC<React.SVGProps<SVGS
 };
 
 
-const FocusToolsScreen: React.FC = () => {
+interface FocusToolsScreenProps {
+    currentUser: User;
+}
+
+const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const [activeTab, setActiveTab] = useState<'integrations' | 'links' | 'content' | 'acessos'>('acessos');
 
     // State for Links Tab
@@ -288,7 +292,8 @@ const FocusToolsScreen: React.FC = () => {
                     description: linkData.description,
                     url: linkData.link,
                     category: 'General',
-                    icon: linkData.icon
+                    icon: linkData.icon,
+                    userId: currentUser.id // Add userId
                 });
 
                 setLinks(prev => [res.data, ...prev]);
