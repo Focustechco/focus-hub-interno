@@ -237,11 +237,10 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                                 </button>
                             </div>
                         </div>
-                        </div>
                     )}
+                </div>
             </div>
-            </div >
         );
     };
 
-export default CheckInScreen;
+    export default CheckInScreen;
