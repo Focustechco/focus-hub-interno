@@ -183,23 +183,36 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/tasks/:id - Delete a task
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+    const user = req.user; // Populated by authMiddleware
 
-    console.log('[DELETE /tasks/:id] Deleting task:', id);
+    console.log('[DELETE /tasks/:id] Deleting task:', id, 'by user:', user.id);
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
+        // Check task existence and ownership
+        const taskCheck = await client.query('SELECT assignee_id FROM tasks WHERE id = $1', [id]);
+
+        if (taskCheck.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const task = taskCheck.rows[0];
+
+        // Permission check: Admin or Assignee only
+        if (user.role !== 'ADMIN' && user.id !== task.assignee_id) {
+            await client.query('ROLLBACK');
+            console.warn(`[DELETE /tasks/:id] Unauthorized deletion attempt by ${user.id} on task ${id}`);
+            return res.status(403).json({ message: 'Você não tem permissão para excluir esta tarefa.' });
+        }
+
         // Delete subtasks first (even though CASCADE should handle it)
         await client.query('DELETE FROM subtasks WHERE task_id = $1', [id]);
 
         // Delete the task
-        const result = await client.query('DELETE FROM tasks WHERE id = $1 RETURNING id', [id]);
-
-        if (result.rowCount === 0) {
-            await client.query('ROLLBACK');
-            return res.status(404).json({ message: 'Task not found' });
-        }
+        await client.query('DELETE FROM tasks WHERE id = $1', [id]);
 
         await client.query('COMMIT');
         console.log('[DELETE /tasks/:id] Task deleted successfully:', id);

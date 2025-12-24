@@ -120,13 +120,24 @@ router.put('/:id', async (req, res) => {
 // DELETE /api/daily-checklist/:id - Delete item
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+    const user = req.user; // Populated by authMiddleware
 
     try {
-        const result = await pool.query('DELETE FROM daily_checklist WHERE id = $1 RETURNING id', [id]);
+        // Check item existence and ownership
+        const itemCheck = await pool.query('SELECT user_id FROM daily_checklist WHERE id = $1', [id]);
 
-        if (result.rowCount === 0) {
+        if (itemCheck.rowCount === 0) {
             return res.status(404).json({ message: 'Item não encontrado' });
         }
+
+        const item = itemCheck.rows[0];
+
+        // Permission check: Admin or Owner only
+        if (user.role !== 'ADMIN' && user.id !== item.user_id) {
+            return res.status(403).json({ message: 'Você não tem permissão para excluir este item.' });
+        }
+
+        const result = await pool.query('DELETE FROM daily_checklist WHERE id = $1 RETURNING id', [id]);
 
         res.json({ message: 'Item deletado', id });
     } catch (err) {

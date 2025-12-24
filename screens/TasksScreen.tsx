@@ -354,7 +354,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                             {columns.map(column => (
-                                <DroppableColumn key={column.id} column={column} users={users} onEdit={handleOpenModal} onDelete={handleDeleteTask} setTasks={setTasks} />
+                                <DroppableColumn key={column.id} column={column} users={users} currentUser={currentUser} onEdit={handleOpenModal} onDelete={handleDeleteTask} setTasks={setTasks} />
                             ))}
                         </div>
                     </DndContext>
@@ -364,12 +364,12 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                 )}
             </div>
 
-            {isModalOpen && <TaskModal currentUser={currentUser} task={editingTask} users={users} goals={goals} onSave={handleSaveTask} onClose={handleCloseModal} />}
+            {isModalOpen && <TaskModal currentUser={currentUser} task={editingTask} users={users} goals={goals} onSave={handleSaveTask} onDelete={handleDeleteTask} onClose={handleCloseModal} />}
         </div>
     );
 };
 
-const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks: Task[] }; users: User[]; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ column, users, onEdit, onDelete, setTasks }) => {
+const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks: Task[] }; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ column, users, currentUser, onEdit, onDelete, setTasks }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
@@ -383,7 +383,7 @@ const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks
             </h3>
             <div className="space-y-4">
                 {column.tasks.map(task => (
-                    <DraggableTaskCard key={task.id} task={task} users={users} onEdit={onEdit} onDelete={onDelete} setTasks={setTasks} />
+                    <DraggableTaskCard key={task.id} task={task} users={users} currentUser={currentUser} onEdit={onEdit} onDelete={onDelete} setTasks={setTasks} />
                 ))}
                 {(column.tasks || []).length === 0 && <p className="text-center text-sm text-[#B3B3B3] pt-8">Nenhuma tarefa aqui.</p>}
             </div>
@@ -391,7 +391,7 @@ const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks
     );
 };
 
-const DraggableTaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = (props) => {
+const DraggableTaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = (props) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id });
 
     const style = {
@@ -407,7 +407,7 @@ const DraggableTaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Ta
     );
 };
 
-const TaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ task, users, onEdit, onDelete, setTasks }) => {
+const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ task, users, currentUser, onEdit, onDelete, setTasks }) => {
     const assignee = users.find(u => u.id === task.assigneeId);
     const [isExpanded, setIsExpanded] = useState(false);
     const [newSubtaskText, setNewSubtaskText] = useState('');
@@ -489,7 +489,9 @@ const TaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Task) => vo
                 </h4>
                 <div className="flex-shrink-0 flex items-center gap-1">
                     <button onClick={() => onEdit(task)} className="p-1 text-gray-400 hover:text-white"><EditIcon className="w-4 h-4" /></button>
-                    <button onClick={() => onDelete(task.id)} className="p-1 text-gray-400 hover:text-red-500"><Trash2Icon className="w-4 h-4" /></button>
+                    {(currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
+                        <button onClick={() => onDelete(task.id)} className="p-1 text-gray-400 hover:text-red-500"><Trash2Icon className="w-4 h-4" /></button>
+                    )}
                 </div>
             </div>
             <p className="text-sm text-[#B3B3B3] mt-1 mb-3 line-clamp-2">{task.description}</p>
@@ -553,9 +555,11 @@ const TaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Task) => vo
                                         <span className={`ml-2 flex-grow ${subtask.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                             {subtask.text}
                                         </span>
-                                        <button onClick={() => handleDeleteSubtask(subtask.id)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity ml-2">
-                                            <Trash2Icon className="w-4 h-4" />
-                                        </button>
+                                        {(currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
+                                            <button onClick={() => handleDeleteSubtask(subtask.id)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity ml-2">
+                                                <Trash2Icon className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </li>
                                 ))}
                             </ul>
@@ -579,7 +583,7 @@ const TaskCard: React.FC<{ task: Task; users: User[]; onEdit: (task: Task) => vo
     );
 };
 
-const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[]; goals: Goal[]; onSave: (taskData: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => void; onClose: () => void }> = ({ currentUser, task, users, goals, onSave, onClose }) => {
+const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[]; goals: Goal[]; onSave: (taskData: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => void; onDelete: (taskId: string) => void; onClose: () => void }> = ({ currentUser, task, users, goals, onSave, onDelete, onClose }) => {
     const [formData, setFormData] = useState<Omit<Task, 'id' | 'createdAt'>>({
         title: task?.title || '',
         description: task?.description || '',
@@ -742,13 +746,15 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
                                         <span className={`ml-2 flex-grow text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-white'}`}>
                                             {subtask.text}
                                         </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteSubtask(subtask.id)}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity ml-2"
-                                        >
-                                            <Trash2Icon className="w-4 h-4" />
-                                        </button>
+                                        {(currentUser.role === Role.ADMIN || (task && task.assigneeId === currentUser.id) || (!task && currentUser.role === Role.ADMIN)) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteSubtask(subtask.id)}
+                                                className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity ml-2"
+                                            >
+                                                <Trash2Icon className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                                 {(!formData.subtasks || formData.subtasks.length === 0) && (
@@ -769,9 +775,27 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
                             </form>
                         </div>
 
-                        <div className="flex justify-end pt-2 mt-auto">
-                            <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a]">Cancelar</button>
-                            <button type="submit" className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33]">Salvar</button>
+                        <div className="flex justify-between pt-2 mt-auto">
+                            <div>
+                                {task && (currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (task.id) {
+                                                onDelete(task.id);
+                                                onClose();
+                                            }
+                                        }}
+                                        className="px-4 py-2 bg-red-500/10 text-red-500 rounded-md hover:bg-red-500/20 font-semibold flex items-center"
+                                    >
+                                        <Trash2Icon className="w-4 h-4 mr-2" /> Excluir
+                                    </button>
+                                )}
+                            </div>
+                            <div className="flex">
+                                <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a]">Cancelar</button>
+                                <button type="submit" className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33]">Salvar</button>
+                            </div>
                         </div>
                     </form>
                 </motion.div>

@@ -286,6 +286,7 @@ const App: React.FC = () => {
             dailyChecklistItems,
             setDailyChecklistItems,
             setTaskViewOverride,
+            setTasks,
         };
 
         switch (activeScreen) {

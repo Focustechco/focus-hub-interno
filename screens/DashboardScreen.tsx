@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { User, Task, CheckIn, Post, Sector, Role, Screen, DailyChecklistItem } from '../types';
-import { ClipboardIcon, ClockIcon, NewspaperIcon, TrendingUpIcon, CalendarIcon, LogInIcon, CheckCircle2Icon, FileTextIcon, TrophyIcon, CheckSquareIcon2 } from '../components/icons';
+import api from '../services/api';
+import { ClipboardIcon, ClockIcon, NewspaperIcon, TrendingUpIcon, CalendarIcon, LogInIcon, CheckCircle2Icon, FileTextIcon, TrophyIcon, CheckSquareIcon2, Trash2Icon } from '../components/icons';
 import {
     ResponsiveContainer,
     PieChart,
@@ -27,9 +28,10 @@ interface DashboardScreenProps {
     dailyChecklistItems: DailyChecklistItem[];
     setDailyChecklistItems: (items: DailyChecklistItem[] | ((prev: DailyChecklistItem[]) => DailyChecklistItem[])) => void;
     setTaskViewOverride: (view: 'board' | 'checklist' | 'calendar' | null) => void;
+    setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void;
 }
 
-const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride }) => {
+const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride, setTasks }) => {
     const [selectedSector, setSelectedSector] = useState<'Comercial' | 'Criativo' | 'Tech' | 'all'>('all');
 
     // Helper function to parse date string properly
@@ -47,7 +49,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
     // Upcoming Event Data - Admin sees all, regular users see only their tasks
     const upcomingTasks = tasks
         .filter(t =>
-            (currentUser.role === 'admin' || t.assigneeId === currentUser.id) &&
+            (currentUser.role === Role.ADMIN || t.assigneeId === currentUser.id) &&
             t.status !== 'concluida' &&
             t.dueDate
         )
@@ -214,8 +216,48 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
         );
     };
 
+    const handleDeleteTask = async (taskId: string) => {
+        if (!window.confirm('Tem certeza que deseja excluir esta tarefa?')) return;
+        try {
+            await api.delete(`/tasks/${taskId}`);
+            setTasks(prev => prev.filter(t => t.id !== taskId));
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+            alert('Erro ao excluir tarefa.');
+        }
+    };
+
+    // DEBUG COMPONENT - REMOVE AFTER FIX
+    const debugInfo = (
+        <div style={{ backgroundColor: '#000', color: '#0f0', padding: '15px', marginBottom: '20px', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', border: '1px solid #0f0', zIndex: 9999, position: 'relative' }}>
+            <h3 style={{ fontWeight: 'bold', borderBottom: '1px solid #0f0', marginBottom: '5px' }}>🛠️ DEBUG MODE ACTIVATED</h3>
+            <p><strong>User:</strong> {currentUser?.name} ({currentUser?.role}) ID: {currentUser?.id}</p>
+            <p><strong>Date:</strong> Today (Str): {new Date().toISOString().split('T')[0]} | Now (ISO): {new Date().toISOString()}</p>
+            <p><strong>Stats:</strong> Total Tasks: {tasks.length} | Upcoming Filtered: {upcomingTasks.length}</p>
+
+            <div style={{ marginTop: '10px', maxHeight: '150px', overflowY: 'auto', borderTop: '1px solid #333' }}>
+                <strong>First 5 Tasks in 'tasks' prop:</strong>
+                {tasks.length === 0 ? <p>NO TASKS RECEIVED</p> : tasks.slice(0, 5).map(t => (
+                    <div key={t.id} style={{ borderBottom: '1px solid #333', padding: '2px 0' }}>
+                        [{t.status}] <strong>{t.title}</strong><br />
+                        Due: "{t.dueDate}" (By: {t.assigneeId})
+                    </div>
+                ))}
+            </div>
+            <div style={{ marginTop: '10px', maxHeight: '150px', overflowY: 'auto', color: 'yellow', borderTop: '1px solid #333' }}>
+                <strong>First 3 'upcomingTasks' (Filtered):</strong>
+                {upcomingTasks.slice(0, 3).map(t => (
+                    <div key={t.id} style={{ borderBottom: '1px solid #333', padding: '2px 0' }}>
+                        [{t.status}] <strong>{t.title}</strong> - {t.dueDate}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
     return (
         <div>
+            {debugInfo}
             <h1 className="text-3xl font-bold mb-2">Bem-vindo(a) de volta, {currentUser.name.split(' ')[0]}!</h1>
             <p className="text-[#B3B3B3] mb-8">Aqui está um resumo das suas atividades e da sua equipe.</p>
 
@@ -234,15 +276,33 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                                 <CalendarIcon className="w-6 h-6 text-[#FF6B00]" />
                             </div>
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Próximo Evento</h3>
-                                {nextEvent ? (
-                                    <div className="mt-2">
-                                        <p className="text-xl font-bold text-white truncate" title={nextEvent.title}>
-                                            {nextEvent.title}
-                                        </p>
-                                        <p className="text-sm text-[#B3B3B3] mt-1">
-                                            {formatEventDate(nextEvent.dueDate)}
-                                        </p>
+                                <h3 className="text-lg font-semibold text-white">Próximos Eventos</h3>
+                                {upcomingTasks.length > 0 ? (
+                                    <div className="mt-2 space-y-3">
+                                        {upcomingTasks.slice(0, 3).map(event => (
+                                            <div key={event.id} className="flex justify-between items-start group">
+                                                <div className="flex-1 min-w-0 mr-2">
+                                                    <p className="text-base font-bold text-white truncate" title={event.title}>
+                                                        {event.title}
+                                                    </p>
+                                                    <p className="text-xs text-[#B3B3B3]">
+                                                        {formatEventDate(event.dueDate)}
+                                                    </p>
+                                                </div>
+                                                {(currentUser.role === Role.ADMIN || (event && event.assigneeId === currentUser.id)) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteTask(event.id);
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity p-1"
+                                                        title="Excluir evento"
+                                                    >
+                                                        <Trash2Icon className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 ) : (
                                     <p className="text-lg text-[#B3B3B3] mt-4">
@@ -375,6 +435,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                                     }`}>
                                     {task.priority}
                                 </span>
+                                {(currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
+                                    <button
+                                        onClick={() => handleDeleteTask(task.id)}
+                                        className="ml-2 text-gray-500 hover:text-red-500 transition-colors"
+                                        title="Excluir tarefa"
+                                    >
+                                        <Trash2Icon className="w-4 h-4" />
+                                    </button>
+                                )}
                             </li>
                         ))}
                     </ul>
