@@ -44,10 +44,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
         return new Date(year, month - 1, day);
     };
 
-    // Upcoming Event Data
+    // Upcoming Event Data - Admin sees all, regular users see only their tasks
     const upcomingTasks = tasks
         .filter(t =>
-            t.assigneeId === currentUser.id &&
+            (currentUser.role === 'admin' || t.assigneeId === currentUser.id) &&
             t.status !== 'concluida' &&
             t.dueDate
         )
