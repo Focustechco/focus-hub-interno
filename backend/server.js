@@ -28,7 +28,7 @@ const corsOptions = {
         if (!origin) return callback(null, true);
 
         // Check if origin is explicitly allowed OR if it's a Vercel preview URL
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.endsWith('.github.io')) {
             callback(null, true);
         } else {
             console.warn(`CORS blocked request from origin: ${origin}`);
