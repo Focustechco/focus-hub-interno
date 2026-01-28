@@ -1,0 +1,31 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+
+# Auth Sessions (WhatsApp)
+.wwebjs_auth/
+.wwebjs_cache/
+auth_info/
+baileys_auth_info/
+
+# Logs
+logs/
+*.log
+
+# Temp
+gitbak/

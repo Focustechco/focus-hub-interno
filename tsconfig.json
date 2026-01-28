@@ -1,0 +1,60 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    // Relaxed Type Checking for faster development
+    "strict": false,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitThis": false,
+    "alwaysStrict": false,
+    // Additional Checks - relaxed
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noImplicitReturns": false,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": false,
+    "forceConsistentCasingInFileNames": true,
+    "exactOptionalPropertyTypes": false
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "src/**/*",
+    "screens/**/*",
+    "components/**/*",
+    "hooks/**/*",
+    "services/**/*",
+    "contexts/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "backend"
+  ]
+}

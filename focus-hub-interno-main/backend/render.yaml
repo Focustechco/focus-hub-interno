@@ -1,0 +1,31 @@
+# render.yaml - Render Blueprint Configuration
+# Connect this repo to Render and it will auto-detect this file
+
+services:
+  - type: web
+    name: focus-hub-api
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        sync: false # Must be set manually in dashboard
+      - key: DB_HOST
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: ALLOWED_ORIGINS
+        sync: false # Set to your Vercel frontend URL

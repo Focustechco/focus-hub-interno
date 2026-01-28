@@ -1,0 +1,30 @@
+{
+  "name": "focus-hub:-daily-operations-&-task-manager",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@google/genai": "^0.14.0",
+    "axios": "^1.13.2",
+    "framer-motion": "^11.2.12",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "recharts": "^2.12.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

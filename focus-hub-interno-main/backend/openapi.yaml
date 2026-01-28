@@ -1,0 +1,302 @@
+/**
+ * Focus Hub API Documentation
+ * OpenAPI 3.0 Specification
+ */
+
+openapi: '3.0.3'
+info:
+  title: Focus Hub API
+  description: |
+    API for Focus Hub - Team Operations & Task Management System.
+    
+    ## Authentication
+    Most endpoints require JWT authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-token>
+    ```
+  version: '1.0.0'
+  contact:
+    name: Focus Hub Support
+    email: suporte@focus.com
+
+servers:
+  - url: https://focus-hub-api.onrender.com/api
+    description: Production server
+  - url: http://localhost:5000/api
+    description: Development server
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Tasks
+    description: Task management
+  - name: Goals
+    description: Goal tracking
+  - name: CheckIns
+    description: Clock-in/out and daily reports
+  - name: Posts
+    description: Team bulletin board
+  - name: Users
+    description: User management (Admin)
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role]
+              properties:
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+                role:
+                  type: string
+                  enum: [ADMIN, USER, COLLABORATOR]
+      responses:
+        '201':
+          description: Registration pending approval
+        '400':
+          description: Invalid data
+
+  /tasks:
+    get:
+      tags: [Tasks]
+      summary: Get all tasks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+    post:
+      tags: [Tasks]
+      summary: Create new task
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{id}:
+    put:
+      tags: [Tasks]
+      summary: Update task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+      responses:
+        '200':
+          description: Task updated
+    delete:
+      tags: [Tasks]
+      summary: Delete task
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Task deleted
+
+  /goals:
+    get:
+      tags: [Goals]
+      summary: Get all goals
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of goals
+    post:
+      tags: [Goals]
+      summary: Create new goal
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Goal created
+
+  /checkins:
+    get:
+      tags: [CheckIns]
+      summary: Get check-in records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of check-ins
+    post:
+      tags: [CheckIns]
+      summary: Record check-in or check-out
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Check-in recorded
+
+  /posts:
+    get:
+      tags: [Posts]
+      summary: Get bulletin posts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of posts
+    post:
+      tags: [Posts]
+      summary: Create new post
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Post created
+
+  /users:
+    get:
+      tags: [Users]
+      summary: Get all users (Admin only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [ADMIN, USER, COLLABORATOR]
+        sector:
+          type: string
+        avatarUrl:
+          type: string
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pendente, em_progresso, concluida]
+        priority:
+          type: string
+          enum: [baixa, media, alta]
+        assigneeId:
+          type: string
+        dueDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+
+    TaskInput:
+      type: object
+      required: [title, assigneeId]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        priority:
+          type: string
+        assigneeId:
+          type: string
+        dueDate:
+          type: string
