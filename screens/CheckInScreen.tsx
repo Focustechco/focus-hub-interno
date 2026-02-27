@@ -17,6 +17,7 @@ interface CheckInScreenProps {
 const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, setCheckIns, users }) => {
     const toast = useToast();
     const [dailyReport, setDailyReport] = useState('');
+    const FORTALEZA_TIMEZONE = 'America/Fortaleza';
 
     const myLastCheckIn = (checkIns || [])
         .filter(c => c.userId === currentUser.id)
@@ -48,7 +49,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
             triggerDiscordWebhook('user.checkin', {
                 Usuário: currentUser.name,
                 Setor: currentUser.sector || 'Não informado',
-                Horário: new Date().toLocaleTimeString('pt-BR')
+                Horário: new Date().toLocaleTimeString('pt-BR', { timeZone: FORTALEZA_TIMEZONE })
             });
         } catch (error) {
             console.error("Failed to check in:", error);
@@ -60,7 +61,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
         if (myLastCheckIn) {
             try {
                 const response = await api.put(`/checkins/${myLastCheckIn.id}`, {
-                    checkOutTime: new Date().toISOString()
+                    checkOutTime: true
                 });
                 setCheckIns(prev => prev.map(c =>
                     c.id === myLastCheckIn.id ? response.data : c
@@ -70,7 +71,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                 triggerDiscordWebhook('user.checkout', {
                     Usuário: currentUser.name,
                     Setor: currentUser.sector || 'Não informado',
-                    Horário: new Date().toLocaleTimeString('pt-BR')
+                    Horário: new Date().toLocaleTimeString('pt-BR', { timeZone: FORTALEZA_TIMEZONE })
                 });
             } catch (error) {
                 console.error("Failed to check out:", error);
@@ -135,7 +136,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                                 year: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit',
-                                timeZone: 'America/Sao_Paulo'
+                                timeZone: FORTALEZA_TIMEZONE
                             })}
                         </p>
                     ) : (

@@ -208,11 +208,19 @@ router.put('/:id', async (req, res) => {
         await client.query('BEGIN');
 
         // Update main task
-        await client.query(
+        const updateResult = await client.query(
             `UPDATE tasks SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, estimated_time = $6, due_date = $7
-             WHERE id = $8`,
-            [title, description, status, priority, cleanAssigneeId, estimatedTime || null, dueDate, id]
+             WHERE id = $8
+             RETURNING *`,
+            [title, description, status, priority, cleanAssigneeId, estimatedTime ?? null, dueDate, id]
         );
+
+        if (updateResult.rowCount === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Task not found' });
+        }
+
+        const updatedTaskRow = updateResult.rows[0];
 
         // Update subtasks if provided
         if (subtasks && Array.isArray(subtasks)) {
@@ -231,9 +239,62 @@ router.put('/:id', async (req, res) => {
             }
         }
 
+        const subtasksResult = await client.query(
+            'SELECT id, text, completed FROM subtasks WHERE task_id = $1',
+            [id]
+        );
+
+        const formatDueDate = (dateValue) => {
+            if (!dateValue) return null;
+
+            if (typeof dateValue === 'string') {
+                if (dateValue.includes(' ')) {
+                    const [datePart, timePart] = dateValue.split(' ');
+                    const timeShort = (timePart || '').slice(0, 5);
+                    if (timeShort === '00:00') return datePart;
+                    return `${datePart}T${timeShort}`;
+                }
+                if (dateValue.includes('T')) {
+                    return dateValue.slice(0, 16);
+                }
+                return dateValue.slice(0, 10);
+            }
+
+            if (dateValue instanceof Date) {
+                const year = dateValue.getFullYear();
+                const month = String(dateValue.getMonth() + 1).padStart(2, '0');
+                const day = String(dateValue.getDate()).padStart(2, '0');
+                const hours = dateValue.getHours();
+                const minutes = dateValue.getMinutes();
+                if (hours === 0 && minutes === 0) return `${year}-${month}-${day}`;
+                return `${year}-${month}-${day}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            }
+
+            return null;
+        };
+
+        const updatedTask = {
+            id: updatedTaskRow.id,
+            title: updatedTaskRow.title,
+            description: updatedTaskRow.description,
+            status: updatedTaskRow.status,
+            priority: updatedTaskRow.priority,
+            assigneeId: updatedTaskRow.assignee_id,
+            estimatedTime: updatedTaskRow.estimated_time,
+            dueDate: formatDueDate(updatedTaskRow.due_date),
+            createdAt: updatedTaskRow.created_at,
+            isOffline: updatedTaskRow.is_offline,
+            goalId: updatedTaskRow.goal_id,
+            subtasks: subtasksResult.rows.map(st => ({
+                id: st.id,
+                text: st.text,
+                completed: st.completed
+            }))
+        };
+
         await client.query('COMMIT');
         console.log('[PUT /tasks/:id] Task updated successfully:', id);
-        res.json({ message: 'Task updated', id });
+        res.json({ message: 'Task updated', task: updatedTask });
 
         // Check if assignee changed or if it's the same assignee but task is completed
         // For simplicity, let's notify if there is an assignee

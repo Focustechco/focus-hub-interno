@@ -22,7 +22,7 @@ const pool = new Pool({
 });
 
 pool.on('connect', (client) => {
-    client.query("SET timezone TO 'America/Sao_Paulo'", (err) => {
+    client.query("SET timezone TO 'America/Fortaleza'", (err) => {
         if (err) {
             console.error('Error setting timezone:', err);
         }

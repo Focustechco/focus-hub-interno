@@ -28,7 +28,6 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setupAutoSync } from './src/utils/onlineSync';
 import { requestNotificationPermission } from './src/utils/pushNotifications';
 import { LoadingSpinner } from './components/Loading';
-import { InstallPWA } from './components/InstallPWA';
 
 // Lazy load larger screens for better initial performance
 const TasksScreen = lazy(() => import('./screens/TasksScreen'));
@@ -352,7 +351,6 @@ const App: React.FC = () => {
             }>
                 {renderScreen()}
             </Suspense>
-            <InstallPWA />
         </Layout>
     );
 };

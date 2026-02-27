@@ -182,12 +182,15 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                     let savedTask: Task;
 
                     if (isEditing) {
-                        await api.put(`/tasks/${editingTask.id}`, payload);
-
-                        // Locally update with the payload (which has UTC date). 
-                        // Note: If we display this directly, formatDate needs to handle UTC ISO strings correctly (it does).
-                        savedTask = { ...editingTask, ...payload };
+                        const response = await api.put(`/tasks/${editingTask.id}`, payload);
+                        savedTask = (response.data?.task || response.data || { ...editingTask, ...payload }) as Task;
                         setTasks(prev => prev.map(t => t.id === savedTask.id ? savedTask : t));
+
+                        // Re-fetch after update to ensure UI reflects persisted DB state
+                        const tasksResponse = await api.get('/tasks');
+                        if (Array.isArray(tasksResponse.data)) {
+                            setTasks(tasksResponse.data);
+                        }
                     } else {
                         const response = await api.post('/tasks', payload);
                         // Use response.data to get the real task from backend
