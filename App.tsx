@@ -26,7 +26,6 @@ import CheckInScreen from './screens/CheckInScreen';
 import MuralScreen from './screens/MuralScreen';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setupAutoSync } from './src/utils/onlineSync';
-import { requestNotificationPermission } from './src/utils/pushNotifications';
 import pushNotifications from './src/utils/pushNotifications';
 import { LoadingSpinner } from './components/Loading';
 
@@ -132,13 +131,16 @@ const App: React.FC = () => {
                         if (prev.length > 0) {
                             res.data.forEach(n => {
                                 if (!prevIds.has(n.id) && !n.isRead) {
-                                    // Trigger push notification for newly arrived unread notifications
-                                    if (n.type === NotificationType.TASK_ASSIGNED) {
-                                        pushNotifications.showNotification('Nova Tarefa Atribuída', { body: n.message });
-                                    } else if (n.type === NotificationType.TASK_STATUS_CHANGED) {
-                                        pushNotifications.showNotification('Atualização de Tarefa', { body: n.message });
-                                    } else {
-                                        pushNotifications.showNotification('Focus Hub', { body: n.message });
+                                    // Trigger local notification ONLY IF real Web Push is not enabled
+                                    // (Otherwise the backend Service Worker already handles it)
+                                    if (!pushNotifications.isPushEnabled()) {
+                                        if (n.type === NotificationType.TASK_ASSIGNED) {
+                                            pushNotifications.showNotification('Nova Tarefa Atribuída', { body: n.message });
+                                        } else if (n.type === NotificationType.TASK_STATUS_CHANGED) {
+                                            pushNotifications.showNotification('Atualização de Tarefa', { body: n.message });
+                                        } else {
+                                            pushNotifications.showNotification('Focus Hub', { body: n.message });
+                                        }
                                     }
                                 }
                             });
@@ -163,20 +165,20 @@ const App: React.FC = () => {
         // Setup robust offline sync
         const cleanupSync = setupAutoSync();
 
-        // Optional: Request push notification permission if user is logged in
+        // Auto re-subscribe to push notifications if user previously enabled them
         if (currentUser) {
-            // We don't want to block or annoy, so maybe just check or log for now?
-            // or we can request it:
-            // requestNotificationPermission().then(granted => {
-            //    if (granted) console.log("Push notifications enabled");
-            // });
+            pushNotifications.resubscribeIfEnabled().then(() => {
+                console.log('[App] Push re-subscription check complete');
+            }).catch((err) => {
+                console.warn('[App] Push re-subscription failed:', err);
+            });
         }
 
         return () => {
             // cleanupSync(); // setupAutoSync doesn't actually return a cleanup function in the current implementation, but it should ideally.
             // implementation of setupAutoSync attaches a window listener.
         };
-    }, []);
+    }, [currentUser]);
 
     const handleLogin = async (user: User) => {
         // This is now handled by useAuth, but LoginScreen passes a user object.

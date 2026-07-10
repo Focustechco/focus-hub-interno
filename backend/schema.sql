@@ -2,6 +2,7 @@
 -- Execute this ENTIRE script in Neon SQL Editor
 
 -- Step 1: Drop ALL existing tables
+DROP TABLE IF EXISTS push_subscriptions CASCADE;
 DROP TABLE IF EXISTS daily_checklist CASCADE;
 DROP TABLE IF EXISTS goals CASCADE;
 DROP TABLE IF EXISTS posts CASCADE;
@@ -152,4 +153,30 @@ CREATE TABLE notifications (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Step 13: Create Push Subscriptions table (Web Push notifications)
+CREATE TABLE push_subscriptions (
+  id VARCHAR(255) PRIMARY KEY,
+  user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Done! All tables created successfully.
+
+-- Step 14: Create Contents table for dynamic materials
+CREATE TABLE contents (
+  id VARCHAR(255) PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  category VARCHAR(100) NOT NULL,
+  file_url TEXT NOT NULL,
+  cover_image TEXT,
+  icon VARCHAR(50) DEFAULT 'Book',
+  color VARCHAR(50) DEFAULT '#FF6B00',
+  status BOOLEAN DEFAULT true,
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

@@ -102,7 +102,7 @@ const TaskComments: React.FC<TaskCommentsProps> = ({
                                         <img
                                             src={author.avatarUrl}
                                             alt={author.name}
-                                            className="w-8 h-8 rounded-full flex-shrink-0"
+                                            className="w-8 h-8 rounded-full object-cover flex-shrink-0"
                                         />
                                     ) : (
                                         <div className="w-8 h-8 bg-[#2E2E2E] rounded-full flex items-center justify-center flex-shrink-0">

@@ -3,6 +3,7 @@ const router = express.Router();
 const { pool } = require('../config/db');
 const { body, param, validationResult } = require('express-validator');
 const whatsAppService = require('../services/whatsappService');
+const pushService = require('../services/pushService');
 
 // Validation middleware helper
 const validate = (req, res, next) => {
@@ -171,6 +172,12 @@ router.post('/',
                          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                         [notifId, assigneeId, 'TASK_ASSIGNED', `Você foi atribuído à tarefa: ${title}`, 'tasks', false, id]
                     );
+                    pushService.sendPushToUser(assigneeId, {
+                        title: '📋 Nova Tarefa Atribuída',
+                        body: `Você foi atribuído à tarefa: ${title}`,
+                        url: '/',
+                        tag: `notification-TASK_ASSIGNED-${notifId}`,
+                    }).catch(err => console.warn('Push failed:', err.message));
                 } catch (err) {
                     console.error('Failed to create DB notification:', err);
                 }
@@ -322,6 +329,12 @@ router.put('/:id', async (req, res) => {
                          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                         [notifId, cleanAssigneeId, 'TASK_ASSIGNED', `Você foi atribuído à tarefa: ${title}`, 'tasks', false, id]
                     );
+                    pushService.sendPushToUser(cleanAssigneeId, {
+                        title: '📋 Nova Tarefa Atribuída',
+                        body: `Você foi atribuído à tarefa: ${title}`,
+                        url: '/',
+                        tag: `notification-TASK_ASSIGNED-${notifId}`,
+                    }).catch(err => console.warn('Push failed:', err.message));
                     
                     const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
                     if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {
@@ -337,6 +350,12 @@ router.put('/:id', async (req, res) => {
                          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                         [notifId, cleanAssigneeId, 'TASK_STATUS_CHANGED', `A tarefa "${title}" foi marcada como concluída!`, 'tasks', false, id]
                     );
+                    pushService.sendPushToUser(cleanAssigneeId, {
+                        title: '✅ Tarefa Concluída',
+                        body: `A tarefa "${title}" foi marcada como concluída!`,
+                        url: '/',
+                        tag: `notification-TASK_STATUS_CHANGED-${notifId}`,
+                    }).catch(err => console.warn('Push failed:', err.message));
 
                     const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
                     if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {
@@ -352,6 +371,12 @@ router.put('/:id', async (req, res) => {
                          VALUES ($1, $2, $3, $4, $5, $6, $7)`,
                         [notifId, cleanAssigneeId, 'TASK_STATUS_CHANGED', `A tarefa "${title}" foi marcada como URGENTE!`, 'tasks', false, id]
                     );
+                    pushService.sendPushToUser(cleanAssigneeId, {
+                        title: '🔥 Tarefa Urgente',
+                        body: `A tarefa "${title}" foi marcada como URGENTE!`,
+                        url: '/',
+                        tag: `notification-TASK_STATUS_CHANGED-${notifId}`,
+                    }).catch(err => console.warn('Push failed:', err.message));
 
                     const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
                     if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {

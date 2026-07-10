@@ -143,15 +143,21 @@ export interface LinkItem {
     isFavorite: boolean;
 }
 
-export type ContentType = 'CURSO' | 'E-BOOK' | 'DOCUMENTO' | 'TREINAMENTO';
-export type ContentCategory = 'Cursos' | 'Materiais da Focus' | 'Código de Cultura' | 'Treinamentos da Equipe' | 'E-books';
+export type ContentCategory = 'Curso' | 'Documento' | 'E-book' | 'Treinamento' | 'Material da Focus' | 'Código de Cultura';
 
 export interface ContentItem {
     id: string;
     title: string;
-    type: ContentType;
+    description: string;
     category: ContentCategory;
-    link: string;
+    file_url: string;
+    cover_image?: string;
+    icon: string;
+    color: string;
+    status: boolean;
+    order_index: number;
+    created_at?: string;
+    updated_at?: string;
 }
 
 export interface ChatMessage {

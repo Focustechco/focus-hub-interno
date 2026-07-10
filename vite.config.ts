@@ -24,6 +24,24 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'icons/icon-192.png', 'icons/icon-512.png'],
+        workbox: {
+          // Import our custom push notification handler into the generated SW
+          importScripts: ['/sw-push.js'],
+          // Cache API responses for offline support
+          runtimeCaching: [
+            {
+              urlPattern: /^https?:\/\/.*\/api\//,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'api-cache',
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60, // 1 hour
+                },
+              },
+            },
+          ],
+        },
         manifest: {
           name: 'Focus Hub',
           short_name: 'FocusHub',

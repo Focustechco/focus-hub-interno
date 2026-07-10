@@ -7,6 +7,7 @@ import {
     PlusIcon, SearchIcon, StarIcon, TargetIcon, Trash2Icon, UserIcon, XIcon, BookOpenIcon, AwardIcon, FileCodeIcon, SettingsIcon, LinkIcon, LockIcon, FolderIcon, FolderOpenIcon
 } from '../components/icons';
 import { useToast } from '../components/Toast';
+import * as LucideIcons from 'lucide-react';
 
 const MOCK_LINKS: LinkItem[] = [
     { id: 'tool-1', title: 'Focus Site', description: 'Acesso ao site institucional da Focus Marketing.', link: 'https://focusmarketing.com', icon: 'Globe', isFavorite: true },
@@ -79,7 +80,12 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
 
     // State for Content Tab
+    const [contents, setContents] = useState<ContentItem[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<ContentCategory | 'all'>('all');
+    const [searchContentTerm, setSearchContentTerm] = useState('');
+    const [isContentModalOpen, setIsContentModalOpen] = useState(false);
+    const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
+    const [contentPage, setContentPage] = useState(1);
 
     // State for Acessos Tab
     const [accessGroups, setAccessGroups] = useState<AccessGroup[]>([]);
@@ -106,6 +112,14 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                 console.error("Failed to fetch access groups:", err);
                 // Show empty state instead of MOCK_DATA
                 setAccessGroups([]);
+            });
+            
+        // Fetch Contents
+        api.get('/contents')
+            .then(res => setContents(res.data))
+            .catch(err => {
+                console.error("Failed to fetch contents:", err);
+                setContents([]);
             });
     }, []);
     const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
@@ -263,9 +277,60 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     }, [links, searchTerm, showFavorites]);
 
     const filteredContent = useMemo(() => {
-        if (selectedCategory === 'all') return MOCK_CONTENT;
-        return MOCK_CONTENT.filter(item => item.category === selectedCategory);
-    }, [selectedCategory]);
+        let result = contents;
+        if (selectedCategory !== 'all') {
+            result = result.filter(item => item.category === selectedCategory);
+        }
+        if (searchContentTerm.trim()) {
+            const term = searchContentTerm.toLowerCase();
+            result = result.filter(item => item.title.toLowerCase().includes(term));
+        }
+        return result; // Backend already sorts by order_index ASC
+    }, [contents, selectedCategory, searchContentTerm]);
+
+    const handleOpenContentModal = (content: ContentItem | null = null) => {
+        setEditingContent(content);
+        setIsContentModalOpen(true);
+    };
+
+    const handleCloseContentModal = () => {
+        setEditingContent(null);
+        setIsContentModalOpen(false);
+    };
+
+    const handleSaveContent = async (formData: FormData) => {
+        try {
+            if (editingContent) {
+                const res = await api.put(`/contents/${editingContent.id}`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setContents(prev => prev.map(c => c.id === editingContent.id ? res.data : c));
+                toast.success('Conteúdo atualizado.');
+            } else {
+                const res = await api.post('/contents', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                setContents(prev => [res.data, ...prev]);
+                toast.success('Conteúdo cadastrado com sucesso.');
+            }
+            handleCloseContentModal();
+        } catch (err: any) {
+            console.error("Failed to save content:", err);
+            toast.error(err.response?.data?.message || "Erro ao salvar conteúdo.");
+        }
+    };
+
+    const handleDeleteContent = async (id: string) => {
+        if (!window.confirm("Deseja realmente excluir este conteúdo?")) return;
+        try {
+            await api.delete(`/contents/${id}`);
+            setContents(prev => prev.filter(c => c.id !== id));
+            toast.success('Conteúdo removido.');
+        } catch (err: any) {
+            console.error("Failed to delete content:", err);
+            toast.error(err.response?.data?.message || "Erro ao excluir conteúdo.");
+        }
+    };
 
     const handleOpenLinkModal = (link: LinkItem | null) => {
         setEditingLink(link);
@@ -378,12 +443,25 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
 
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 -mr-2">
                 {activeTab === 'links' && <LinksTabContent links={filteredLinks} onToggleFavorite={handleToggleFavorite} onOpenModal={handleOpenLinkModal} onDelete={handleDeleteLink} searchTerm={searchTerm} setSearchTerm={setSearchTerm} showFavorites={showFavorites} setShowFavorites={setShowFavorites} />}
-                {activeTab === 'content' && <ContentTabContent content={filteredContent} selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} categoryConfig={contentCategoryConfig} iconMap={contentIconMap} />}
+                {activeTab === 'content' && <ContentTabContent 
+                    content={filteredContent} 
+                    selectedCategory={selectedCategory} 
+                    setSelectedCategory={setSelectedCategory} 
+                    searchTerm={searchContentTerm}
+                    setSearchTerm={setSearchContentTerm}
+                    page={contentPage}
+                    setPage={setContentPage}
+                    categoryConfig={contentCategoryConfig} 
+                    isAdmin={currentUser?.role === Role.ADMIN}
+                    onOpenModal={handleOpenContentModal}
+                    onDelete={handleDeleteContent}
+                />}
                 {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} onDeleteGroup={handleDeleteAccessGroup} onDeleteLink={handleDeleteAccessLink} />}
                 {activeTab === 'integrations' && <IntegrationsTabContent />}
             </div>
             {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} />}
             {isAccessModalOpen && accessModalContext && <AccessModal isOpen={isAccessModalOpen} onClose={handleCloseAccessModal} onSave={handleSaveAccessLink} context={accessModalContext} />}
+            {isContentModalOpen && <ContentModal isOpen={isContentModalOpen} onClose={handleCloseContentModal} onSave={handleSaveContent} editingContent={editingContent} />}
         </div>
     );
 };
@@ -414,27 +492,55 @@ const LinksTabContent: React.FC<any> = ({ links, onToggleFavorite, onOpenModal, 
     </div>
 );
 
-const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelectedCategory, categoryConfig, iconMap }) => (
-    <div>
-        <div className="mb-6">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 -mb-2">
-                <button onClick={() => setSelectedCategory('all')} className={`px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap ${selectedCategory === 'all' ? 'bg-[#FF6B00] text-white' : 'bg-[#1C1C1C] text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>Todos</button>
-                {categoryConfig.map(({ name, icon: Icon }: any) => (
-                    <button key={name} onClick={() => setSelectedCategory(name)} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap ${selectedCategory === name ? 'bg-[#FF6B00] text-white' : 'bg-[#1C1C1C] text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
-                        <Icon className="w-4 h-4" /> {name}
+const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelectedCategory, searchTerm, setSearchTerm, page, setPage, categoryConfig, isAdmin, onOpenModal, onDelete }) => {
+    const ITEMS_PER_PAGE = 12;
+    const totalPages = Math.ceil(content.length / ITEMS_PER_PAGE);
+    const paginatedContent = content.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+    return (
+        <div>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                <div className="relative w-full sm:max-w-xs">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B3B3B3]" />
+                    <input type="text" placeholder="Pesquisar conteúdo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#1C1C1C] text-white rounded-lg py-2 pl-10 pr-4 focus:ring-1 focus:ring-[#FF6B00]" />
+                </div>
+                {isAdmin && (
+                    <button onClick={() => onOpenModal()} className="w-full sm:w-auto flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors">
+                        <PlusIcon className="w-5 h-5 mr-2" /> Adicionar Conteúdo
                     </button>
-                ))}
+                )}
             </div>
+            
+            <div className="mb-6 overflow-x-auto pb-2 -mb-2 custom-scrollbar">
+                <div className="flex items-center gap-2">
+                    <button onClick={() => { setSelectedCategory('all'); setPage(1); }} className={`px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap ${selectedCategory === 'all' ? 'bg-[#FF6B00] text-white' : 'bg-[#1C1C1C] text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>Todos</button>
+                    {categoryConfig.map(({ name, icon: Icon }: any) => (
+                        <button key={name} onClick={() => { setSelectedCategory(name); setPage(1); }} className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full whitespace-nowrap ${selectedCategory === name ? 'bg-[#FF6B00] text-white' : 'bg-[#1C1C1C] text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
+                            <Icon className="w-4 h-4" /> {name}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            
+            {paginatedContent.length > 0 ? (
+                <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        {paginatedContent.map((item: ContentItem) => <ContentCard key={item.id} item={item} isAdmin={isAdmin} onOpenModal={onOpenModal} onDelete={onDelete} />)}
+                    </div>
+                    {totalPages > 1 && (
+                        <div className="flex justify-center mt-8 gap-2">
+                            <button disabled={page === 1} onClick={() => setPage((p: number) => Math.max(1, p - 1))} className="px-4 py-2 rounded-lg bg-[#1C1C1C] text-white disabled:opacity-50">Anterior</button>
+                            <span className="px-4 py-2 text-[#B3B3B3]">Página {page} de {totalPages}</span>
+                            <button disabled={page === totalPages} onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))} className="px-4 py-2 rounded-lg bg-[#1C1C1C] text-white disabled:opacity-50">Próxima</button>
+                        </div>
+                    )}
+                </>
+            ) : (
+                <div className="text-center text-[#B3B3B3] py-16"><p>Nenhum conteúdo encontrado nesta categoria.</p></div>
+            )}
         </div>
-        {content.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {content.map((item: ContentItem) => <ContentCard key={item.id} item={item} iconMap={iconMap} />)}
-            </div>
-        ) : (
-            <div className="text-center text-[#B3B3B3] py-16"><p>Nenhum conteúdo encontrado nesta categoria.</p></div>
-        )}
-    </div>
-);
+    );
+};
 
 const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGroupId, onOpenModal, onAddNewGroup, onDeleteGroup, onDeleteLink }) => (
     <div className="max-w-4xl mx-auto">
@@ -1018,18 +1124,54 @@ const LinkCard: React.FC<{ link: LinkItem, onToggleFavorite: (id: string) => voi
         </div>
     );
 };
-const ContentCard: React.FC<{ item: ContentItem; iconMap: any }> = ({ item, iconMap }) => {
-    const Icon = iconMap[item.type];
+const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: (item: ContentItem) => void; onDelete: (id: string) => void }> = ({ item, isAdmin, onOpenModal, onDelete }) => {
+    const IconName = item.icon as keyof typeof LucideIcons;
+    const Icon = (LucideIcons[IconName] || LucideIcons.Book) as React.FC<any>;
+    const color = item.color || '#FF6B00';
+    const [showMenu, setShowMenu] = useState(false);
+
     return (
-        <div className="bg-[#1C1C1C] rounded-lg p-5 flex flex-col justify-between shadow-lg transition-transform transform hover:-translate-y-1">
-            <div>
-                <div className="bg-[#FF6B00]/10 p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-[#FF6B00]" />
+        <div className="bg-[#1C1C1C] rounded-lg p-5 flex flex-col justify-between shadow-lg transition-transform transform hover:-translate-y-1 relative">
+            {isAdmin && (
+                <div className="absolute top-3 right-3">
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-1 text-gray-500 hover:text-white">
+                        <LucideIcons.MoreVertical className="w-5 h-5" />
+                    </button>
+                    {showMenu && (
+                        <div className="absolute right-0 mt-2 w-32 bg-[#2E2E2E] rounded-md shadow-lg z-10 py-1">
+                            <button onClick={() => { setShowMenu(false); onOpenModal(item); }} className="w-full text-left px-4 py-2 text-sm text-white hover:bg-[#3a3a3a] flex items-center">
+                                <LucideIcons.Edit className="w-4 h-4 mr-2" /> Editar
+                            </button>
+                            <button onClick={() => { setShowMenu(false); onDelete(item.id); }} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-[#3a3a3a] flex items-center">
+                                <LucideIcons.Trash2 className="w-4 h-4 mr-2" /> Excluir
+                            </button>
+                        </div>
+                    )}
                 </div>
+            )}
+            
+            {item.cover_image && (
+                <div className="w-full h-32 mb-4 rounded-lg overflow-hidden relative">
+                    <img src={item.cover_image} alt={item.title} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40"></div>
+                    <div className="absolute top-2 left-2 p-2 rounded-full bg-black/60" style={{ color }}>
+                        <Icon className="w-5 h-5" />
+                    </div>
+                </div>
+            )}
+            
+            {!item.cover_image && (
+                <div className="p-3 rounded-full w-12 h-12 flex items-center justify-center mb-4" style={{ backgroundColor: `${color}1A`, color }}>
+                    <Icon className="w-6 h-6" />
+                </div>
+            )}
+            
+            <div>
                 <h3 className="text-xl font-bold text-white mb-2" title={item.title}>{item.title}</h3>
-                <p className="text-sm font-semibold text-[#FF6B00] mb-4">{item.type}</p>
+                <p className="text-sm font-semibold mb-4" style={{ color }}>{item.category}</p>
             </div>
-            <a href={item.link} target="_blank" rel="noopener noreferrer" className="mt-auto w-full bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors flex items-center justify-center text-sm">
+            
+            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
                 Acessar <ExternalLinkIcon className="w-4 h-4 ml-2" />
             </a>
         </div>
@@ -1155,6 +1297,165 @@ const AccessModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (lin
                 </motion.div>
             </motion.div>
         </AnimatePresence>
+    );
+};
+
+const ContentModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (formData: FormData) => void; editingContent: ContentItem | null }> = ({ isOpen, onClose, onSave, editingContent }) => {
+    const [title, setTitle] = useState(editingContent?.title || '');
+    const [description, setDescription] = useState(editingContent?.description || '');
+    const [category, setCategory] = useState<ContentCategory>(editingContent?.category || 'Curso');
+    const [icon, setIcon] = useState(editingContent?.icon || 'Book');
+    const [color, setColor] = useState(editingContent?.color || '#FF6B00');
+    const [status, setStatus] = useState(editingContent ? editingContent.status : true);
+    const [orderIndex, setOrderIndex] = useState(editingContent?.order_index?.toString() || '0');
+    
+    const [file, setFile] = useState<File | null>(null);
+    const [coverImage, setCoverImage] = useState<File | null>(null);
+    const [removeCover, setRemoveCover] = useState(false);
+    
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [isUploading, setIsUploading] = useState(false);
+
+    const categories: ContentCategory[] = ['Curso', 'Documento', 'E-book', 'Treinamento', 'Material da Focus', 'Código de Cultura'];
+    const colors = ['#FF6B00', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444'];
+    const icons = ['Book', 'FileText', 'GraduationCap', 'Shield', 'Users', 'Briefcase', 'Video', 'Link', 'Archive', 'Award'];
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!editingContent && !file) {
+            alert('Por favor, selecione um arquivo.');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('description', description);
+        formData.append('category', category);
+        formData.append('icon', icon);
+        formData.append('color', color);
+        formData.append('status', status.toString());
+        formData.append('order_index', orderIndex);
+        if (file) formData.append('file', file);
+        if (coverImage) formData.append('cover_image', coverImage);
+        if (removeCover) formData.append('remove_cover', 'true');
+
+        setIsUploading(true);
+        // Simulate progress since XHR progress is tricky with standard fetch without custom wrapper, 
+        // we'll just fake it or let the component loading state handle it.
+        const interval = setInterval(() => {
+            setUploadProgress(p => p >= 90 ? 90 : p + 10);
+        }, 100);
+
+        try {
+            await onSave(formData);
+        } finally {
+            clearInterval(interval);
+            setUploadProgress(100);
+            setTimeout(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+            }, 500);
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1C1C1C] rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col relative overflow-hidden">
+                <div className="p-6 border-b border-[#2E2E2E] flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-[#FF6B00]">{editingContent ? 'Editar Conteúdo' : 'Novo Conteúdo'}</h2>
+                    <button onClick={onClose} className="text-[#B3B3B3] hover:text-white"><LucideIcons.X className="w-6 h-6" /></button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                    <form id="contentForm" onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Título *</label>
+                            <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Guia Completo de Onboarding" className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white" required />
+                        </div>
+                        
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Categoria *</label>
+                            <select value={category} onChange={e => setCategory(e.target.value as ContentCategory)} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white" required>
+                                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Descrição</label>
+                            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-medium text-[#B3B3B3] mb-1 block">Ícone</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {icons.map(i => {
+                                        const IconComp = LucideIcons[i as keyof typeof LucideIcons] as React.FC<any>;
+                                        return (
+                                            <button type="button" key={i} onClick={() => setIcon(i)} className={`p-2 rounded-md transition-colors ${icon === i ? 'bg-[#FF6B00] text-white' : 'bg-[#2E2E2E] text-[#B3B3B3] hover:bg-[#3a3a3a]'}`}>
+                                                <IconComp className="w-5 h-5" />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-[#B3B3B3] mb-1 block">Cor do Card</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {colors.map(c => (
+                                        <button type="button" key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full border-2 transition-transform ${color === c ? 'border-white scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Arquivo do Conteúdo (PDF, DOCX, etc) {editingContent ? '(Deixe vazio para manter o atual)' : '*'}</label>
+                            <input type="file" onChange={e => setFile(e.target.files?.[0] || null)} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white text-sm" accept=".pdf,.doc,.docx,.ppt,.pptx" />
+                            {file && <p className="text-xs mt-1 text-green-400">Arquivo selecionado: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</p>}
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Imagem de Capa (Opcional)</label>
+                            <input type="file" onChange={e => { setCoverImage(e.target.files?.[0] || null); setRemoveCover(false); }} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white text-sm" accept=".png,.jpg,.jpeg,.webp" />
+                            {editingContent?.cover_image && !coverImage && !removeCover && (
+                                <div className="flex items-center gap-2 mt-2">
+                                    <img src={editingContent.cover_image} alt="Capa" className="h-10 rounded" />
+                                    <button type="button" onClick={() => setRemoveCover(true)} className="text-xs text-red-400 hover:underline">Remover Capa Atual</button>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-sm font-medium text-[#B3B3B3]">Ordem</label>
+                                <input type="number" value={orderIndex} onChange={e => setOrderIndex(e.target.value)} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md text-white" />
+                            </div>
+                            <div className="flex flex-col justify-center">
+                                <label className="text-sm font-medium text-[#B3B3B3] mb-2">Status</label>
+                                <button type="button" onClick={() => setStatus(!status)} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${status ? 'bg-[#FF6B00]' : 'bg-gray-600'}`}>
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${status ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                                <span className="text-xs mt-1">{status ? 'Ativo' : 'Inativo'}</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="p-6 border-t border-[#2E2E2E] flex justify-end gap-2 bg-[#1a1a1a]">
+                    <button type="button" onClick={onClose} disabled={isUploading} className="px-4 py-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a] disabled:opacity-50">Cancelar</button>
+                    <button type="submit" form="contentForm" disabled={isUploading} className="px-6 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33] disabled:opacity-50 relative overflow-hidden">
+                        {isUploading && (
+                            <div className="absolute left-0 top-0 bottom-0 bg-white/20" style={{ width: `${uploadProgress}%`, transition: 'width 0.2s' }}></div>
+                        )}
+                        <span className="relative z-10">{isUploading ? 'Salvando...' : 'Salvar Conteúdo'}</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 };
 

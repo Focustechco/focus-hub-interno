@@ -16,19 +16,47 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
     const [isOpen, setIsOpen] = useState(false);
     const [view, setView] = useState<'list' | 'settings'>('list');
     const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
+    const [pushEnabled, setPushEnabled] = useState(false);
+    const [isSubscribing, setIsSubscribing] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (pushNotifications.isPushSupported()) {
             setPushPermission(pushNotifications.getNotificationPermission());
+            setPushEnabled(pushNotifications.isPushEnabled());
         }
     }, []);
 
-    const handleRequestPermission = async () => {
-        const perm = await pushNotifications.requestNotificationPermission();
-        setPushPermission(perm);
-        if (perm === 'granted') {
-            pushNotifications.showNotification('Notificações ativadas!', { body: 'Você receberá alertas do Focus Hub aqui.' });
+    const handleEnablePush = async () => {
+        setIsSubscribing(true);
+        try {
+            const success = await pushNotifications.subscribeToPush();
+            if (success) {
+                setPushPermission('granted');
+                setPushEnabled(true);
+                pushNotifications.showNotification('🔔 Notificações ativadas!', {
+                    body: 'Você receberá alertas do Focus Hub mesmo com o app fechado.',
+                    tag: 'push-enabled',
+                });
+            } else {
+                setPushPermission(pushNotifications.getNotificationPermission());
+            }
+        } catch (error) {
+            console.error('[NotificationBell] Failed to enable push:', error);
+        } finally {
+            setIsSubscribing(false);
+        }
+    };
+
+    const handleDisablePush = async () => {
+        setIsSubscribing(true);
+        try {
+            await pushNotifications.unsubscribeFromPush();
+            setPushEnabled(false);
+        } catch (error) {
+            console.error('[NotificationBell] Failed to disable push:', error);
+        } finally {
+            setIsSubscribing(false);
         }
     };
 
@@ -96,6 +124,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
         [NotificationType.NEW_POST]: true,
         [NotificationType.TASK_DUE_SOON]: true,
     };
+
+    const isPushSupported = pushNotifications.isPushSupported();
     
     return (
         <div className="relative" ref={dropdownRef}>
@@ -119,12 +149,29 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
                     {view === 'list' ? (
                         <>
                             <div className="max-h-[300px] overflow-y-auto">
-                            {pushPermission === 'default' && (
+                            {/* Push notification banner */}
+                            {isPushSupported && !pushEnabled && pushPermission !== 'denied' && (
                                 <div className="p-3 bg-[#FF6B00]/10 border-b border-[#FF6B00]/20 flex flex-col items-center text-center">
-                                    <p className="text-xs text-gray-300 mb-2">Ative as notificações para ser avisado sobre novas tarefas!</p>
-                                    <button onClick={(e) => { e.stopPropagation(); handleRequestPermission(); }} className="text-xs font-medium text-white bg-[#FF6B00] hover:bg-[#E66000] px-3 py-1.5 rounded transition-colors w-full">
-                                        Ativar Notificações do Navegador
+                                    <p className="text-xs text-gray-300 mb-2">
+                                        Ative as notificações para receber alertas mesmo com o app fechado!
+                                    </p>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleEnablePush(); }}
+                                        disabled={isSubscribing}
+                                        className="text-xs font-medium text-white bg-[#FF6B00] hover:bg-[#E66000] px-3 py-1.5 rounded transition-colors w-full disabled:opacity-50"
+                                    >
+                                        {isSubscribing ? 'Ativando...' : '🔔 Ativar Notificações Push'}
                                     </button>
+                                </div>
+                            )}
+                            {isPushSupported && pushEnabled && (
+                                <div className="p-2 bg-green-500/10 border-b border-green-500/20 flex items-center justify-center gap-2">
+                                    <span className="text-xs text-green-400 font-medium">✅ Notificações Push ativas</span>
+                                </div>
+                            )}
+                            {isPushSupported && pushPermission === 'denied' && (
+                                <div className="p-2 bg-red-500/10 border-b border-red-500/20 flex items-center justify-center">
+                                    <span className="text-xs text-red-400">⚠️ Notificações bloqueadas no navegador</span>
                                 </div>
                             )}
                                 {userNotifications.length > 0 ? (
@@ -152,6 +199,30 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
                         </>
                     ) : (
                         <div className="p-4 space-y-4">
+                            {/* Push notification toggle */}
+                            {isPushSupported && (
+                                <div className="pb-4 border-b border-[#2E2E2E]">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <label className="text-sm font-semibold">Notificações Push</label>
+                                        <button
+                                            onClick={pushEnabled ? handleDisablePush : handleEnablePush}
+                                            disabled={isSubscribing || pushPermission === 'denied'}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${pushEnabled ? 'bg-[#FF6B00]' : 'bg-[#2E2E2E]'} ${isSubscribing ? 'opacity-50' : ''}`}
+                                        >
+                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${pushEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-[#B3B3B3]">
+                                        {pushEnabled
+                                            ? 'Você receberá notificações na tela de bloqueio do seu dispositivo.'
+                                            : pushPermission === 'denied'
+                                                ? 'Notificações foram bloqueadas. Altere nas configurações do navegador.'
+                                                : 'Receba alertas mesmo com o app fechado.'}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Notification type preferences */}
                             <div className="flex justify-between items-center">
                                 <label htmlFor="task-assigned" className="text-sm">Nova tarefa atribuída</label>
                                 <input type="checkbox" id="task-assigned" checked={userPrefs[NotificationType.TASK_ASSIGNED]} onChange={e => handlePrefChange(NotificationType.TASK_ASSIGNED, e.target.checked)} className="h-4 w-4 rounded bg-[#2E2E2E] border-gray-600 text-[#FF6B00] focus:ring-[#FF8C33]" />

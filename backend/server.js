@@ -17,6 +17,40 @@ pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'").c
     // Ignore error if column already exists
 });
 
+// Auto-migrate: Create push_subscriptions table if it doesn't exist
+pool.query(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id VARCHAR(255) PRIMARY KEY,
+        user_id VARCHAR(255) REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`).catch(e => {
+    console.error('[Server] Error creating push_subscriptions table:', e.message);
+});
+
+// Auto-migrate: Create contents table if it doesn't exist
+pool.query(`
+    CREATE TABLE IF NOT EXISTS contents (
+        id VARCHAR(255) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        category VARCHAR(100) NOT NULL,
+        file_url TEXT NOT NULL,
+        cover_image TEXT,
+        icon VARCHAR(50) DEFAULT 'Book',
+        color VARCHAR(50) DEFAULT '#FF6B00',
+        status BOOLEAN DEFAULT true,
+        order_index INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+`).catch(e => {
+    console.error('[Server] Error creating contents table:', e.message);
+});
+
 console.log('[Server] Environment keys:', Object.keys(process.env).sort());
 console.log('[Server] GOOGLE_CLIENT_ID present:', !!process.env.GOOGLE_CLIENT_ID);
 if (process.env.GOOGLE_CLIENT_ID) {
@@ -87,7 +121,13 @@ app.use('/api/users', authMiddleware, require('./routes/users'));
 app.use('/api/tools', authMiddleware, require('./routes/tools'));
 app.use('/api/daily-checklist', authMiddleware, require('./routes/dailyChecklist'));
 app.use('/api/notifications', authMiddleware, require('./routes/notifications'));
-app.get('/api/migrate', require('./routes/migrate')); // Public migration route (CHANGED to get or use? previously it was use. Let's stick to use to be safe or check original)
+app.use('/api/push', authMiddleware, require('./routes/push'));
+app.use('/api/contents', authMiddleware, require('./routes/contents'));
+
+// Serve storage directory statically
+const path = require('path');
+app.use('/storage', express.static(path.join(__dirname, 'storage')));
+
 // Checking original content: line 86 was app.use.
 // so I should restore it to app.use.
 app.use('/api/migrate', require('./routes/migrate')); // Public migration route

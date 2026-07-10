@@ -379,7 +379,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B3B3B3]" />
                             <input type="text" placeholder="Buscar tarefa..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#1C1C1C] text-white rounded-lg py-2 pl-10 pr-4 focus:ring-1 focus:ring-[#FF6B00]" />
                         </div>
-                        <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                             <button onClick={() => {
                                 const events = tasks.map(t => taskToCalendarEvent(t));
                                 downloadICS(events);
@@ -401,17 +401,17 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                                     <path d="M7 7h4v2H7zm0 4h4v2H7zm0 4h4v2H7zm6-8h4v2h-4zm0 4h4v2h-4zm0 4h4v2h-4z" />
                                 </svg>
                             </button>
-                            <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="bg-[#1C1C1C] text-white rounded-lg py-2 px-3 focus:ring-1 focus:ring-[#FF6B00]">
+                            <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="flex-1 min-w-[100px] bg-[#1C1C1C] text-white rounded-lg py-2 px-3 focus:ring-1 focus:ring-[#FF6B00]">
                                 <option value="all">Todos</option>
                                 {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                             </select>
-                            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as TaskPriority | 'all')} className="bg-[#1C1C1C] text-white rounded-lg py-2 px-3 focus:ring-1 focus:ring-[#FF6B00]">
+                            <select value={filterPriority} onChange={e => setFilterPriority(e.target.value as TaskPriority | 'all')} className="flex-1 min-w-[100px] bg-[#1C1C1C] text-white rounded-lg py-2 px-3 focus:ring-1 focus:ring-[#FF6B00]">
                                 <option value="all">Prioridade</option>
                                 <option value="alta">Alta</option>
                                 <option value="media">Média</option>
                                 <option value="baixa">Baixa</option>
                             </select>
-                            <button onClick={() => handleOpenModal(null)} className="flex-1 sm:flex-none flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors">
+                            <button onClick={() => handleOpenModal(null)} className="w-full sm:w-auto flex items-center justify-center bg-[#FF6B00] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors mt-2 sm:mt-0">
                                 <PlusIcon className="w-5 h-5 mr-2" /> Nova Tarefa
                             </button>
                         </div>

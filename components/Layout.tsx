@@ -189,7 +189,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 <div className="mt-auto">
                     <div className="border-t border-[#2E2E2E] pt-4">
                         <button onClick={() => openProfileModalFor(currentUser)} className={`flex items-center p-2 rounded-lg w-full text-left hover:bg-[#2E2E2E] transition-colors ${isSidebarCollapsed ? 'justify-center' : ''}`}>
-                            <img src={currentUser.avatarUrl} alt={currentUser.name} className={`w-10 h-10 rounded-full flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
+                            <img src={currentUser.avatarUrl} alt={currentUser.name} className={`w-10 h-10 rounded-full object-cover flex-shrink-0 ${isSidebarCollapsed ? '' : 'mr-3'}`} />
                             <AnimatePresence>
                                 {!isSidebarCollapsed && (
                                     <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden whitespace-nowrap">
@@ -222,9 +222,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
             <main className={`flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden custom-scrollbar
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
-                <header className="flex items-center justify-between md:justify-end mb-6">
-                    <div className="md:hidden flex items-center gap-2 text-xl font-bold">
-                        <img src="/icons/icon-192.png" alt="Logo" className="w-7 h-7" />
+                <header className="flex items-center justify-end mb-6 relative">
+                    <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 text-xl font-bold">
+                        <img src="/icons/icon-192.png" alt="Logo" className="w-[25px] h-[25px]" />
                         <div><span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span></div>
                     </div>
 
@@ -424,7 +424,7 @@ const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, onClose, 
                                                 <ul className="space-y-1">
                                                     {searchResults.users.map(user => (
                                                         <li key={user.id} onClick={() => handleUserClick(user)} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#2E2E2E] cursor-pointer">
-                                                            <img src={user.avatarUrl} alt={user.name} className="w-6 h-6 rounded-full flex-shrink-0" />
+                                                            <img src={user.avatarUrl} alt={user.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                                                             <span className="text-white truncate">{user.name}</span>
                                                         </li>
                                                     ))}

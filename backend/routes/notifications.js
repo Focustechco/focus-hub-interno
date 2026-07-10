@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
+const pushService = require('../services/pushService');
 
 // GET /api/notifications - Get notifications for current user
 router.get('/', async (req, res) => {
@@ -35,6 +36,14 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Notification type to push title mapping
+const pushTitleMap = {
+    'TASK_ASSIGNED': '📋 Nova Tarefa Atribuída',
+    'TASK_STATUS_CHANGED': '🔄 Atualização de Tarefa',
+    'NEW_POST': '📝 Nova Publicação',
+    'TASK_DUE_SOON': '⏰ Prazo Próximo',
+};
+
 // POST /api/notifications - Create new notification
 router.post('/', async (req, res) => {
     const { userId, type, message, linkTo, taskId } = req.body;
@@ -61,6 +70,16 @@ router.post('/', async (req, res) => {
             createdAt: new Date().toISOString(),
             taskId: taskId || null
         };
+
+        // Send real Web Push notification to user's devices (non-blocking)
+        pushService.sendPushToUser(userId, {
+            title: pushTitleMap[type] || 'Focus Hub',
+            body: message,
+            url: '/',
+            tag: `notification-${type}-${id}`,
+        }).catch(err => {
+            console.warn('[POST /notifications] Push notification failed (non-blocking):', err.message);
+        });
 
         res.status(201).json(newNotification);
     } catch (err) {
