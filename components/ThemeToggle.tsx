@@ -27,7 +27,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '' }) => {
                     transition={{ duration: 0.2 }}
                 >
                     {isDark ? (
-                        <MoonIcon className="w-6 h-6 text-[#FF6B00]" />
+                        <MoonIcon className="w-6 h-6 text-[#FF6B00]" fill="currentColor" />
                     ) : (
                         <SunIcon className="w-6 h-6 text-[#1A1A1A]" />
                     )}
