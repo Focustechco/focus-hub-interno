@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { User, Role, Task, CheckIn } from '../types';
-import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon, CheckCircle2Icon, XIcon, PlusIcon, Trash2Icon } from '../components/icons';
+import { ShieldIcon, UserIcon, ClipboardIcon, FileTextIcon, SearchIcon, CheckCircle2Icon, XIcon, PlusIcon, Trash2Icon, ArchiveIcon, ArchiveRestoreIcon } from '../components/icons';
 import ProfileModal from '../components/ProfileModal';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
@@ -227,10 +227,15 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                         </thead>
                         <tbody>
                             {users.map(user => (
-                                <tr key={user.id} className="border-b border-[#2E2E2E] hover:bg-[#2a2a2a]">
+                                <tr key={user.id} className={`border-b border-[#2E2E2E] hover:bg-[#2a2a2a] ${user.status === 'archived' ? 'opacity-50' : ''}`}>
                                     <td className="p-3 flex items-center">
                                         <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
-                                        {user.name}
+                                        <div className="flex flex-col">
+                                            <span>{user.name}</span>
+                                            {user.status === 'archived' && (
+                                                <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded-full w-fit mt-1">Arquivado</span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="p-3">{user.sector}</td>
                                     <td className="p-3">
@@ -241,8 +246,15 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                                         </span>
                                     </td>
                                     <td className="p-3 flex items-center gap-3">
-                                        <button onClick={() => handleOpenProfileModal(user)} className="text-sm text-[#FF6B00] hover:underline">Editar</button>
-                                        <button onClick={() => handleDeleteUser(user.id)} className="text-sm text-red-500 hover:text-red-400" title="Excluir"><Trash2Icon className="w-4 h-4" /></button>
+                                        <button onClick={() => handleOpenProfileModal(user)} className="text-sm text-[#FF6B00] hover:underline" title="Editar">Editar</button>
+                                        
+                                        {user.status === 'archived' ? (
+                                            <button onClick={() => onUpdateUser({ ...user, status: 'active' })} className="text-sm text-yellow-500 hover:text-yellow-400 transition-colors" title="Restaurar"><ArchiveRestoreIcon className="w-4 h-4" /></button>
+                                        ) : (
+                                            <button onClick={() => onUpdateUser({ ...user, status: 'archived' })} className="text-sm text-yellow-500 hover:text-yellow-400 transition-colors" title="Arquivar"><ArchiveIcon className="w-4 h-4" /></button>
+                                        )}
+
+                                        <button onClick={() => handleDeleteUser(user.id)} className="text-sm text-red-500 hover:text-red-400 transition-colors" title="Excluir"><Trash2Icon className="w-4 h-4" /></button>
                                     </td>
                                 </tr>
                             ))}

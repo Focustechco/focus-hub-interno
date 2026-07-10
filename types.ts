@@ -20,6 +20,7 @@ export interface User {
     jobTitle: string;
     bio: string;
     joinDate: string;
+    status?: 'active' | 'archived';
 }
 
 export type TaskStatus = 'pendente' | 'em_progresso' | 'concluida';
