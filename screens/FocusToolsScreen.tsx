@@ -1174,16 +1174,9 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
                 <p className="text-sm font-semibold mb-4" style={{ color }}>{item.category}</p>
             </div>
             
-            <button onClick={(e) => {
-                if (item.file_url.toLowerCase().endsWith('.pdf') || item.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
-                    e.preventDefault();
-                    onPreview(item);
-                } else {
-                    window.open(item.file_url, item.category === 'Curso' ? '_self' : '_blank');
-                }
-            }} className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
+            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
                 Acessar <ExternalLinkIcon className="w-4 h-4 ml-2" />
-            </button>
+            </a>
         </div>
     );
 };
