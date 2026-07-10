@@ -27,6 +27,7 @@ import MuralScreen from './screens/MuralScreen';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setupAutoSync } from './src/utils/onlineSync';
 import { requestNotificationPermission } from './src/utils/pushNotifications';
+import pushNotifications from './src/utils/pushNotifications';
 import { LoadingSpinner } from './components/Loading';
 
 // Lazy load larger screens for better initial performance
@@ -124,7 +125,26 @@ const App: React.FC = () => {
             try {
                 const res = await api.get(`/notifications?userId=${currentUser.id}`);
                 if (Array.isArray(res.data)) {
-                    setNotifications(res.data);
+                    setNotifications(prev => {
+                        const prevIds = new Set(prev.map(n => n.id));
+                        
+                        // Ignore the initial load (when prev is empty) to avoid spamming on refresh
+                        if (prev.length > 0) {
+                            res.data.forEach(n => {
+                                if (!prevIds.has(n.id) && !n.isRead) {
+                                    // Trigger push notification for newly arrived unread notifications
+                                    if (n.type === NotificationType.TASK_ASSIGNED) {
+                                        pushNotifications.showNotification('Nova Tarefa Atribuída', { body: n.message });
+                                    } else if (n.type === NotificationType.TASK_STATUS_CHANGED) {
+                                        pushNotifications.showNotification('Atualização de Tarefa', { body: n.message });
+                                    } else {
+                                        pushNotifications.showNotification('Focus Hub', { body: n.message });
+                                    }
+                                }
+                            });
+                        }
+                        return res.data;
+                    });
                 }
             } catch (err) {
                 console.error('Failed to poll notifications:', err);

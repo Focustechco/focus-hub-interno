@@ -162,8 +162,19 @@ router.post('/',
                 subtasks: subtasks || []
             };
 
-            // Send WhatsApp Notification if assigned
+            // Create DB Notification and WhatsApp Notification if assigned
             if (assigneeId) {
+                try {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await client.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, assigneeId, 'TASK_ASSIGNED', `Você foi atribuído à tarefa: ${title}`, 'tasks', false, id]
+                    );
+                } catch (err) {
+                    console.error('Failed to create DB notification:', err);
+                }
+
                 try {
                     const userRes = await pool.query('SELECT whatsapp, name FROM users WHERE id = $1', [assigneeId]);
                     if (userRes.rows.length > 0) {
@@ -206,6 +217,10 @@ router.put('/:id', async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+
+        // Get previous task state to check for changes
+        const prevTaskRes = await client.query('SELECT assignee_id, status FROM tasks WHERE id = $1', [id]);
+        const prevTask = prevTaskRes.rows.length > 0 ? prevTaskRes.rows[0] : null;
 
         // Update main task
         const updateResult = await client.query(
@@ -296,35 +311,56 @@ router.put('/:id', async (req, res) => {
         console.log('[PUT /tasks/:id] Task updated successfully:', id);
         res.json({ message: 'Task updated', task: updatedTask });
 
-        // Check if assignee changed or if it's the same assignee but task is completed
-        // For simplicity, let's notify if there is an assignee
-        if (cleanAssigneeId) {
+        // Handle Notifications
+        if (cleanAssigneeId && prevTask) {
             try {
-                // If status changed to completed, notify assignee
-                if (status === 'concluida') {
-                    const userRes = await pool.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
-                    if (userRes.rows.length > 0) {
-                        const user = userRes.rows[0];
-                        if (user.whatsapp) {
-                            const message = `✅ *Tarefa Concluída*\n\n*Título:* ${title}\n\nBom trabalho! 🚀`;
-                            whatsAppService.sendMessage(user.whatsapp, message).catch(console.error);
-                        }
+                // If newly assigned to this user
+                if (prevTask.assignee_id !== cleanAssigneeId) {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await client.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, cleanAssigneeId, 'TASK_ASSIGNED', `Você foi atribuído à tarefa: ${title}`, 'tasks', false, id]
+                    );
+                    
+                    const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
+                    if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {
+                        const message = `📋 *Nova Tarefa Atribuída*\n\n*Título:* ${title}\n*Prazo:* ${dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}\n\nAcesse o Focus Hub para ver detalhes.`;
+                        whatsAppService.sendMessage(userRes.rows[0].whatsapp, message).catch(console.error);
+                    }
+                } 
+                // If status changed to completed
+                else if (status === 'concluida' && prevTask.status !== 'concluida') {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await client.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, cleanAssigneeId, 'TASK_STATUS_CHANGED', `A tarefa "${title}" foi marcada como concluída!`, 'tasks', false, id]
+                    );
+
+                    const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
+                    if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {
+                        const message = `✅ *Tarefa Concluída*\n\n*Título:* ${title}\n\nBom trabalho! 🚀`;
+                        whatsAppService.sendMessage(userRes.rows[0].whatsapp, message).catch(console.error);
                     }
                 }
-                // Determine if this is a reassignment (would require fetching previous state, skipping for now to keep it simple or adding logic if needed)
-                // For now, assume if priority becomes urgent, we notify
-                else if (priority === 'urgente') {
-                    const userRes = await pool.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
-                    if (userRes.rows.length > 0) {
-                        const user = userRes.rows[0];
-                        if (user.whatsapp) {
-                            const message = `🔥 *Tarefa Urgente*\n\n*Título:* ${title}\n*Prazo:* ${dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}\n\nAtenção para esta tarefa!`;
-                            whatsAppService.sendMessage(user.whatsapp, message).catch(console.error);
-                        }
+                // If priority became urgent
+                else if (priority === 'urgente' && prevTask.priority !== 'urgente') {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await client.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, cleanAssigneeId, 'TASK_STATUS_CHANGED', `A tarefa "${title}" foi marcada como URGENTE!`, 'tasks', false, id]
+                    );
+
+                    const userRes = await client.query('SELECT whatsapp, name FROM users WHERE id = $1', [cleanAssigneeId]);
+                    if (userRes.rows.length > 0 && userRes.rows[0].whatsapp) {
+                        const message = `🔥 *Tarefa Urgente*\n\n*Título:* ${title}\n*Prazo:* ${dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : 'Sem prazo'}\n\nAtenção para esta tarefa!`;
+                        whatsAppService.sendMessage(userRes.rows[0].whatsapp, message).catch(console.error);
                     }
                 }
             } catch (error) {
-                console.error('Failed to send WhatsApp notification on update:', error);
+                console.error('Failed to handle notifications on update:', error);
             }
         }
     } catch (err) {

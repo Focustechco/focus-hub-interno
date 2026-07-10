@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Notification, User, Screen, NotificationPreferences, NotificationType } from '../types';
 import { BellIcon, SettingsIcon, CheckIcon, XIcon, ClipboardIcon, NewspaperIcon, CalendarIcon } from './icons';
+import pushNotifications from '../src/utils/pushNotifications';
 
 interface NotificationBellProps {
     currentUser: User;
@@ -14,7 +15,22 @@ interface NotificationBellProps {
 const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifications, setNotifications, setActiveScreen, notificationPreferences, setNotificationPreferences }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [view, setView] = useState<'list' | 'settings'>('list');
+    const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (pushNotifications.isPushSupported()) {
+            setPushPermission(pushNotifications.getNotificationPermission());
+        }
+    }, []);
+
+    const handleRequestPermission = async () => {
+        const perm = await pushNotifications.requestNotificationPermission();
+        setPushPermission(perm);
+        if (perm === 'granted') {
+            pushNotifications.showNotification('Notificações ativadas!', { body: 'Você receberá alertas do Focus Hub aqui.' });
+        }
+    };
 
     const userNotifications = useMemo(() => 
         notifications.filter(n => n.userId === currentUser.id)
@@ -102,7 +118,15 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
 
                     {view === 'list' ? (
                         <>
-                            <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                            <div className="max-h-[300px] overflow-y-auto">
+                            {pushPermission === 'default' && (
+                                <div className="p-3 bg-[#FF6B00]/10 border-b border-[#FF6B00]/20 flex flex-col items-center text-center">
+                                    <p className="text-xs text-gray-300 mb-2">Ative as notificações para ser avisado sobre novas tarefas!</p>
+                                    <button onClick={(e) => { e.stopPropagation(); handleRequestPermission(); }} className="text-xs font-medium text-white bg-[#FF6B00] hover:bg-[#E66000] px-3 py-1.5 rounded transition-colors w-full">
+                                        Ativar Notificações do Navegador
+                                    </button>
+                                </div>
+                            )}
                                 {userNotifications.length > 0 ? (
                                     userNotifications.map(n => (
                                         <div key={n.id} onClick={() => handleNotificationClick(n)} className={`p-3 flex items-start gap-3 cursor-pointer hover:bg-[#2E2E2E] ${!n.isRead ? 'bg-[#FF6B00]/10' : ''}`}>
