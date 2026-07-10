@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { taskToCalendarEvent, generateGoogleCalendarUrl, downloadICS } from '../src/utils/calendar';
+import * as LucideIcons from 'lucide-react';
 
 interface CalendarViewProps {
     tasks: Task[];
@@ -32,7 +33,10 @@ const DraggableTaskItem: React.FC<{ task: Task, onTaskClick: (task: Task) => voi
             style={style}
             {...listeners}
             {...attributes}
-            onClick={() => onTaskClick(task)}
+            onClick={(e) => {
+                e.stopPropagation();
+                onTaskClick(task);
+            }}
             className="text-xs text-left p-1 bg-[#2E2E2E] rounded cursor-grab active:cursor-grabbing hover:bg-[#3a3a3a] truncate"
             title={task.title}
         >
@@ -86,6 +90,7 @@ const DroppableDayCell: React.FC<{
 const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTaskClick, setTasks }) => {
     const toast = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedTaskToView, setSelectedTaskToView] = useState<Task | null>(null);
 
     const tasksByDate = useMemo(() => {
         const map = new Map<string, Task[]>();
@@ -304,7 +309,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
                                 isCurrentMonth={isCurrentMonth}
                                 isToday={isToday}
                                 tasks={dayTasks}
-                                onTaskClick={onTaskClick}
+                                onTaskClick={(task) => setSelectedTaskToView(task)}
                                 onAddTask={(date) => {
                                     // Use local date format to avoid timezone issues
                                     const y = date.getFullYear();
@@ -329,7 +334,114 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
                     })}
                 </div>
             </div>
+            {selectedTaskToView && (
+                <EventViewModal 
+                    event={selectedTaskToView} 
+                    onClose={() => setSelectedTaskToView(null)} 
+                    onEdit={() => { 
+                        setSelectedTaskToView(null); 
+                        onTaskClick(selectedTaskToView); 
+                    }} 
+                    users={_users} 
+                />
+            )}
         </DndContext>
+    );
+};
+
+const EventViewModal: React.FC<{
+    event: Task;
+    onClose: () => void;
+    onEdit: () => void;
+    users: User[];
+}> = ({ event, onClose, onEdit, users }) => {
+    const assignee = users.find(u => u.id === event.assigneeId);
+    
+    // Format date
+    let formattedDate = event.dueDate || '';
+    if (event.dueDate) {
+        try {
+            const d = new Date(event.dueDate);
+            formattedDate = d.toLocaleString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+        } catch (e) {}
+    }
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+            <div className="bg-[#1C1C1C] rounded-lg shadow-2xl w-full max-w-md overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                {/* Header actions */}
+                <div className="flex justify-end p-2 gap-2 bg-[#2E2E2E]">
+                    <button onClick={onEdit} className="p-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Editar">
+                        <LucideIcons.Edit2 className="w-5 h-5" />
+                    </button>
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Fechar">
+                        <LucideIcons.X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-6">
+                    {/* Title Row */}
+                    <div className="flex gap-4 items-start mb-6">
+                        <div className="mt-2 shrink-0">
+                            <span className={`inline-block w-4 h-4 rounded-sm ${event.priority === 'alta' ? 'bg-red-500' : event.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-normal text-white">{event.title}</h2>
+                            <p className="text-sm text-[#B3B3B3] capitalize mt-1">{formattedDate}</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6 mt-6 text-sm text-white">
+                        {/* Status */}
+                        <div className="flex gap-4 items-center">
+                            <LucideIcons.CheckCircle2 className="w-5 h-5 text-[#B3B3B3]" />
+                            <span>Status: <strong className="capitalize font-semibold">{event.status.replace('_', ' ')}</strong></span>
+                        </div>
+
+                        {/* Assignee */}
+                        <div className="flex gap-4 items-center">
+                            <LucideIcons.Users className="w-5 h-5 text-[#B3B3B3]" />
+                            {assignee ? (
+                                <div className="flex items-center gap-3">
+                                    <img src={assignee.avatarUrl} alt={assignee.name} className="w-7 h-7 rounded-full object-cover" />
+                                    <span className="font-medium">{assignee.name}</span>
+                                </div>
+                            ) : (
+                                <span className="text-[#B3B3B3]">Não atribuído</span>
+                            )}
+                        </div>
+
+                        {/* Description */}
+                        {event.description && (
+                            <div className="flex gap-4 items-start">
+                                <LucideIcons.AlignLeft className="w-5 h-5 text-[#B3B3B3] shrink-0 mt-0.5" />
+                                <div className="whitespace-pre-wrap text-[#E0E0E0] leading-relaxed">{event.description}</div>
+                            </div>
+                        )}
+                        
+                        {/* Open Google Calendar button */}
+                        <div className="flex gap-4 items-center mt-6 pt-6 border-t border-[#2E2E2E]">
+                             <button
+                                onClick={() => {
+                                    const calEvent = taskToCalendarEvent({
+                                        title: event.title,
+                                        description: event.description,
+                                        dueDate: event.dueDate!,
+                                        priority: event.priority,
+                                        estimatedTime: event.estimatedTime
+                                    });
+                                    window.open(generateGoogleCalendarUrl(calEvent), '_blank');
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#1A73E8] text-white rounded-full hover:bg-[#1557B0] font-medium transition-colors"
+                            >
+                                <LucideIcons.Calendar className="w-4 h-4" />
+                                Adicionar ao Google Agenda
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 
