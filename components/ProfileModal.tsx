@@ -11,7 +11,7 @@ interface ProfileModalProps {
     currentUserRole: Role;
 }
 
-const SECTORS: Sector[] = ['Comercial', 'Criativo', 'Tech', 'Administração', 'Financeiro'];
+const SECTORS: Sector[] = ['Comercial', 'RH', 'Tech', 'Administração', 'Financeiro'];
 
 interface FormErrors {
     name?: string;

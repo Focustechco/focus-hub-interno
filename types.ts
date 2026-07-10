@@ -8,7 +8,7 @@ export enum Role {
 
 export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations';
 
-export type Sector = 'Administração' | 'Tech' | 'Criativo' | 'Comercial' | 'Financeiro';
+export type Sector = 'Administração' | 'Tech' | 'RH' | 'Comercial' | 'Financeiro';
 
 export interface User {
     id: string;

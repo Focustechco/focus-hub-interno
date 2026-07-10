@@ -35,7 +35,7 @@ interface DashboardScreenProps {
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride, setTasks }) => {
     const toast = useToast();
-    const [selectedSector, setSelectedSector] = useState<'Comercial' | 'Criativo' | 'Tech' | 'Administração' | 'Financeiro' | 'all'>('all');
+    const [selectedSector, setSelectedSector] = useState<'Comercial' | 'RH' | 'Tech' | 'Administração' | 'Financeiro' | 'all'>('all');
 
     // Helper function to parse date string properly
     // Parse dates manually to avoid UTC interpretation that causes timezone issues
@@ -220,7 +220,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
     const barData = useMemo(() => {
         const allData = [
             { name: 'Comercial', tarefas: completedTasksBySector['Comercial'] || 0 },
-            { name: 'Criativo', tarefas: completedTasksBySector['Criativo'] || 0 },
+            { name: 'RH', tarefas: completedTasksBySector['RH'] || 0 },
             { name: 'Tech', tarefas: completedTasksBySector['Tech'] || 0 },
             { name: 'Administração', tarefas: completedTasksBySector['Administração'] || 0 },
             { name: 'Financeiro', tarefas: completedTasksBySector['Financeiro'] || 0 },
@@ -235,7 +235,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
 
     const SECTOR_COLORS: { [key: string]: string } = {
         Comercial: '#FF6B00',
-        Criativo: '#7A00FF',
+        RH: '#7A00FF',
         Tech: '#00ADEF',
         Administração: '#00C49F',
         Financeiro: '#FFBB28',
@@ -582,7 +582,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-2">
                             <h3 className="text-lg font-semibold text-white">Produtividade por Setor</h3>
                             <div className="flex items-center gap-1 bg-[#0E0E0E] p-1 rounded-md self-start sm:self-center">
-                                {(['all', 'Comercial', 'Criativo', 'Tech', 'Administração', 'Financeiro'] as const).map(sector => (
+                                {(['all', 'Comercial', 'RH', 'Tech', 'Administração', 'Financeiro'] as const).map(sector => (
                                     <button
                                         key={sector}
                                         onClick={() => setSelectedSector(sector)}

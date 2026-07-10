@@ -383,7 +383,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ isOpen, onClose, onSa
                         <div>
                             <label className="text-sm font-medium text-[#B3B3B3]">Setor</label>
                             <select value={formData.sector} onChange={e => setFormData({ ...formData, sector: e.target.value })} className="w-full mt-1 p-2 bg-[#2E2E2E] rounded-md">
-                                {['Comercial', 'Criativo', 'Tech', 'Administração', 'Financeiro'].map(s => <option key={s} value={s}>{s}</option>)}
+                                {['Comercial', 'RH', 'Tech', 'Administração', 'Financeiro'].map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>

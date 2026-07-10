@@ -152,7 +152,7 @@ const GoalsScreen: React.FC<GoalsScreenProps> = ({ goals, users, setGoals }) => 
     // Fix: Added missing 'Administração' and 'Financeiro' sectors to fix TypeScript error.
     const sectorConfig: { [key in Sector]: { icon: React.FC<any>, color: string } } = {
         Comercial: { icon: BriefcaseIcon, color: "text-[#FF6B00]" },
-        Criativo: { icon: PaletteIcon, color: "text-[#7A00FF]" },
+        RH: { icon: PaletteIcon, color: "text-[#7A00FF]" },
         Tech: { icon: CpuIcon, color: "text-[#00ADEF]" },
         Administração: { icon: ShieldIcon, color: "text-green-400" },
         Financeiro: { icon: TrendingUpIcon, color: "text-yellow-400" },
