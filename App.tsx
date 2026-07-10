@@ -33,9 +33,6 @@ import { LoadingSpinner } from './components/Loading';
 const TasksScreen = lazy(() => import('./screens/TasksScreen'));
 const AdminScreen = lazy(() => import('./screens/AdminScreen'));
 const FocusToolsScreen = lazy(() => import('./screens/FocusToolsScreen'));
-const GoalsScreen = lazy(() => import('./screens/GoalsScreen'));
-
-
 
 // Force deploy: 2024-12-24 v4 - fix infinite loop
 const App: React.FC = () => {
@@ -313,9 +310,6 @@ const App: React.FC = () => {
             case 'mural':
                 if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
                 return <MuralScreen currentUser={currentUser} posts={posts} users={users} setPosts={setPosts} setNotifications={setNotifications} notificationPreferences={notificationPreferences} />;
-            case 'goals':
-                if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
-                return <GoalsScreen goals={goals} users={users} setGoals={setGoals} />;
             case 'focus-tools':
                 if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
                 return <FocusToolsScreen currentUser={currentUser} />;

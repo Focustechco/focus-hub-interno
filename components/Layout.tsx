@@ -103,7 +103,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
         { id: 'tasks', label: 'Tarefas', icon: ClipboardIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'agenda', label: 'Agenda', icon: CalendarIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'mural', label: 'Mural da Equipe', icon: NewspaperIcon, roles: [Role.ADMIN, Role.USER] },
-        { id: 'goals', label: 'Metas', icon: TrendingUpIcon, roles: [Role.ADMIN, Role.USER] },
         { id: 'focus-tools', label: 'Ferramentas de Foco', icon: TargetIcon, roles: [Role.ADMIN, Role.USER] },
         { id: 'admin', label: 'Admin', icon: SettingsIcon, roles: [Role.ADMIN] },
     ];
