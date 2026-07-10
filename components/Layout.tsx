@@ -222,11 +222,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
             <main className={`flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden custom-scrollbar
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
-                <header className="flex items-center justify-end mb-6 relative">
-                    <div className="md:hidden absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 text-xl font-bold">
+                <header className="flex items-center justify-between mb-6">
+                    <div className="md:hidden flex items-center gap-2 text-xl font-bold">
                         <img src="/icons/icon-192.png" alt="Logo" className="w-[25px] h-[25px]" />
                         <div><span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span></div>
                     </div>
+                    
+                    <div className="hidden md:block"></div>
 
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
