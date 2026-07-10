@@ -139,6 +139,19 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
         );
     };
 
+    const BottomNavLink: React.FC<{ screen: Screen, label: string, Icon: React.ElementType }> = ({ screen, label, Icon }) => {
+        const isActive = activeScreen === screen;
+        return (
+            <button
+                onClick={() => setActiveScreen(screen)}
+                className={`flex flex-col items-center justify-center flex-1 p-2 ${isActive ? 'text-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}
+            >
+                <Icon className="w-6 h-6 mb-1" />
+                <span className="text-[10px] leading-tight truncate w-full text-center">{label}</span>
+            </button>
+        );
+    };
+
     return (
         <div className="min-h-screen bg-[#0E0E0E] text-white flex">
             <AnimatePresence>
@@ -153,10 +166,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 )}
             </AnimatePresence>
 
-            <aside className={`fixed inset-y-0 left-0 bg-[#1C1C1C] p-4 flex flex-col z-40 transform transition-all duration-300 ease-in-out
+            <aside className={`fixed inset-y-0 left-0 bg-[#1C1C1C] p-4 hidden md:flex flex-col z-40 transform transition-all duration-300 ease-in-out
                 ${isSidebarCollapsed ? 'w-20' : 'w-64'}
-                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-                md:translate-x-0
             `}>
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -207,17 +218,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                     </div>
                 </div>
             </aside>
-            <main className={`flex-1 p-4 sm:p-6 md:p-8 relative transition-all duration-300 ease-in-out
+            <main className={`flex-1 p-4 pb-24 sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
                 <header className="flex items-center justify-between md:justify-end mb-6">
-                    <button
-                        onClick={() => setIsMobileMenuOpen(true)}
-                        className="md:hidden p-2 rounded-full bg-[#1C1C1C] hover:bg-[#2E2E2E] text-white"
-                        aria-label="Abrir menu"
-                    >
-                        <MenuIcon className="w-6 h-6" />
-                    </button>
+                    <div className="md:hidden text-xl font-bold">
+                        <span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span>
+                    </div>
 
                     <div className="flex items-center gap-2">
                         <ThemeToggle />
@@ -240,6 +247,21 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 </header>
                 {children}
             </main>
+
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1C1C1C] border-t border-[#2E2E2E] flex justify-between items-end pb-safe px-1 z-50">
+                <div className="flex w-full justify-between overflow-x-auto custom-scrollbar no-scrollbar py-2">
+                    {navItems.map(item => (
+                        <BottomNavLink key={item.id} screen={item.id as Screen} label={item.label} Icon={item.icon} />
+                    ))}
+                    <button
+                        onClick={() => openProfileModalFor(currentUser)}
+                        className="flex flex-col items-center justify-center flex-1 p-2 text-[#B3B3B3] hover:text-white"
+                    >
+                        <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-6 h-6 rounded-full mb-1" />
+                        <span className="text-[10px] leading-tight truncate w-full text-center">Perfil</span>
+                    </button>
+                </div>
+            </nav>
             {profileModalTargetUser && (
                 <ProfileModal
                     isOpen={isProfileModalOpen}
