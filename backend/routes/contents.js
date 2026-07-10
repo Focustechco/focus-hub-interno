@@ -32,7 +32,7 @@ const upload = multer({
 
 // Middleware to check if user is admin
 const isAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && req.user.role && req.user.role.toUpperCase() === 'ADMIN') {
         next();
     } else {
         res.status(403).json({ message: 'Acesso negado. Apenas administradores podem realizar esta ação.' });
