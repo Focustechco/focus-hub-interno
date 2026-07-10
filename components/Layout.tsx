@@ -4,7 +4,6 @@ import { User, Role, Notification, Screen, NotificationPreferences, Task, Notifi
 import { HomeIcon, CheckSquareIcon, ClipboardIcon, NewspaperIcon, TargetIcon, SettingsIcon, LogOutIcon, ShieldIcon, UserIcon, TrendingUpIcon, SearchIcon, XIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from './icons';
 import NotificationBell from './NotificationBell';
 import ProfileModal from './ProfileModal';
-import FoxIAAssistant from './FoxIAAssistant';
 import OfflineIndicator from './OfflineIndicator';
 import { ThemeToggle } from './ThemeToggle';
 import { useLocalStorage } from '../hooks/useLocalStorage';
@@ -281,7 +280,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 setActiveScreen={setActiveScreen}
                 onSelectUser={handleSelectUserFromSearch}
             />
-            <FoxIAAssistant />
             <OfflineIndicator isOnline={isOnline} />
         </div>
     );
