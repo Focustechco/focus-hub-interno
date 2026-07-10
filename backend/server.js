@@ -12,6 +12,11 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 
+// Auto-migrate: Add status column to users table if it doesn't exist
+pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'").catch(e => {
+    // Ignore error if column already exists
+});
+
 console.log('[Server] Environment keys:', Object.keys(process.env).sort());
 console.log('[Server] GOOGLE_CLIENT_ID present:', !!process.env.GOOGLE_CLIENT_ID);
 if (process.env.GOOGLE_CLIENT_ID) {

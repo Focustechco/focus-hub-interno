@@ -5,7 +5,7 @@ const { pool } = require('../config/db');
 // GET /api/users - Get all users
 router.get('/', async (req, res) => {
     try {
-        const result = await pool.query('SELECT id, name, email, role, avatar_url, sector, job_title, bio, join_date FROM users ORDER BY name ASC');
+        const result = await pool.query('SELECT id, name, email, role, avatar_url, sector, job_title, bio, join_date, status FROM users ORDER BY name ASC');
 
         const users = result.rows.map(row => ({
             id: row.id,
@@ -16,7 +16,8 @@ router.get('/', async (req, res) => {
             sector: row.sector,
             jobTitle: row.job_title,
             bio: row.bio,
-            joinDate: row.join_date
+            joinDate: row.join_date,
+            status: row.status || 'active'
         }));
 
         res.json(users);
@@ -29,7 +30,7 @@ router.get('/', async (req, res) => {
 // PUT /api/users/:id - Update a user (including avatar)
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, role, sector, jobTitle, bio, avatarUrl, whatsapp, whatsappNotifications, whatsappDndStart, whatsappDndEnd } = req.body;
+    const { name, role, sector, jobTitle, bio, avatarUrl, whatsapp, whatsappNotifications, whatsappDndStart, whatsappDndEnd, status } = req.body;
 
     console.log('[PUT /users/:id] Updating user:', id);
     console.log('[PUT /users/:id] Has avatarUrl:', !!avatarUrl);
@@ -38,13 +39,13 @@ router.put('/:id', async (req, res) => {
         const result = await pool.query(
             `UPDATE users 
              SET name = $1, role = $2, sector = $3, job_title = $4, bio = $5, avatar_url = $6, 
-                 whatsapp = $7, whatsapp_notifications = $8, whatsapp_dnd_start = $9, whatsapp_dnd_end = $10
-             WHERE id = $11
+                 whatsapp = $7, whatsapp_notifications = $8, whatsapp_dnd_start = $9, whatsapp_dnd_end = $10, status = $11
+             WHERE id = $12
              RETURNING id, name, email, role, avatar_url, sector, job_title, bio, join_date, 
-                       whatsapp, whatsapp_notifications, whatsapp_dnd_start, whatsapp_dnd_end`,
+                       whatsapp, whatsapp_notifications, whatsapp_dnd_start, whatsapp_dnd_end, status`,
             [name, role, sector, jobTitle, bio, avatarUrl, whatsapp,
                 whatsappNotifications ? JSON.stringify(whatsappNotifications) : null,
-                whatsappDndStart || null, whatsappDndEnd || null, id]
+                whatsappDndStart || null, whatsappDndEnd || null, status || 'active', id]
         );
 
         if (result.rows.length === 0) {
@@ -65,7 +66,8 @@ router.put('/:id', async (req, res) => {
             whatsapp: row.whatsapp,
             whatsappNotifications: row.whatsapp_notifications,
             whatsappDndStart: row.whatsapp_dnd_start,
-            whatsappDndEnd: row.whatsapp_dnd_end
+            whatsappDndEnd: row.whatsapp_dnd_end,
+            status: row.status || 'active'
         };
 
         console.log('[PUT /users/:id] User updated successfully:', id);
