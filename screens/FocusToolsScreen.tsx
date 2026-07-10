@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import api from '../services/api';
-import { LinkItem, ContentItem, ContentType, ContentCategory, AccessGroup, AccessLink, User } from '../types';
+import { LinkItem, ContentItem, ContentType, ContentCategory, AccessGroup, AccessLink, User, Role } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CameraIcon, CodeIcon, EditIcon, ExternalLinkIcon, FileTextIcon, GlobeIcon, NewspaperIcon,
