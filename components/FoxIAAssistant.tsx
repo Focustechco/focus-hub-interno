@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI } from '@google/genai';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useTheme } from '../contexts/ThemeContext';
 import { ChatMessage } from '../types';
-import { SunIcon, PaperclipIcon, SendIcon, XIcon } from './icons';
+import { SunIcon, MoonIcon, PaperclipIcon, SendIcon, XIcon } from './icons';
 
 const FoxIAAssistant: React.FC = () => {
+    const { theme } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useLocalStorage<ChatMessage[]>('fox-ia-chat-history', []);
     const [input, setInput] = useState('');
@@ -122,7 +124,7 @@ const FoxIAAssistant: React.FC = () => {
                 className="fixed bottom-6 right-6 w-16 h-16 bg-[#1C1C1C] border-2 border-[#FF6B00] rounded-full flex items-center justify-center shadow-lg z-50"
                 aria-label="Abrir assistente Fox IA"
             >
-                <SunIcon className="w-7 h-7 text-white" />
+                {theme === 'dark' ? <MoonIcon className="w-7 h-7 text-white" /> : <SunIcon className="w-7 h-7 text-white" />}
             </motion.button>
             
             <AnimatePresence>
@@ -136,7 +138,7 @@ const FoxIAAssistant: React.FC = () => {
                     >
                         <header className="flex items-center justify-between p-4 border-b border-[#2E2E2E] flex-shrink-0">
                             <div className="flex items-center gap-3">
-                                <SunIcon className="w-6 h-6 text-[#FF6B00]" />
+                                {theme === 'dark' ? <MoonIcon className="w-6 h-6 text-[#FF6B00]" /> : <SunIcon className="w-6 h-6 text-[#FF6B00]" />}
                                 <h3 className="font-bold text-lg">Fox IA Assistente</h3>
                             </div>
                             <button onClick={() => setIsOpen(false)} className="p-1 rounded-full text-gray-400 hover:bg-[#2E2E2E] hover:text-white">
@@ -148,7 +150,7 @@ const FoxIAAssistant: React.FC = () => {
                             <div className="space-y-4">
                                 {messages.map(msg => (
                                     <div key={msg.id} className={`flex items-start gap-3 ${msg.sender === 'user' ? 'justify-end' : ''}`}>
-                                        {msg.sender === 'ia' && <div className="w-8 h-8 rounded-full bg-[#FF6B00] flex items-center justify-center flex-shrink-0"><SunIcon className="w-5 h-5 text-white" /></div>}
+                                        {msg.sender === 'ia' && <div className="w-8 h-8 rounded-full bg-[#FF6B00] flex items-center justify-center flex-shrink-0">{theme === 'dark' ? <MoonIcon className="w-5 h-5 text-white" /> : <SunIcon className="w-5 h-5 text-white" />}</div>}
                                         <div className={`max-w-[80%] p-3 rounded-xl ${msg.sender === 'user' ? 'bg-[#FF6B00] text-white rounded-br-none' : 'bg-[#1C1C1C] text-gray-200 rounded-bl-none'}`}>
                                             <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                                         </div>
@@ -156,7 +158,7 @@ const FoxIAAssistant: React.FC = () => {
                                 ))}
                                 {isLoading && (
                                      <div className="flex items-start gap-3">
-                                        <div className="w-8 h-8 rounded-full bg-[#FF6B00] flex items-center justify-center flex-shrink-0"><SunIcon className="w-5 h-5 text-white" /></div>
+                                        <div className="w-8 h-8 rounded-full bg-[#FF6B00] flex items-center justify-center flex-shrink-0">{theme === 'dark' ? <MoonIcon className="w-5 h-5 text-white" /> : <SunIcon className="w-5 h-5 text-white" />}</div>
                                         <div className="max-w-[80%] p-3 rounded-xl bg-[#1C1C1C] text-gray-200 rounded-bl-none flex items-center">
                                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse mr-1.5"></div>
                                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse mr-1.5" style={{animationDelay: '0.2s'}}></div>
