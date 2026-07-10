@@ -176,8 +176,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                     {isSidebarCollapsed ? <ChevronRightIcon className="w-4 h-4" /> : <ChevronLeftIcon className="w-4 h-4" />}
                 </button>
 
-                <div className={`text-2xl font-bold text-center mb-8 py-2 transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}>
-                    <span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span>
+                <div className={`flex items-center justify-center gap-2 text-2xl font-bold text-center mb-8 py-2 transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}>
+                    <img src="/icons/icon-192.png" alt="Logo" className="w-8 h-8" />
+                    <div><span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span></div>
                 </div>
 
                 <nav className="flex-1 space-y-2">
@@ -222,8 +223,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
                 <header className="flex items-center justify-between md:justify-end mb-6">
-                    <div className="md:hidden text-xl font-bold">
-                        <span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span>
+                    <div className="md:hidden flex items-center gap-2 text-xl font-bold">
+                        <img src="/icons/icon-192.png" alt="Logo" className="w-7 h-7" />
+                        <div><span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span></div>
                     </div>
 
                     <div className="flex items-center gap-2">
