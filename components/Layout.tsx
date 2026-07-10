@@ -166,8 +166,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 )}
             </AnimatePresence>
 
-            <aside className={`fixed inset-y-0 left-0 bg-[#1C1C1C] p-4 hidden md:flex flex-col z-40 transform transition-all duration-300 ease-in-out
+            <aside className={`fixed inset-y-0 left-0 bg-[#1C1C1C] p-4 flex flex-col z-40 transform transition-all duration-300 ease-in-out
                 ${isSidebarCollapsed ? 'w-20' : 'w-64'}
+                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0
             `}>
                 <button
                     onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -218,7 +219,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                     </div>
                 </div>
             </aside>
-            <main className={`flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out overflow-y-auto custom-scrollbar
+            <main className={`flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden custom-scrollbar
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
                 <header className="flex items-center justify-between md:justify-end mb-6">
@@ -248,17 +249,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 {children}
             </main>
 
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1C1C1C] border-t border-[#2E2E2E] flex justify-between items-end pb-[env(safe-area-inset-bottom)] px-1 z-50">
-                <div className="flex w-full justify-between overflow-x-auto custom-scrollbar no-scrollbar py-2">
-                    {navItems.map(item => (
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1C1C1C] border-t border-[#2E2E2E] pb-[env(safe-area-inset-bottom)] z-50">
+                <div className="grid grid-cols-5 w-full py-2 px-1">
+                    {navItems.slice(0, 4).map(item => (
                         <BottomNavLink key={item.id} screen={item.id as Screen} label={item.label} Icon={item.icon} />
                     ))}
                     <button
-                        onClick={() => openProfileModalFor(currentUser)}
-                        className="flex flex-col items-center justify-center flex-1 p-2 text-[#B3B3B3] hover:text-white"
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="flex flex-col items-center justify-center p-2 text-[#B3B3B3] hover:text-white"
                     >
-                        <img src={currentUser.avatarUrl} alt={currentUser.name} className="w-6 h-6 rounded-full mb-1" />
-                        <span className="text-[10px] leading-tight truncate w-full text-center">Perfil</span>
+                        <MenuIcon className="w-6 h-6 mb-1" />
+                        <span className="text-[10px] leading-tight truncate w-full text-center">Menu</span>
                     </button>
                 </div>
             </nav>
