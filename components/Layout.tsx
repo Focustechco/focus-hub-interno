@@ -153,7 +153,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
     };
 
     return (
-        <div className="min-h-screen bg-[#0E0E0E] text-white flex">
+        <div className="h-[100dvh] w-full bg-[#0E0E0E] text-white flex overflow-hidden">
             <AnimatePresence>
                 {isMobileMenuOpen && (
                     <motion.div
@@ -218,7 +218,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                     </div>
                 </div>
             </aside>
-            <main className={`flex-1 p-4 pb-24 sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out
+            <main className={`flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:p-6 md:p-8 md:pb-8 relative transition-all duration-300 ease-in-out overflow-y-auto custom-scrollbar
                 md:${isSidebarCollapsed ? 'ml-20' : 'ml-64'}
             `}>
                 <header className="flex items-center justify-between md:justify-end mb-6">
@@ -248,7 +248,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                 {children}
             </main>
 
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1C1C1C] border-t border-[#2E2E2E] flex justify-between items-end pb-safe px-1 z-50">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-[#1C1C1C] border-t border-[#2E2E2E] flex justify-between items-end pb-[env(safe-area-inset-bottom)] px-1 z-50">
                 <div className="flex w-full justify-between overflow-x-auto custom-scrollbar no-scrollbar py-2">
                     {navItems.map(item => (
                         <BottomNavLink key={item.id} screen={item.id as Screen} label={item.label} Icon={item.icon} />

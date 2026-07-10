@@ -121,7 +121,7 @@ const FoxIAAssistant: React.FC = () => {
                 onClick={() => setIsOpen(true)}
                 whileHover={{ scale: 1.1, boxShadow: "0 0 15px #ff6600" }}
                 whileTap={{ scale: 0.9 }}
-                className="fixed bottom-6 right-6 w-16 h-16 bg-[#1C1C1C] border-2 border-[#FF6B00] rounded-full flex items-center justify-center shadow-lg z-50"
+                className="fixed md:bottom-6 bottom-24 right-6 w-16 h-16 bg-[#1C1C1C] border-2 border-[#FF6B00] rounded-full flex items-center justify-center shadow-lg z-50"
                 aria-label="Abrir assistente Fox IA"
             >
                 {theme === 'dark' ? <MoonIcon className="w-7 h-7 text-white" /> : <SunIcon className="w-7 h-7 text-white" />}
