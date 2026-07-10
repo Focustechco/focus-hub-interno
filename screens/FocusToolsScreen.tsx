@@ -85,6 +85,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const [searchContentTerm, setSearchContentTerm] = useState('');
     const [isContentModalOpen, setIsContentModalOpen] = useState(false);
     const [editingContent, setEditingContent] = useState<ContentItem | null>(null);
+    const [previewContent, setPreviewContent] = useState<ContentItem | null>(null);
     const [contentPage, setContentPage] = useState(1);
 
     // State for Acessos Tab
@@ -455,6 +456,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                     isAdmin={currentUser?.role === Role.ADMIN}
                     onOpenModal={handleOpenContentModal}
                     onDelete={handleDeleteContent}
+                    onPreview={setPreviewContent}
                 />}
                 {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} onDeleteGroup={handleDeleteAccessGroup} onDeleteLink={handleDeleteAccessLink} />}
                 {activeTab === 'integrations' && <IntegrationsTabContent />}
@@ -462,6 +464,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
             {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} />}
             {isAccessModalOpen && accessModalContext && <AccessModal isOpen={isAccessModalOpen} onClose={handleCloseAccessModal} onSave={handleSaveAccessLink} context={accessModalContext} />}
             {isContentModalOpen && <ContentModal isOpen={isContentModalOpen} onClose={handleCloseContentModal} onSave={handleSaveContent} editingContent={editingContent} />}
+            {previewContent && <PreviewModal content={previewContent} onClose={() => setPreviewContent(null)} />}
         </div>
     );
 };
@@ -492,7 +495,7 @@ const LinksTabContent: React.FC<any> = ({ links, onToggleFavorite, onOpenModal, 
     </div>
 );
 
-const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelectedCategory, searchTerm, setSearchTerm, page, setPage, categoryConfig, isAdmin, onOpenModal, onDelete }) => {
+const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelectedCategory, searchTerm, setSearchTerm, page, setPage, categoryConfig, isAdmin, onOpenModal, onDelete, onPreview }) => {
     const ITEMS_PER_PAGE = 12;
     const totalPages = Math.ceil(content.length / ITEMS_PER_PAGE);
     const paginatedContent = content.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
@@ -525,7 +528,7 @@ const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelect
             {paginatedContent.length > 0 ? (
                 <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                        {paginatedContent.map((item: ContentItem) => <ContentCard key={item.id} item={item} isAdmin={isAdmin} onOpenModal={onOpenModal} onDelete={onDelete} />)}
+                        {paginatedContent.map((item: ContentItem) => <ContentCard key={item.id} item={item} isAdmin={isAdmin} onOpenModal={onOpenModal} onDelete={onDelete} onPreview={onPreview} />)}
                     </div>
                     {totalPages > 1 && (
                         <div className="flex justify-center mt-8 gap-2">
@@ -1124,7 +1127,7 @@ const LinkCard: React.FC<{ link: LinkItem, onToggleFavorite: (id: string) => voi
         </div>
     );
 };
-const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: (item: ContentItem) => void; onDelete: (id: string) => void }> = ({ item, isAdmin, onOpenModal, onDelete }) => {
+const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: (item: ContentItem) => void; onDelete: (id: string) => void; onPreview: (item: ContentItem) => void }> = ({ item, isAdmin, onOpenModal, onDelete, onPreview }) => {
     const IconName = item.icon as keyof typeof LucideIcons;
     const Icon = (LucideIcons[IconName] || LucideIcons.Book) as React.FC<any>;
     const color = item.color || '#FF6B00';
@@ -1171,9 +1174,16 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
                 <p className="text-sm font-semibold mb-4" style={{ color }}>{item.category}</p>
             </div>
             
-            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
+            <button onClick={(e) => {
+                if (item.file_url.toLowerCase().endsWith('.pdf') || item.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i)) {
+                    e.preventDefault();
+                    onPreview(item);
+                } else {
+                    window.open(item.file_url, item.category === 'Curso' ? '_self' : '_blank');
+                }
+            }} className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
                 Acessar <ExternalLinkIcon className="w-4 h-4 ml-2" />
-            </a>
+            </button>
         </div>
     );
 };
@@ -1454,6 +1464,40 @@ const ContentModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (fo
                         <span className="relative z-10">{isUploading ? 'Salvando...' : 'Salvar Conteúdo'}</span>
                     </button>
                 </div>
+            </div>
+        </div>
+    );
+};
+
+const PreviewModal: React.FC<{ content: ContentItem; onClose: () => void }> = ({ content, onClose }) => {
+    const isImage = content.file_url.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+    const isPDF = content.file_url.toLowerCase().endsWith('.pdf');
+
+    return (
+        <div className="fixed inset-0 bg-black/90 flex flex-col z-50">
+            <div className="flex justify-between items-center p-4 bg-[#1C1C1C] border-b border-[#2E2E2E]">
+                <h3 className="text-xl font-bold text-white truncate max-w-[80%]">{content.title}</h3>
+                <div className="flex items-center gap-4">
+                    <a href={content.file_url} target="_blank" rel="noopener noreferrer" className="text-[#B3B3B3] hover:text-white flex items-center gap-2" title="Abrir em nova aba / Baixar">
+                        <ExternalLinkIcon className="w-5 h-5" />
+                        <span className="hidden sm:inline">Baixar / Abrir</span>
+                    </a>
+                    <button onClick={onClose} className="text-[#B3B3B3] hover:text-white p-2 rounded-full hover:bg-[#2E2E2E] transition-colors">
+                        <LucideIcons.X className="w-8 h-8" />
+                    </button>
+                </div>
+            </div>
+            <div className="flex-1 w-full flex items-center justify-center p-2 sm:p-4 overflow-hidden relative">
+                {isImage && (
+                    <img src={content.file_url} alt={content.title} className="max-w-full max-h-full object-contain" />
+                )}
+                {isPDF && (
+                    <iframe 
+                        src={`${content.file_url}#toolbar=0&navpanes=0&scrollbar=0`} 
+                        className="w-full h-full border-none rounded bg-white"
+                        title={content.title}
+                    />
+                )}
             </div>
         </div>
     );
