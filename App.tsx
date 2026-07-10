@@ -307,7 +307,9 @@ const App: React.FC = () => {
             case 'check-in':
                 return <CheckInScreen currentUser={currentUser} checkIns={checkIns} setCheckIns={setCheckIns} users={users} />;
             case 'tasks':
-                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} />;
+                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} mode="tasks" />;
+            case 'agenda':
+                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} mode="agenda" />;
             case 'mural':
                 if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
                 return <MuralScreen currentUser={currentUser} posts={posts} users={users} setPosts={setPosts} setNotifications={setNotifications} notificationPreferences={notificationPreferences} />;

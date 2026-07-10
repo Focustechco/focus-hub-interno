@@ -27,6 +27,7 @@ interface TasksScreenProps {
     setTaskViewOverride: (view: 'board' | 'checklist' | 'calendar' | null) => void;
     isOnline: boolean;
     setOfflineActionQueue: React.Dispatch<React.SetStateAction<OfflineAction[]>>;
+    mode?: 'tasks' | 'agenda';
 }
 
 const statusConfig: { [key in TaskStatus]: { label: string; color: string; border: string; } } = {
@@ -51,9 +52,9 @@ const formatEstimatedTime = (minutes: number) => {
     return parts.join(' ');
 };
 
-const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, goals, setTasks, setNotifications, notificationPreferences, dailyChecklistItems, setDailyChecklistItems, taskViewOverride, setTaskViewOverride, isOnline, setOfflineActionQueue }) => {
+const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, goals, setTasks, setNotifications, notificationPreferences, dailyChecklistItems, setDailyChecklistItems, taskViewOverride, setTaskViewOverride, isOnline, setOfflineActionQueue, mode = 'tasks' }) => {
     const toast = useToast();
-    const [view, setView] = useState<'board' | 'checklist' | 'calendar'>('board');
+    const [view, setView] = useState<'board' | 'checklist' | 'calendar'>(mode === 'agenda' ? 'calendar' : 'board');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -62,6 +63,10 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
 
     const [newChecklistItem, setNewChecklistItem] = useState('');
     const [selectedUserIdForChecklist, setSelectedUserIdForChecklist] = useState<string>(currentUser.id);
+
+    useEffect(() => {
+        setView(mode === 'agenda' ? 'calendar' : 'board');
+    }, [mode]);
 
     useEffect(() => {
         if (taskViewOverride) {
@@ -353,20 +358,19 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
             <header className="mb-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold">Gerenciador de Tarefas</h1>
-                        <p className="text-[#B3B3B3]">Organize, delegue e acompanhe o progresso da sua equipe.</p>
+                        <h1 className="text-3xl font-bold">{mode === 'agenda' ? 'Agenda' : 'Gerenciador de Tarefas'}</h1>
+                        <p className="text-[#B3B3B3]">{mode === 'agenda' ? 'Visualize suas tarefas no calendário.' : 'Organize, delegue e acompanhe o progresso da sua equipe.'}</p>
                     </div>
-                    <div className="flex items-center gap-2 bg-[#1C1C1C] p-1 rounded-lg">
-                        <button onClick={() => setView('checklist')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'checklist' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
-                            <CheckSquareIcon className="w-5 h-5" /> Checklist
-                        </button>
-                        <button onClick={() => setView('board')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'board' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
-                            <ClipboardIcon className="w-5 h-5" /> Quadro
-                        </button>
-                        <button onClick={() => setView('calendar')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'calendar' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
-                            <CalendarIcon className="w-5 h-5" /> Calendário
-                        </button>
-                    </div>
+                    {mode === 'tasks' && (
+                        <div className="flex items-center gap-2 bg-[#1C1C1C] p-1 rounded-lg">
+                            <button onClick={() => setView('checklist')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'checklist' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
+                                <CheckSquareIcon className="w-5 h-5" /> Checklist
+                            </button>
+                            <button onClick={() => setView('board')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'board' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
+                                <ClipboardIcon className="w-5 h-5" /> Quadro
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {view !== 'checklist' && (
