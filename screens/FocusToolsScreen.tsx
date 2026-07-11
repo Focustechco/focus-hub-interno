@@ -1174,7 +1174,7 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
                 <p className="text-sm font-semibold mb-4" style={{ color }}>{item.category}</p>
             </div>
             
-            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, color: '#FFFFFF', opacity: 0.9 }}>
+            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white force-text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
                 Acessar <ExternalLinkIcon className="w-4 h-4 ml-2" />
             </a>
         </div>

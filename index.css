@@ -79,7 +79,9 @@ html.light .bg-red-600,
 html.light .bg-green-500,
 html.light .bg-blue-500,
 html.light .bg-\[\#1A73E8\],
-html.light .bg-\[\#1A73E8\] * {
+html.light .bg-\[\#1A73E8\] *,
+html.light .force-text-white,
+html.light .force-text-white * {
     color: #FFFFFF !important;
 }
 
