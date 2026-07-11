@@ -116,7 +116,7 @@ app.use(helmet());
 const rateLimit = require('express-rate-limit');
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per IP per window
+    max: 1000, // 1000 requests per IP per window
     message: { message: 'Muitas requisições. Tente novamente em 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
