@@ -516,16 +516,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                             <p className="text-3xl font-bold">{tasksCompletedToday}</p>
                             <p className="text-sm text-[#B3B3B3] mt-1">Tarefas Concluídas</p>
                         </div>
-                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center min-h-[140px]">
-                            <FileTextIcon className="w-8 h-8 text-[#7A00FF] mb-2" />
+                        <div className="bg-[#0E0E0E] p-4 rounded-lg flex flex-col items-center justify-center min-h-[140px] w-full overflow-hidden">
+                            <FileTextIcon className="w-8 h-8 text-[#7A00FF] mb-2 shrink-0" />
                             {lastReport && reportAuthor ? (
-                                <>
-                                    <p className="text-lg font-bold truncate" title={reportAuthor.name}>{reportAuthor.name}</p>
-                                    <a href="#" className="text-sm text-[#00ADEF] hover:underline" onClick={(e) => e.preventDefault()}>Último Relatório</a>
-                                </>
+                                <div className="w-full flex flex-col items-center min-w-0">
+                                    <p className="text-lg font-bold truncate w-full text-center px-1" title={reportAuthor.name}>{reportAuthor.name}</p>
+                                    <a href="#" className="text-sm text-[#00ADEF] hover:underline mt-1" onClick={(e) => e.preventDefault()}>Último Relatório</a>
+                                </div>
                             ) : (
-                                <div className='flex flex-col items-center justify-center h-full'>
-                                    <p className="text-sm text-[#B3B3B3]">Nenhum relatório</p>
+                                <div className='flex flex-col items-center justify-center h-full w-full'>
+                                    <p className="text-sm text-[#B3B3B3] text-center">Nenhum relatório</p>
                                 </div>
                             )}
                         </div>
