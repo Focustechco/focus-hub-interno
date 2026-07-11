@@ -25,6 +25,7 @@ import {
   Check,
   Menu,
   FilePlus2,
+  Cloud,
 } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../components/Toast';
@@ -154,16 +155,7 @@ const scaleFade = {
 
 /* ---------- Google Drive Logo SVG ---------- */
 function GoogleDriveLogo({ size = 64 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 87.3 78" xmlns="http://www.w3.org/2000/svg">
-      <path d="M6.6 66.85L3.3 72.4c-.7 1.2-.7 2.6 0 3.8.7 1.2 1.9 1.8 3.3 1.8h59.1c1.4 0 2.6-.6 3.3-1.8l3.3-5.7H6.6z" fill="#0066DA" />
-      <path d="M43.65 25L29.15 0h-14.5c-1.4 0-2.6.6-3.3 1.8L.15 21.5c-.7 1.2-.7 2.6 0 3.8L27.9 72.4h13.2L43.65 25z" fill="#00AC47" />
-      <path d="M73.55 0H58.65L43.65 25l13.2 47.4h16.5l11.2-19.4c.7-1.2.7-2.6 0-3.8L73.55 0z" fill="#EA4335" />
-      <path d="M43.65 25L29.15 0h14.5L58.65 25 43.65 25z" fill="#00832D" />
-      <path d="M27.9 72.4l15.75-47.4L56.85 72.4H27.9z" fill="#2684FC" />
-      <path d="M43.65 25l13.2 47.4h16.5L43.65 25z" fill="#FFBA00" />
-    </svg>
-  );
+  return <Cloud size={size} color="#FF6B00" fill="#FF6B00" />;
 }
 
 /* ---------- Skeleton loader ---------- */
@@ -233,9 +225,6 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   const [folderPickerSector, setFolderPickerSector] = useState<string | null>(null);
   const [folderPickerLoading, setFolderPickerLoading] = useState(false);
 
-  // Sidebar collapse on small screens
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ── Check connection status ────────────────────────────────────────────────
@@ -246,7 +235,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
 
   async function checkConnection() {
     try {
-      const res = await api.get('/api/google/status');
+      const res = await api.get('/google/status');
       setConnected(res.data.connected);
       setConfigured(res.data.configured);
     } catch {
@@ -257,7 +246,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   async function handleConnect() {
     setConnectLoading(true);
     try {
-      const res = await api.get('/api/google/auth-url');
+      const res = await api.get('/google/auth-url');
       window.open(res.data.authUrl, '_blank', 'noopener,noreferrer');
       showToast('Conclua a autenticação na janela aberta', 'info');
     } catch {
@@ -275,7 +264,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
       else setLoading(true);
 
       try {
-        const res = await api.get('/api/drive/files', {
+        const res = await api.get('/drive/files', {
           params: { folderId, pageToken: pageToken || '', pageSize: 30 },
         });
         if (pageToken) {
@@ -300,12 +289,12 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
       try {
         const endpoint =
           tab === 'shared'
-            ? '/api/drive/shared'
+            ? '/drive/shared'
             : tab === 'recent'
-            ? '/api/drive/recent'
+            ? '/drive/recent'
             : tab === 'starred'
-            ? '/api/drive/starred'
-            : '/api/drive/trash';
+            ? '/drive/starred'
+            : '/drive/trash';
         const res = await api.get(endpoint);
         setFiles(res.data.files);
         setNextPageToken(null);
@@ -323,7 +312,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
     if (connected) {
       fetchFiles('root');
       api
-        .get('/api/drive/storage')
+        .get('/drive/storage')
         .then((res) => setStorage(res.data))
         .catch(() => {});
     }
@@ -361,7 +350,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
     setIsSearching(true);
     setLoading(true);
     api
-      .get('/api/drive/search', { params: { q: debouncedSearch } })
+      .get('/drive/search', { params: { q: debouncedSearch } })
       .then((res) => {
         setFiles(res.data.files);
         setNextPageToken(null);
@@ -399,7 +388,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   async function loadPermissions() {
     setPermissionsLoading(true);
     try {
-      const res = await api.get('/api/drive/permissions');
+      const res = await api.get('/drive/permissions');
       setPermissions(res.data);
     } catch {
       showToast('Erro ao carregar permissões', 'error');
@@ -410,7 +399,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
 
   async function deletePermission(id: number) {
     try {
-      await api.delete(`/api/drive/permissions/${id}`);
+      await api.delete(`/drive/permissions/${id}`);
       setPermissions((prev) => prev.filter((p) => p.id !== id));
       showToast('Permissão removida', 'success');
     } catch {
@@ -422,7 +411,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
     setFolderPickerSector(sector);
     setFolderPickerLoading(true);
     try {
-      const res = await api.get('/api/drive/root-folders');
+      const res = await api.get('/drive/root-folders');
       setRootFolders(res.data.files);
     } catch {
       showToast('Erro ao carregar pastas', 'error');
@@ -434,7 +423,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   async function assignFolder(folder: DriveFile) {
     if (!folderPickerSector) return;
     try {
-      await api.post('/api/drive/permissions', {
+      await api.post('/drive/permissions', {
         folderId: folder.id,
         folderName: folder.name,
         sector: folderPickerSector,
@@ -458,30 +447,40 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
     const { mimeType, webViewLink, thumbnailLink } = file;
 
     // Google Docs / Sheets / Slides — embeddable via webViewLink
+    // For Docs, Sheets, Slides, and PDFs, opening in an iframe usually fails for private files
+    // due to modern browsers blocking third-party cookies. We show a nice button to open in Drive instead.
     if (
       mimeType === MIME_TYPES.document ||
       mimeType === MIME_TYPES.spreadsheet ||
-      mimeType === MIME_TYPES.presentation
+      mimeType === MIME_TYPES.presentation ||
+      mimeType === MIME_TYPES.pdf
     ) {
-      const embedUrl = webViewLink?.replace(/\/edit.*/, '/preview') || webViewLink;
       return (
-        <iframe
-          src={embedUrl}
-          className="w-full h-full rounded-lg border-0"
-          title={file.name}
-          allow="autoplay"
-        />
-      );
-    }
-
-    // PDF
-    if (mimeType === MIME_TYPES.pdf && webViewLink) {
-      return (
-        <iframe
-          src={`https://docs.google.com/viewer?url=${encodeURIComponent(webViewLink)}&embedded=true`}
-          className="w-full h-full rounded-lg border-0"
-          title={file.name}
-        />
+        <div className="flex flex-col items-center justify-center h-full gap-6 p-6">
+          <div className="p-6 bg-[#2E2E2E]/40 rounded-3xl shadow-inner">
+            {(() => {
+              const { Icon, color } = getFileIcon(mimeType);
+              return <Icon size={72} style={{ color }} />;
+            })()}
+          </div>
+          <div className="text-center space-y-2 max-w-sm">
+            <h4 className="text-white font-medium text-lg">Visualização Protegida</h4>
+            <p className="text-[#B3B3B3] text-sm leading-relaxed">
+              Por questões de segurança e privacidade do Google, este documento deve ser aberto diretamente no Drive.
+            </p>
+          </div>
+          {webViewLink && (
+            <a
+              href={webViewLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 flex items-center gap-2 px-6 py-3.5 bg-[#FF6B00] hover:bg-[#E25E00] text-white rounded-xl font-semibold transition-all shadow-lg shadow-[#FF6B00]/20 hover:shadow-[#FF6B00]/40 hover:-translate-y-0.5"
+            >
+              <ExternalLink size={18} />
+              Abrir no Google Drive
+            </a>
+          )}
+        </div>
       );
     }
 
@@ -602,47 +601,28 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   ];
 
   return (
-    <div className="flex h-full bg-[#0E0E0E] overflow-hidden relative">
-      {/* ── Mobile sidebar toggle ── */}
-      <button
-        onClick={() => setSidebarOpen((v) => !v)}
-        className="lg:hidden fixed top-3 left-3 z-50 p-2 bg-[#1C1C1C] rounded-lg border border-[#2E2E2E] text-white"
-      >
-        <Menu size={20} />
-      </button>
+    <div className="flex flex-col h-full bg-[#0E0E0E] overflow-hidden relative">
+      {/* ── Top Navigation Bar ── */}
+      <header className="flex-none bg-[#1C1C1C] border-b border-[#2E2E2E] flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 shrink-0">
+            <GoogleDriveLogo size={24} />
+            <span className="text-white font-semibold text-sm hidden sm:inline">Google Drive</span>
+          </div>
 
-      {/* ── Sidebar ── */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.aside
-            initial={{ x: -260, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -260, opacity: 0 }}
-            transition={{ type: 'spring', damping: 26, stiffness: 280 }}
-            className="w-[240px] min-w-[240px] bg-[#1C1C1C] border-r border-[#2E2E2E] flex flex-col fixed lg:relative z-40 h-full"
-          >
-            {/* Logo / Header */}
-            <div className="p-5 flex items-center gap-3 border-b border-[#2E2E2E]">
-              <GoogleDriveLogo size={24} />
-              <span className="text-white font-semibold text-sm">Google Drive</span>
-            </div>
-
-            {/* Navigation */}
-            <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+            <nav className="flex items-center gap-1 overflow-x-auto hide-scrollbar">
               {sidebarItems
                 .filter((item) => !item.adminOnly || isAdmin)
                 .map((item) => {
                   const active = activeTab === item.key && !showPermissions;
                   return (
-                    <motion.button
+                    <button
                       key={item.key}
-                      whileHover={{ x: 2 }}
                       onClick={() => {
                         setActiveTab(item.key);
                         setShowPermissions(false);
-                        setSidebarOpen(window.innerWidth >= 1024);
                       }}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 whitespace-nowrap
                         ${
                           active
                             ? 'bg-[#FF6B00]/10 text-[#FF6B00]'
@@ -650,21 +630,19 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
                         }`}
                     >
                       {item.icon}
-                      {item.label}
-                    </motion.button>
+                      <span className="hidden md:inline">{item.label}</span>
+                    </button>
                   );
                 })}
 
               {isAdmin && (
                 <>
-                  <div className="my-3 border-t border-[#2E2E2E]" />
-                  <motion.button
-                    whileHover={{ x: 2 }}
+                  <div className="w-px h-4 bg-[#2E2E2E] mx-2 shrink-0" />
+                  <button
                     onClick={() => {
                       handleOpenPermissions();
-                      setSidebarOpen(window.innerWidth >= 1024);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors duration-150 whitespace-nowrap
                       ${
                         showPermissions
                           ? 'bg-[#FF6B00]/10 text-[#FF6B00]'
@@ -672,54 +650,34 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
                       }`}
                   >
                     <Settings size={18} />
-                    Configurar Acesso
-                  </motion.button>
+                    <span className="hidden md:inline">Configurar Acesso</span>
+                  </button>
                 </>
               )}
             </nav>
+          </div>
 
-            {/* Storage indicator */}
-            {storage && (
-              <div className="p-4 border-t border-[#2E2E2E]">
-                <div className="flex items-center justify-between text-xs text-[#B3B3B3] mb-2">
-                  <span>Armazenamento</span>
-                  <span>{storagePercent.toFixed(0)}%</span>
-                </div>
-                <div className="h-1.5 bg-[#2E2E2E] rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${storagePercent}%` }}
-                    transition={{ duration: 0.8, ease: 'easeOut' }}
-                    className={`h-full rounded-full ${
-                      storagePercent > 90
-                        ? 'bg-red-500'
-                        : storagePercent > 70
-                        ? 'bg-yellow-500'
-                        : 'bg-[#FF6B00]'
-                    }`}
-                  />
-                </div>
-                <p className="text-[10px] text-[#B3B3B3]/60 mt-1.5">
-                  {formatBytes(storage.usage)} de {formatBytes(storage.limit)}
-                </p>
-              </div>
-            )}
-          </motion.aside>
+        {/* Storage indicator */}
+        {storage && (
+          <div className="hidden sm:flex flex-col items-end shrink-0 ml-4">
+            <div className="flex items-center gap-2 text-[10px] text-[#B3B3B3] mb-1">
+              <span>{formatBytes(storage.usage)} de {formatBytes(storage.limit)}</span>
+            </div>
+            <div className="w-24 h-1.5 bg-[#2E2E2E] rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  storagePercent > 90
+                    ? 'bg-red-500'
+                    : storagePercent > 70
+                    ? 'bg-yellow-500'
+                    : 'bg-[#FF6B00]'
+                }`}
+                style={{ width: `${storagePercent}%` }}
+              />
+            </div>
+          </div>
         )}
-      </AnimatePresence>
-
-      {/* ── Sidebar overlay on mobile ── */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          />
-        )}
-      </AnimatePresence>
+      </header>
 
       {/* ── Main content ── */}
       <main className="flex-1 flex flex-col overflow-hidden">

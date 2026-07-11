@@ -61,11 +61,11 @@ router.get('/callback', async (req, res) => {
     const { code, error } = req.query;
 
     if (error) {
-        return res.redirect('/?google_error=' + error);
+        return res.redirect('http://localhost:5173/?google_error=' + error);
     }
 
     if (!code) {
-        return res.redirect('/?google_error=no_code');
+        return res.redirect('http://localhost:5173/?google_error=no_code');
     }
 
     try {
@@ -86,7 +86,7 @@ router.get('/callback', async (req, res) => {
 
         if (tokens.error) {
             console.error('[Google OAuth] Token error:', tokens);
-            return res.redirect('/?google_error=token_error');
+            return res.redirect('http://localhost:5173/?google_error=token_error');
         }
 
         console.log('[Google OAuth] Tokens received. Saving to DB...');
@@ -116,11 +116,11 @@ router.get('/callback', async (req, res) => {
         console.log('[Google OAuth] Tokens saved successfully');
 
         // Redirect to frontend with success
-        res.redirect('/?google_connected=true');
+        res.redirect('http://localhost:5173/?google_connected=true');
 
     } catch (err) {
         console.error('[Google OAuth] Callback error:', err);
-        res.redirect('/?google_error=server_error');
+        res.redirect('http://localhost:5173/?google_error=server_error');
     }
 });
 
