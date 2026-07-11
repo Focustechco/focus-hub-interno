@@ -29,6 +29,10 @@ CREATE TABLE users (
   is_approved BOOLEAN DEFAULT TRUE,
   reset_token TEXT,
   reset_token_expires TIMESTAMP,
+  whatsapp_notifications JSONB,
+  whatsapp_dnd_start VARCHAR(10),
+  whatsapp_dnd_end VARCHAR(10),
+  status VARCHAR(50) DEFAULT 'active',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

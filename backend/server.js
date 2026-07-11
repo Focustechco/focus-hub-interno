@@ -12,9 +12,15 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 
 const app = express();
 
-// Auto-migrate: Add status column to users table if it doesn't exist
-pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'").catch(e => {
-    // Ignore error if column already exists
+// Auto-migrate: Add status and whatsapp columns to users table if they don't exist
+pool.query(`
+    ALTER TABLE users 
+    ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active',
+    ADD COLUMN IF NOT EXISTS whatsapp_notifications JSONB,
+    ADD COLUMN IF NOT EXISTS whatsapp_dnd_start VARCHAR(10),
+    ADD COLUMN IF NOT EXISTS whatsapp_dnd_end VARCHAR(10)
+`).catch(e => {
+    // Ignore error if columns already exist
 });
 
 // Auto-migrate: Add agenda fields to tasks table
