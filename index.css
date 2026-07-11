@@ -83,6 +83,22 @@ html.light .bg-\[\#1A73E8\] * {
     color: #FFFFFF !important;
 }
 
+/* Tag/Badge Contrast Improvements for Light Mode */
+html.light .text-yellow-400,
+html.light .text-yellow-500 {
+    color: #b45309 !important; /* amber-700 */
+}
+
+html.light .text-red-400,
+html.light .text-red-500 {
+    color: #b91c1c !important; /* red-700 */
+}
+
+html.light .text-green-400,
+html.light .text-green-500 {
+    color: #15803d !important; /* green-700 */
+}
+
 html.light .text-\[\#FFFFFF\] {
     color: #0F172A !important;
 }
