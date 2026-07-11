@@ -135,6 +135,9 @@ router.post('/',
             id = 't' + Date.now();
         }
 
+        // Handle case where assigneeId might be empty string
+        const cleanAssigneeId = assigneeId && assigneeId.trim() !== '' ? assigneeId : null;
+
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
@@ -142,7 +145,7 @@ router.post('/',
             await client.query(
                 `INSERT INTO tasks (id, title, description, status, priority, assignee_id, estimated_time, due_date, start_time, end_time, sector, location, color, repetition)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-                [id, title, description, status, priority, assigneeId, estimatedTime, dueDate || null, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none']
+                [id, title, description, status, priority, cleanAssigneeId, estimatedTime, dueDate || null, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none']
             );
 
             if (subtasks && subtasks.length > 0) {
