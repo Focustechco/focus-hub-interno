@@ -557,7 +557,7 @@ const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGr
                 <div key={group.id} className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-lg">
                     <button
                         onClick={() => setOpenGroupId(openGroupId === group.id ? null : group.id)}
-                        className="w-full flex items-center justify-between p-4 text-left font-semibold text-white hover:bg-[#2a2a2a] transition-colors rounded-t-lg"
+                        className="w-full flex items-center justify-between p-4 text-left font-semibold text-white hover:bg-[#FF6B00]/10 transition-colors rounded-t-lg"
                     >
                         <div className="flex items-center gap-3">
                             {openGroupId === group.id ? <FolderOpenIcon className="w-5 h-5 text-[#FF6B00]" /> : <FolderIcon className="w-5 h-5 text-[#FF6B00]" />}
@@ -1174,7 +1174,7 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
                 <p className="text-sm font-semibold mb-4" style={{ color }}>{item.category}</p>
             </div>
             
-            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, opacity: 0.9 }}>
+            <a href={item.file_url} target={item.category === 'Curso' ? '_self' : '_blank'} rel="noopener noreferrer" className="mt-auto w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center text-sm" style={{ backgroundColor: color, color: '#FFFFFF', opacity: 0.9 }}>
                 Acessar <ExternalLinkIcon className="w-4 h-4 ml-2" />
             </a>
         </div>
