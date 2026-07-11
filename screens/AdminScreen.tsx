@@ -227,7 +227,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                         </thead>
                         <tbody>
                             {users.map(user => (
-                                <tr key={user.id} className={`border-b border-[#2E2E2E] hover:bg-[#2a2a2a] ${user.status === 'archived' ? 'opacity-50' : ''}`}>
+                                <tr key={user.id} className={`border-b border-[#2E2E2E] hover:bg-[#FF6B00]/10 ${user.status === 'archived' ? 'opacity-50' : ''}`}>
                                     <td className="p-3 flex items-center">
                                         <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
                                         <div className="flex flex-col">

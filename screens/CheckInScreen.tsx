@@ -147,7 +147,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                     <button
                         onClick={handleCheckIn}
                         disabled={isCheckedIn}
-                        className="flex items-center gap-2 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 disabled:bg-[#2E2E2E] disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         <LogInIcon className="w-5 h-5" />
                         Registrar Entrada
@@ -155,7 +155,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                     <button
                         onClick={handleCheckOut}
                         disabled={!isCheckedIn}
-                        className="flex items-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 disabled:bg-[#2E2E2E] disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         <LogOutIcon className="w-5 h-5" />
                         Registrar Saída
@@ -200,7 +200,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                                 const isUserCheckedIn = !checkIn.checkOutTime;
 
                                 return (
-                                    <tr key={checkIn.id} className="border-b border-[#2E2E2E] hover:bg-[#2a2a2a]">
+                                    <tr key={checkIn.id} className="border-b border-[#2E2E2E] hover:bg-[#FF6B00]/10">
                                         <td className="p-3 flex items-center">
                                             <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
                                             {user.name}
@@ -248,7 +248,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                             <button
                                 onClick={handlePublishReport}
                                 disabled={!dailyReport.trim()}
-                                className="flex items-center gap-2 bg-[#FF6B00] text-white font-bold py-2 px-6 rounded-lg hover:bg-[#FF8C33] disabled:bg-[#2E2E2E] disabled:text-gray-500 disabled:cursor-not-allowed transition-colors"
+                                className="flex items-center gap-2 bg-[#FF6B00] text-white font-bold py-2 px-6 rounded-lg hover:bg-[#FF8C33] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 <SendIcon className="w-5 h-5" />
                                 Publicar Relatório
