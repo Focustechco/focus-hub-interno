@@ -172,7 +172,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                             openInGoogleSheets(csv, 'Focus Hub - Registro de Ponto');
                             toast.success("Dados copiados! Cole no Google Sheets (Ctrl+V).");
                         }}
-                        className="flex items-center gap-2 px-3 py-2 text-sm bg-[#2E2E2E] text-white rounded-lg hover:bg-[#34A853] transition-colors"
+                        className="flex items-center gap-2 px-3 py-2 text-sm bg-[#2E2E2E] text-white rounded-lg hover:bg-[#FF6B00] active:bg-[#FF6B00] transition-colors"
                         title="Exportar para Google Sheets"
                     >
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
