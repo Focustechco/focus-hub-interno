@@ -8,6 +8,7 @@ import { useToast } from '../components/Toast';
 import { taskToCalendarEvent, generateGoogleCalendarUrl, downloadICS } from '../src/utils/calendar';
 import * as LucideIcons from 'lucide-react';
 import CalendarWeekView from './CalendarWeekView';
+import TaskSidePanel from '../components/TaskSidePanel';
 import { Sector } from '../types';
 
 interface CalendarViewProps {

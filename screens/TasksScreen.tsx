@@ -11,6 +11,7 @@ import CalendarView from './CalendarView';
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, closestCorners, useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { useToast } from '../components/Toast';
+import TaskSidePanel from '../components/TaskSidePanel';
 
 
 interface TasksScreenProps {
@@ -57,6 +58,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
     const [view, setView] = useState<'board' | 'checklist' | 'calendar'>(mode === 'agenda' ? 'calendar' : 'board');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
+    const [selectedTaskToView, setSelectedTaskToView] = useState<Task | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterAssignee, setFilterAssignee] = useState<string>('all');
     const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
@@ -486,7 +488,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                     <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
                             {columns.map(column => (
-                                <DroppableColumn key={column.id} column={column} users={users} currentUser={currentUser} onEdit={handleOpenModal} onDelete={handleDeleteTask} onSync={handleSyncGoogle} setTasks={setTasks} />
+                                <DroppableColumn key={column.id} column={column} users={users} currentUser={currentUser} onEdit={handleOpenModal} onDelete={handleDeleteTask} onSync={handleSyncGoogle} setTasks={setTasks} onView={setSelectedTaskToView} />
                             ))}
                         </div>
                     </DndContext>
@@ -497,11 +499,23 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
             </div>
 
             {isModalOpen && <TaskModal currentUser={currentUser} task={editingTask} users={users} goals={goals} onSave={handleSaveTask} onDelete={handleDeleteTask} onSync={handleSyncGoogle} onClose={handleCloseModal} />}
+            
+            {selectedTaskToView && (
+                <TaskSidePanel 
+                    event={selectedTaskToView} 
+                    onClose={() => setSelectedTaskToView(null)} 
+                    onEdit={() => { 
+                        setSelectedTaskToView(null); 
+                        handleOpenModal(selectedTaskToView); 
+                    }} 
+                    users={users} 
+                />
+            )}
         </div>
     );
 };
 
-const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks: Task[] }; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ column, users, currentUser, onEdit, onDelete, onSync, setTasks }) => {
+const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks: Task[] }; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void; onView: (task: Task) => void }> = ({ column, users, currentUser, onEdit, onDelete, onSync, setTasks, onView }) => {
     const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
     return (
@@ -515,7 +529,7 @@ const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks
             </h3>
             <div className="space-y-4">
                 {column.tasks.map(task => (
-                    <DraggableTaskCard key={task.id} task={task} users={users} currentUser={currentUser} onEdit={onEdit} onDelete={onDelete} onSync={onSync} setTasks={setTasks} />
+                    <DraggableTaskCard key={task.id} task={task} users={users} currentUser={currentUser} onEdit={onEdit} onDelete={onDelete} onSync={onSync} setTasks={setTasks} onView={onView} />
                 ))}
                 {(column.tasks || []).length === 0 && <p className="text-center text-sm text-[#B3B3B3] pt-8">Nenhuma tarefa aqui.</p>}
             </div>
@@ -523,7 +537,7 @@ const DroppableColumn: React.FC<{ column: { id: TaskStatus; title: string; tasks
     );
 };
 
-const DraggableTaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = (props) => {
+const DraggableTaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void; onView: (task: Task) => void }> = (props) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: props.task.id });
 
     const style = {
@@ -539,7 +553,7 @@ const DraggableTaskCard: React.FC<{ task: Task; users: User[]; currentUser: User
     );
 };
 
-const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void }> = ({ task, users, currentUser, onEdit, onDelete, onSync, setTasks }) => {
+const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit: (task: Task) => void; onDelete: (taskId: string) => void; onSync: (task: Task) => void; setTasks: (tasks: Task[] | ((prev: Task[]) => Task[])) => void; onView: (task: Task) => void }> = ({ task, users, currentUser, onEdit, onDelete, onSync, setTasks, onView }) => {
     const assignee = users.find(u => u.id === task.assigneeId);
     const [isExpanded, setIsExpanded] = useState(false);
     const [newSubtaskText, setNewSubtaskText] = useState('');
@@ -597,7 +611,8 @@ const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit:
             animate={{ opacity: 1, y: 0 }}
             whileHover={{ y: -5, scale: 1.03, boxShadow: "0px 8px 25px rgba(0,0,0,0.5)" }}
             transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="bg-[#1C1C1C] p-4 rounded-lg shadow-md border-l-4 cursor-grab active:cursor-grabbing"
+            onClick={() => onView(task)}
+            className="bg-[#1C1C1C] p-4 rounded-lg shadow-md border-l-4 cursor-grab active:cursor-grabbing hover:ring-1 hover:ring-[#FF6B00]"
             style={{ borderColor: statusConfig[task.status].border.replace('border-', '#') }}>
             <div className="flex justify-between items-start">
                 <h4 className="font-bold text-white pr-2 flex items-center gap-2">
