@@ -375,8 +375,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
                         </button>
                     </div>
                 </div>
+            </div>
 
-                {/* View Rendering */}
+            {/* View Rendering */}
                 {viewMode === 'month' ? (
                     <div className="grid grid-cols-7 gap-1 text-center">
                         {weekDays.map(wd => (
