@@ -17,6 +17,19 @@ pool.query("ALTER TABLE users ADD COLUMN status VARCHAR(50) DEFAULT 'active'").c
     // Ignore error if column already exists
 });
 
+// Auto-migrate: Add agenda fields to tasks table
+pool.query(`
+    ALTER TABLE tasks 
+    ADD COLUMN start_time VARCHAR(10),
+    ADD COLUMN end_time VARCHAR(10),
+    ADD COLUMN sector VARCHAR(100),
+    ADD COLUMN location TEXT,
+    ADD COLUMN color VARCHAR(50),
+    ADD COLUMN repetition VARCHAR(50) DEFAULT 'none'
+`).catch(e => {
+    // Ignore error if columns already exist
+});
+
 // Auto-migrate: Create push_subscriptions table if it doesn't exist
 pool.query(`
     CREATE TABLE IF NOT EXISTS push_subscriptions (

@@ -29,3 +29,6 @@ logs/
 
 # Temp
 gitbak/
+
+# Upload Storage
+backend/storage/

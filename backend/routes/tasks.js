@@ -92,6 +92,12 @@ router.get('/', async (req, res) => {
             createdAt: task.created_at,
             isOffline: task.is_offline,
             goalId: task.goal_id,
+            startTime: task.start_time,
+            endTime: task.end_time,
+            sector: task.sector,
+            location: task.location,
+            color: task.color,
+            repetition: task.repetition,
             subtasks: allSubtasks
                 .filter(st => st.task_id === task.id)
                 .map(st => ({
@@ -119,7 +125,7 @@ router.post('/',
     ],
     validate,
     async (req, res) => {
-        let { id, title, description, status, priority, assigneeId, estimatedTime, dueDate, subtasks } = req.body;
+        let { id, title, description, status, priority, assigneeId, estimatedTime, dueDate, subtasks, startTime, endTime, sector, location, color, repetition } = req.body;
 
         // Sanitize dates to ensure empty strings become null for Postgres
         const cleanDate = (d) => (d && typeof d === 'string' && d.trim() !== '') ? d : null;
@@ -134,9 +140,9 @@ router.post('/',
             await client.query('BEGIN');
 
             await client.query(
-                `INSERT INTO tasks (id, title, description, status, priority, assignee_id, estimated_time, due_date)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-                [id, title, description, status, priority, assigneeId, estimatedTime, dueDate || null]
+                `INSERT INTO tasks (id, title, description, status, priority, assignee_id, estimated_time, due_date, start_time, end_time, sector, location, color, repetition)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+                [id, title, description, status, priority, assigneeId, estimatedTime, dueDate || null, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none']
             );
 
             if (subtasks && subtasks.length > 0) {
@@ -160,6 +166,12 @@ router.post('/',
                 assigneeId,
                 estimatedTime,
                 dueDate,
+                startTime,
+                endTime,
+                sector,
+                location,
+                color,
+                repetition,
                 subtasks: subtasks || []
             };
 
@@ -209,7 +221,7 @@ router.post('/',
 // PUT /api/tasks/:id - Update a task
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description, status, priority, assigneeId, estimatedTime, dueDate: rawDueDate, subtasks } = req.body;
+    const { title, description, status, priority, assigneeId, estimatedTime, dueDate: rawDueDate, subtasks, startTime, endTime, sector, location, color, repetition } = req.body;
 
     console.log('[PUT /tasks/:id] Updating task:', id);
     console.log('[PUT /tasks/:id] Body:', JSON.stringify(req.body, null, 2));
@@ -231,10 +243,10 @@ router.put('/:id', async (req, res) => {
 
         // Update main task
         const updateResult = await client.query(
-            `UPDATE tasks SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, estimated_time = $6, due_date = $7
-             WHERE id = $8
+            `UPDATE tasks SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, estimated_time = $6, due_date = $7, start_time = $8, end_time = $9, sector = $10, location = $11, color = $12, repetition = $13
+             WHERE id = $14
              RETURNING *`,
-            [title, description, status, priority, cleanAssigneeId, estimatedTime ?? null, dueDate, id]
+            [title, description, status, priority, cleanAssigneeId, estimatedTime ?? null, dueDate, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none', id]
         );
 
         if (updateResult.rowCount === 0) {
@@ -307,6 +319,12 @@ router.put('/:id', async (req, res) => {
             createdAt: updatedTaskRow.created_at,
             isOffline: updatedTaskRow.is_offline,
             goalId: updatedTaskRow.goal_id,
+            startTime: updatedTaskRow.start_time,
+            endTime: updatedTaskRow.end_time,
+            sector: updatedTaskRow.sector,
+            location: updatedTaskRow.location,
+            color: updatedTaskRow.color,
+            repetition: updatedTaskRow.repetition,
             subtasks: subtasksResult.rows.map(st => ({
                 id: st.id,
                 text: st.text,

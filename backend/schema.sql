@@ -44,7 +44,13 @@ CREATE TABLE tasks (
   due_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   is_offline BOOLEAN DEFAULT FALSE,
-  goal_id VARCHAR(255)
+  goal_id VARCHAR(255),
+  start_time VARCHAR(10),
+  end_time VARCHAR(10),
+  sector VARCHAR(100),
+  location TEXT,
+  color VARCHAR(50),
+  repetition VARCHAR(50) DEFAULT 'none'
 );
 
 -- Step 4: Create Subtasks table

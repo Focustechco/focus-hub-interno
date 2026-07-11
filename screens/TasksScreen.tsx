@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Task, User, Goal, Notification, NotificationPreferences, DailyChecklistItem, NotificationType, TaskStatus, TaskPriority, Role, OfflineAction, Subtask } from '../types';
-import { PlusIcon, FilterIcon, EditIcon, Trash2Icon, XIcon, SearchIcon, CalendarIcon, ClipboardIcon, CheckSquareIcon, CloudOffIcon, ClockIcon } from '../components/icons';
+import { Task, User, Goal, Notification, NotificationPreferences, DailyChecklistItem, NotificationType, TaskStatus, TaskPriority, Role, OfflineAction, Subtask, Sector } from '../types';
+import { PlusIcon, FilterIcon, EditIcon, Trash2Icon, XIcon, SearchIcon, CalendarIcon, ClipboardIcon, CheckSquareIcon, CloudOffIcon, ClockIcon, MapPinIcon, RepeatIcon } from '../components/icons';
 import { formatDate } from '../src/utils/formatters';
 import { downloadICS, taskToCalendarEvent } from '../src/utils/calendar';
 import { generateCSV, openInGoogleSheets, taskColumns } from '../src/utils/sheets';
@@ -716,6 +716,11 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
         dueDate: task?.dueDate || '',
         goalId: task?.goalId || '',
         subtasks: task?.subtasks || [],
+        startTime: task?.startTime || '',
+        endTime: task?.endTime || '',
+        sector: task?.sector || undefined,
+        location: task?.location || '',
+        repetition: task?.repetition || 'none',
     });
     const [newSubtaskText, setNewSubtaskText] = useState('');
 
@@ -894,6 +899,48 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
                                 <option value="">Nenhuma meta vinculada</option>
                                 {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
                             </select>
+                        </div>
+
+                        {/* Campos da Agenda */}
+                        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#3a3a3a]">
+                            <div className="col-span-2">
+                                <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2"><CalendarIcon className="w-4 h-4 text-[#FF6B00]" /> Configurações de Agenda (Opcional)</h3>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Hora Início</label>
+                                <input type="time" value={formData.startTime || ''} onChange={e => setFormData({ ...formData, startTime: e.target.value })} className="w-full p-2 bg-[#2E2E2E] rounded-md" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Hora Fim</label>
+                                <input type="time" value={formData.endTime || ''} onChange={e => setFormData({ ...formData, endTime: e.target.value })} className="w-full p-2 bg-[#2E2E2E] rounded-md" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Setor</label>
+                                <select value={formData.sector || ''} onChange={e => setFormData({ ...formData, sector: (e.target.value as Sector) || undefined })} className="w-full p-2 bg-[#2E2E2E] rounded-md">
+                                    <option value="">Nenhum Setor</option>
+                                    <option value="Administração">Administração</option>
+                                    <option value="Tech">Tech</option>
+                                    <option value="RH">RH</option>
+                                    <option value="Comercial">Comercial</option>
+                                    <option value="Financeiro">Financeiro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1 flex items-center gap-1"><RepeatIcon className="w-3 h-3"/> Repetição</label>
+                                <select value={formData.repetition || 'none'} onChange={e => setFormData({ ...formData, repetition: e.target.value as any })} className="w-full p-2 bg-[#2E2E2E] rounded-md">
+                                    <option value="none">Não repetir</option>
+                                    <option value="daily">Diariamente</option>
+                                    <option value="weekly">Semanalmente</option>
+                                    <option value="monthly">Mensalmente</option>
+                                </select>
+                            </div>
+
+                            <div className="col-span-2">
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1 flex items-center gap-1"><MapPinIcon className="w-3 h-3"/> Localização (Link ou Endereço)</label>
+                                <input type="text" placeholder="Ex: Link do Meet, Sala de Reunião..." value={formData.location || ''} onChange={e => setFormData({ ...formData, location: e.target.value })} className="w-full p-2 bg-[#2E2E2E] rounded-md" />
+                            </div>
                         </div>
 
                         <div>

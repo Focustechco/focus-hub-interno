@@ -7,6 +7,8 @@ import api from '../services/api';
 import { useToast } from '../components/Toast';
 import { taskToCalendarEvent, generateGoogleCalendarUrl, downloadICS } from '../src/utils/calendar';
 import * as LucideIcons from 'lucide-react';
+import CalendarWeekView from './CalendarWeekView';
+import { Sector } from '../types';
 
 interface CalendarViewProps {
     tasks: Task[];
@@ -91,10 +93,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
     const toast = useToast();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedTaskToView, setSelectedTaskToView] = useState<Task | null>(null);
+    const [viewMode, setViewMode] = useState<'month' | 'week'>(() => {
+        return (localStorage.getItem('agenda_view_mode') as 'month' | 'week') || 'month';
+    });
+    const [sectorFilter, setSectorFilter] = useState<Sector | 'ALL'>(() => {
+        return (localStorage.getItem('agenda_sector_filter') as Sector | 'ALL') || 'ALL';
+    });
 
+    const filteredTasks = useMemo(() => {
+        if (sectorFilter === 'ALL') return tasks;
+        return tasks.filter(t => t.sector === sectorFilter);
+    }, [tasks, sectorFilter]);
+
+    // Apply sector filter to mapping
     const tasksByDate = useMemo(() => {
         const map = new Map<string, Task[]>();
-        tasks.forEach(task => {
+        filteredTasks.forEach(task => {
             if (task.dueDate) {
                 try {
                     // The date string can be 'YYYY-MM-DD', 'YYYY-MM-DDTHH:mm', or 'YYYY-MM-DD HH:MM:SS'.
@@ -124,7 +138,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
             }
         });
         return map;
-    }, [tasks]);
+    }, [filteredTasks]);
 
     const changeMonth = (delta: number) => {
         setCurrentDate(prev => {
@@ -250,22 +264,95 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
         window.open(generateGoogleCalendarUrl(event), '_blank');
     };
 
+    const handleViewModeChange = (mode: 'month' | 'week') => {
+        setViewMode(mode);
+        localStorage.setItem('agenda_view_mode', mode);
+    };
+
+    const handleSectorFilterChange = (sector: Sector | 'ALL') => {
+        setSectorFilter(sector);
+        localStorage.setItem('agenda_sector_filter', sector);
+    };
+
+    const handleAddTask = (date: Date, hour?: number) => {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const localDate = `${y}-${m}-${d}`;
+
+        onTaskClick({
+            id: `new-${Date.now()}`,
+            title: '',
+            description: '',
+            status: 'pendente',
+            priority: 'media',
+            assigneeId: '',
+            estimatedTime: 60,
+            createdAt: new Date().toISOString(),
+            dueDate: localDate,
+            startTime: hour !== undefined ? `${String(hour).padStart(2, '0')}:00` : '',
+            endTime: hour !== undefined ? `${String(hour + 1).padStart(2, '0')}:00` : '',
+        } as unknown as Task);
+    };
+
     return (
         <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
             <div className="bg-[#0E0E0E] p-6 rounded-lg">
-                <div className="flex justify-between items-center mb-4">
+                {/* Headers and controls */}
+                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                     <div className="flex items-center gap-2">
-                        <button onClick={() => changeMonth(-1)} className="p-2 rounded-full hover:bg-[#2E2E2E]">
-                            <ChevronLeftIcon className="w-6 h-6" />
+                        <button onClick={() => changeMonth(viewMode === 'week' ? -0.25 : -1)} className="p-2 rounded-full hover:bg-[#2E2E2E]">
+                            <ChevronLeftIcon className="w-6 h-6 text-[#B3B3B3] hover:text-white" />
                         </button>
-                        <h2 className="text-xl font-bold text-white capitalize">
-                            {currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })}
+                        <h2 className="text-xl font-bold text-white capitalize min-w-[150px] text-center">
+                            {viewMode === 'month' 
+                                ? currentDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
+                                : `Semana ${currentDate.getDate()} de ${currentDate.toLocaleString('pt-BR', { month: 'short' })}`
+                            }
                         </h2>
-                        <button onClick={() => changeMonth(1)} className="p-2 rounded-full hover:bg-[#2E2E2E]">
-                            <ChevronRightIcon className="w-6 h-6" />
+                        <button onClick={() => changeMonth(viewMode === 'week' ? 0.25 : 1)} className="p-2 rounded-full hover:bg-[#2E2E2E]">
+                            <ChevronRightIcon className="w-6 h-6 text-[#B3B3B3] hover:text-white" />
                         </button>
                     </div>
-                    <div className="flex items-center gap-2">
+
+                    <div className="flex flex-wrap items-center gap-4">
+                        {/* Sector Filter */}
+                        <div className="flex items-center gap-2 bg-[#2E2E2E] rounded-lg p-1">
+                            <span className="text-sm text-[#B3B3B3] pl-2"><LucideIcons.Filter className="w-4 h-4"/></span>
+                            <select 
+                                value={sectorFilter} 
+                                onChange={(e) => handleSectorFilterChange(e.target.value as Sector | 'ALL')}
+                                className="bg-transparent text-sm text-white border-none focus:ring-0 cursor-pointer outline-none py-1 pr-2"
+                            >
+                                <option value="ALL">Todos os Setores</option>
+                                <option value="Administração">Administração</option>
+                                <option value="Tech">Tech</option>
+                                <option value="RH">RH</option>
+                                <option value="Comercial">Comercial</option>
+                                <option value="Financeiro">Financeiro</option>
+                            </select>
+                        </div>
+
+                        {/* View Mode Toggle */}
+                        <div className="flex bg-[#2E2E2E] rounded-lg p-1">
+                            <button
+                                onClick={() => handleViewModeChange('month')}
+                                className={`px-3 py-1 text-sm rounded-md transition-colors ${viewMode === 'month' ? 'bg-[#1C1C1C] text-white shadow' : 'text-[#B3B3B3] hover:text-white'}`}
+                            >
+                                Mês
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('week')}
+                                className={`px-3 py-1 text-sm rounded-md transition-colors ${viewMode === 'week' ? 'bg-[#1C1C1C] text-white shadow' : 'text-[#B3B3B3] hover:text-white'}`}
+                            >
+                                Semana
+                            </button>
+                        </div>
+
+                        <div className="h-6 w-px bg-[#3a3a3a]"></div>
+
+                        {/* Export Buttons */}
+                        <div className="flex items-center gap-2">
                         <button
                             onClick={handleExportICS}
                             className="flex items-center gap-2 px-3 py-2 text-sm bg-[#2E2E2E] text-white rounded-lg hover:bg-[#3a3a3a] transition-colors"
@@ -288,54 +375,47 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
                         </button>
                     </div>
                 </div>
-                <div className="grid grid-cols-7 gap-1 text-center">
-                    {weekDays.map(wd => (
-                        <div key={wd} className="text-xs font-bold text-[#B3B3B3] py-2">{wd}</div>
-                    ))}
-                    {days.map((day, index) => {
-                        const isCurrentMonth = day.getMonth() === currentDate.getMonth();
-                        const isToday = day.toDateString() === today.toDateString();
-                        // Use local date components to avoid timezone issues
-                        const year = day.getFullYear();
-                        const month = String(day.getMonth() + 1).padStart(2, '0');
-                        const dayNum = String(day.getDate()).padStart(2, '0');
-                        const dateKey = `${year}-${month}-${dayNum}`;
-                        const dayTasks = tasksByDate.get(dateKey) || [];
 
-                        return (
-                            <DroppableDayCell
-                                key={index}
-                                day={day}
-                                isCurrentMonth={isCurrentMonth}
-                                isToday={isToday}
-                                tasks={dayTasks}
-                                onTaskClick={(task) => setSelectedTaskToView(task)}
-                                onAddTask={(date) => {
-                                    // Use local date format to avoid timezone issues
-                                    const y = date.getFullYear();
-                                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                                    const d = String(date.getDate()).padStart(2, '0');
-                                    const localDate = `${y}-${m}-${d}`;
+                {/* View Rendering */}
+                {viewMode === 'month' ? (
+                    <div className="grid grid-cols-7 gap-1 text-center">
+                        {weekDays.map(wd => (
+                            <div key={wd} className="text-xs font-bold text-[#B3B3B3] py-2">{wd}</div>
+                        ))}
+                        {days.map((day, index) => {
+                            const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                            const isToday = day.toDateString() === today.toDateString();
+                            const year = day.getFullYear();
+                            const month = String(day.getMonth() + 1).padStart(2, '0');
+                            const dayNum = String(day.getDate()).padStart(2, '0');
+                            const dateKey = `${year}-${month}-${dayNum}`;
+                            const dayTasks = tasksByDate.get(dateKey) || [];
 
-                                    onTaskClick({
-                                        id: `new-${Date.now()}`, // Temporary ID for new task
-                                        title: '',
-                                        description: '',
-                                        status: 'pendente',
-                                        priority: 'media',
-                                        assigneeId: '',
-                                        estimatedTime: 60,
-                                        createdAt: new Date().toISOString(),
-                                        dueDate: localDate,
-                                    });
-                                }}
-                            />
-                        );
-                    })}
-                </div>
+                            return (
+                                <DroppableDayCell
+                                    key={index}
+                                    day={day}
+                                    isCurrentMonth={isCurrentMonth}
+                                    isToday={isToday}
+                                    tasks={dayTasks}
+                                    onTaskClick={(task) => setSelectedTaskToView(task)}
+                                    onAddTask={(date) => handleAddTask(date)}
+                                />
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <CalendarWeekView 
+                        tasks={filteredTasks} 
+                        users={_users} 
+                        currentDate={currentDate} 
+                        onTaskClick={(task) => setSelectedTaskToView(task)} 
+                        onAddTask={(date, hour) => handleAddTask(date, hour)}
+                    />
+                )}
             </div>
             {selectedTaskToView && (
-                <EventViewModal 
+                <TaskSidePanel 
                     event={selectedTaskToView} 
                     onClose={() => setSelectedTaskToView(null)} 
                     onEdit={() => { 
@@ -349,7 +429,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
     );
 };
 
-const EventViewModal: React.FC<{
+const TaskSidePanel: React.FC<{
     event: Task;
     onClose: () => void;
     onEdit: () => void;
@@ -367,19 +447,22 @@ const EventViewModal: React.FC<{
     }
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
-            <div className="bg-[#1C1C1C] rounded-lg shadow-2xl w-full max-w-md overflow-hidden relative" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-end z-[100] transition-opacity" onClick={onClose}>
+            <div className="bg-[#1C1C1C] h-full shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col translate-x-0 transition-transform" onClick={e => e.stopPropagation()}>
                 {/* Header actions */}
-                <div className="flex justify-end p-2 gap-2 bg-[#2E2E2E]">
-                    <button onClick={onEdit} className="p-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Editar">
-                        <LucideIcons.Edit2 className="w-5 h-5" />
-                    </button>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Fechar">
-                        <LucideIcons.X className="w-5 h-5" />
+                <div className="flex justify-between items-center p-4 border-b border-[#2E2E2E]">
+                    <div className="flex items-center gap-2">
+                        <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Fechar">
+                            <LucideIcons.X className="w-5 h-5" />
+                        </button>
+                        <span className="font-semibold text-white">Detalhes do Evento</span>
+                    </div>
+                    <button onClick={onEdit} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white transition-colors text-sm font-medium" title="Editar">
+                        <LucideIcons.Edit2 className="w-4 h-4" /> Editar
                     </button>
                 </div>
 
-                <div className="p-6">
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                     {/* Title Row */}
                     <div className="flex gap-4 items-start mb-6">
                         <div className="mt-2 shrink-0">
@@ -411,6 +494,45 @@ const EventViewModal: React.FC<{
                             )}
                         </div>
 
+                        {/* New Agenda Fields */}
+                        {event.startTime && (
+                            <div className="flex gap-4 items-center">
+                                <LucideIcons.Clock className="w-5 h-5 text-[#B3B3B3]" />
+                                <span>Horário: <strong>{event.startTime} {event.endTime ? `- ${event.endTime}` : ''}</strong></span>
+                            </div>
+                        )}
+
+                        {event.sector && (
+                            <div className="flex gap-4 items-center">
+                                <LucideIcons.Briefcase className="w-5 h-5 text-[#B3B3B3]" />
+                                <span>Setor: <strong>{event.sector}</strong></span>
+                            </div>
+                        )}
+
+                        {event.location && (
+                            <div className="flex gap-4 items-center">
+                                <LucideIcons.MapPin className="w-5 h-5 text-[#B3B3B3]" />
+                                <span>Localização: 
+                                    {event.location.startsWith('http') ? (
+                                        <a href={event.location} target="_blank" rel="noopener noreferrer" className="ml-1 text-[#4285F4] hover:underline">Acessar Link</a>
+                                    ) : (
+                                        <strong className="ml-1">{event.location}</strong>
+                                    )}
+                                </span>
+                            </div>
+                        )}
+
+                        {event.repetition && event.repetition !== 'none' && (
+                            <div className="flex gap-4 items-center">
+                                <LucideIcons.Repeat className="w-5 h-5 text-[#B3B3B3]" />
+                                <span>Repetição: <strong>
+                                    {event.repetition === 'daily' ? 'Diariamente' : 
+                                     event.repetition === 'weekly' ? 'Semanalmente' : 
+                                     event.repetition === 'monthly' ? 'Mensalmente' : event.repetition}
+                                </strong></span>
+                            </div>
+                        )}
+
                         {/* Description */}
                         {event.description && (
                             <div className="flex gap-4 items-start">
@@ -420,7 +542,7 @@ const EventViewModal: React.FC<{
                         )}
                         
                         {/* Open Google Calendar button */}
-                        <div className="flex gap-4 items-center mt-6 pt-6 border-t border-[#2E2E2E]">
+                        <div className="flex gap-4 items-center mt-8 pt-6 border-t border-[#2E2E2E]">
                              <button
                                 onClick={() => {
                                     const calEvent = taskToCalendarEvent({
@@ -432,9 +554,9 @@ const EventViewModal: React.FC<{
                                     });
                                     window.open(generateGoogleCalendarUrl(calEvent), '_blank');
                                 }}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#1A73E8] text-white rounded-full hover:bg-[#1557B0] font-medium transition-colors"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-[#1A73E8] text-white rounded-lg hover:bg-[#1557B0] font-medium transition-colors"
                             >
-                                <LucideIcons.Calendar className="w-4 h-4" />
+                                <LucideIcons.Calendar className="w-5 h-5" />
                                 Adicionar ao Google Agenda
                             </button>
                         </div>

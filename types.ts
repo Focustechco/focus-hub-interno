@@ -62,6 +62,14 @@ export interface Task {
     subtasks?: Subtask[];
     comments?: TaskComment[];
     tags?: TaskTag[];
+    
+    // Novas propriedades para o módulo Agenda
+    startTime?: string; // e.g. "14:00"
+    endTime?: string;   // e.g. "15:30"
+    sector?: Sector;
+    location?: string;
+    color?: string;     // auto-derived from sector or custom
+    repetition?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
 }
 
 export interface CheckIn {
