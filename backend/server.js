@@ -70,6 +70,21 @@ pool.query(`
     console.error('[Server] Error creating contents table:', e.message);
 });
 
+// Auto-migrate: Create drive_folder_permissions table for Drive module
+pool.query(`
+    CREATE TABLE IF NOT EXISTS drive_folder_permissions (
+        id SERIAL PRIMARY KEY,
+        folder_id VARCHAR(255) NOT NULL,
+        folder_name VARCHAR(500) NOT NULL,
+        sector VARCHAR(100) NOT NULL,
+        created_by VARCHAR(255),
+        created_at TIMESTAMP DEFAULT NOW(),
+        UNIQUE(folder_id, sector)
+    )
+`).catch(e => {
+    console.error('[Server] Error creating drive_folder_permissions table:', e.message);
+});
+
 console.log('[Server] Environment keys:', Object.keys(process.env).sort());
 console.log('[Server] GOOGLE_CLIENT_ID present:', !!process.env.GOOGLE_CLIENT_ID);
 if (process.env.GOOGLE_CLIENT_ID) {
@@ -142,6 +157,7 @@ app.use('/api/daily-checklist', authMiddleware, require('./routes/dailyChecklist
 app.use('/api/notifications', authMiddleware, require('./routes/notifications'));
 app.use('/api/push', authMiddleware, require('./routes/push'));
 app.use('/api/contents', authMiddleware, require('./routes/contents'));
+app.use('/api/drive', authMiddleware, require('./routes/drive'));
 
 // Serve storage directory statically
 const path = require('path');

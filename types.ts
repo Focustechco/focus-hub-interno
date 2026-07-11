@@ -6,9 +6,31 @@ export enum Role {
     COLLABORATOR = 'COLLABORATOR',
 }
 
-export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations';
+export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations' | 'drive';
 
 export type Sector = 'Administração' | 'Tech' | 'RH' | 'Comercial' | 'Financeiro';
+
+export interface DriveFile {
+    id: string;
+    name: string;
+    mimeType: string;
+    modifiedTime: string;
+    size?: string;
+    owners?: { displayName: string; photoLink?: string }[];
+    starred?: boolean;
+    iconLink?: string;
+    thumbnailLink?: string;
+    webViewLink?: string;
+    parents?: string[];
+}
+
+export interface DriveFolderPermission {
+    id: number;
+    folder_id: string;
+    folder_name: string;
+    sector: string;
+    created_by?: string;
+}
 
 export interface User {
     id: string;
@@ -21,6 +43,9 @@ export interface User {
     bio: string;
     joinDate: string;
     status?: 'active' | 'archived';
+    whatsappNotifications?: any;
+    whatsappDndStart?: string;
+    whatsappDndEnd?: string;
 }
 
 export type TaskStatus = 'pendente' | 'em_progresso' | 'concluida';

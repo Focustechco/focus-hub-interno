@@ -12,14 +12,21 @@ types.setTypeParser(1114, (stringValue) => stringValue); // TIMESTAMP WITHOUT TI
 types.setTypeParser(1184, (stringValue) => stringValue); // TIMESTAMP WITH TIME ZONE  
 types.setTypeParser(1082, (stringValue) => stringValue); // DATE
 
-const pool = new Pool({
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-});
+const pool = new Pool(
+    process.env.DATABASE_URL 
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      }
+    : {
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME,
+        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    }
+);
 
 pool.on('connect', (client) => {
     client.query("SET timezone TO 'America/Fortaleza'", (err) => {
