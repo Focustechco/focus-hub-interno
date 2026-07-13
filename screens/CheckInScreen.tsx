@@ -94,11 +94,11 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                     : c
             ));
 
-            toast.success('Relatório enviado com sucesso!');
+            toast.success('Report enviado com sucesso!');
             setDailyReport('');
         } catch (error) {
             console.error("Failed to publish report:", error);
-            toast.error("Erro ao enviar relatório.");
+            toast.error("Erro ao enviar report.");
         }
     };
 
@@ -147,7 +147,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                     <button
                         onClick={handleCheckIn}
                         disabled={isCheckedIn}
-                        className="flex items-center gap-2 bg-green-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 bg-green-600 text-white force-text-white font-bold py-3 px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         <LogInIcon className="w-5 h-5" />
                         Registrar Entrada
@@ -155,7 +155,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                     <button
                         onClick={handleCheckOut}
                         disabled={!isCheckedIn}
-                        className="flex items-center gap-2 bg-red-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center gap-2 bg-red-600 text-white force-text-white font-bold py-3 px-6 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         <LogOutIcon className="w-5 h-5" />
                         Registrar Saída
@@ -234,9 +234,9 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                 {lastCompletedCheckinWithoutReport && (
                     <div className="mt-8 pt-6 border-t border-[#2E2E2E]">
                         <h2 className="text-xl font-bold mb-4 flex items-center">
-                            <FileTextIcon className="w-5 h-5 mr-2" /> 🧾 Relatório Diário
+                            <FileTextIcon className="w-5 h-5 mr-2" /> 📝 Report Diário
                         </h2>
-                        <p className="text-[#B3B3B3] mb-4 text-sm">Descreva as atividades que você realizou hoje. Este relatório será visível para o administrador.</p>
+                        <p className="text-[#B3B3B3] mb-4 text-sm">Descreva as atividades que você realizou hoje. Este report será visível para o administrador.</p>
                         <textarea
                             value={dailyReport}
                             onChange={(e) => setDailyReport(e.target.value)}
@@ -251,7 +251,7 @@ const CheckInScreen: React.FC<CheckInScreenProps> = ({ currentUser, checkIns, se
                                 className="flex items-center gap-2 bg-[#FF6B00] text-white font-bold py-2 px-6 rounded-lg hover:bg-[#FF8C33] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 <SendIcon className="w-5 h-5" />
-                                Publicar Relatório
+                                Publicar Report
                             </button>
                         </div>
                     </div>

@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const { google } = require('googleapis');
 const { pool } = require('../config/db');
+const multer = require('multer');
+const { PassThrough } = require('stream');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Helper – build an authenticated OAuth2 client for a given user
@@ -26,19 +35,31 @@ async function getAuthClient(userId) {
 
   const user = rows[0];
 
+  // FIX: Properly handle Postgres timestamp as UTC
+  let expiryDate = 1;
+  if (user.google_token_expires) {
+    let dateStr = user.google_token_expires;
+    if (typeof dateStr === 'object') {
+       // if pg parsed it into a Date object, it assumed local time.
+       // Convert it back to UTC timestamp by subtracting timezone offset
+       expiryDate = dateStr.getTime() - (dateStr.getTimezoneOffset() * 60000);
+    } else if (typeof dateStr === 'string') {
+       if (!dateStr.includes('Z') && !dateStr.includes('T')) {
+           dateStr = dateStr.replace(' ', 'T') + 'Z';
+       }
+       expiryDate = new Date(dateStr).getTime();
+    }
+  }
+
   oauth2Client.setCredentials({
     access_token: user.google_access_token,
     refresh_token: user.google_refresh_token,
-    expiry_date: user.google_token_expires
-      ? new Date(user.google_token_expires).getTime()
-      : undefined,
+    expiry_date: expiryDate,
   });
 
-  // Auto-refresh when the token has expired (or is about to)
+  // Auto-refresh manually if we want to update the DB
   const now = Date.now();
-  const expiresAt = user.google_token_expires
-    ? new Date(user.google_token_expires).getTime()
-    : 0;
+  const expiresAt = expiryDate;
 
   if (expiresAt && expiresAt - now < 60_000) {
     try {
@@ -73,7 +94,7 @@ async function getAuthClient(userId) {
 // Helper – decide whether a user may access a given folder
 // ---------------------------------------------------------------------------
 const DRIVE_FILE_FIELDS =
-  'id, name, mimeType, modifiedTime, size, owners, starred, iconLink, thumbnailLink, webViewLink, parents';
+  'id, name, mimeType, modifiedTime, size, owners, starred, iconLink, thumbnailLink, webViewLink, webContentLink, parents';
 
 async function isAllowedFolder(userId, userRole, userSector, folderId, drive) {
   if (userRole === 'ADMIN') return true;
@@ -194,6 +215,61 @@ router.get('/files', async (req, res) => {
   } catch (err) {
     console.error('[Drive] Error listing files:', err.message);
     res.status(500).json({ error: 'Failed to list files' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /upload – upload a file
+// ---------------------------------------------------------------------------
+router.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const auth = await getAuthClient(req.user.id);
+    const drive = google.drive({ version: 'v3', auth });
+    const folderId = req.body.folderId || 'root';
+
+    // If non-admin, verify they have access to the destination folder
+    if (req.user.role !== 'ADMIN' && folderId !== 'root') {
+      const allowed = await isAllowedFolder(
+        req.user.id,
+        req.user.role,
+        req.user.sector,
+        folderId,
+        drive
+      );
+      if (!allowed) {
+        return res.status(403).json({ error: 'Access denied to this folder' });
+      }
+    }
+
+    // Convert buffer to stream for Google Drive API
+    const bufferStream = new PassThrough();
+    bufferStream.end(req.file.buffer);
+
+    const fileMetadata = {
+      name: req.file.originalname,
+      parents: [folderId],
+    };
+
+    const media = {
+      mimeType: req.file.mimetype,
+      body: bufferStream,
+    };
+
+    const response = await drive.files.create({
+      requestBody: fileMetadata,
+      media: media,
+      fields: DRIVE_FILE_FIELDS,
+      supportsAllDrives: true,
+    });
+
+    res.json(response.data);
+  } catch (err) {
+    console.error('[Drive] Error uploading file:', err.message);
+    res.status(500).json({ error: `Failed to upload file: ${err.message}` });
   }
 });
 
@@ -634,6 +710,73 @@ router.get('/root-folders', async (req, res) => {
   } catch (err) {
     console.error('[Drive] Error listing root folders:', err.message);
     res.status(500).json({ error: 'Failed to list root folders' });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// GET /files/:id/download – download/stream file content
+// ---------------------------------------------------------------------------
+router.get('/files/:id/download', async (req, res) => {
+  try {
+    const auth = await getAuthClient(req.user.id);
+    const drive = google.drive({ version: 'v3', auth });
+
+    if (req.user.role !== 'ADMIN') {
+      const allowed = await isAllowedFolder(
+        req.user.id,
+        req.user.role,
+        req.user.sector,
+        req.params.id,
+        drive
+      );
+      if (!allowed) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+    }
+
+    const fileMeta = await drive.files.get({
+        fileId: req.params.id,
+        fields: 'mimeType, name'
+    });
+
+    const mimeType = fileMeta.data.mimeType;
+    let response;
+    let contentType = mimeType;
+    let fileName = fileMeta.data.name;
+
+    if (mimeType.startsWith('application/vnd.google-apps.')) {
+      // Export Google Workspace files as PDF
+      contentType = 'application/pdf';
+      fileName = `${fileName}.pdf`;
+      response = await drive.files.export(
+        { fileId: req.params.id, mimeType: contentType },
+        { responseType: 'stream' }
+      );
+    } else {
+      // Normal binary file
+      response = await drive.files.get(
+        { fileId: req.params.id, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' }
+      );
+    }
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+
+    response.data
+      .on('end', () => {})
+      .on('error', err => {
+        console.error('Error downloading file.', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Download failed' });
+        }
+      })
+      .pipe(res);
+  } catch (err) {
+    console.error('[Drive] Error downloading file:', err.message);
+    if (!res.headersSent) {
+        res.status(500).json({ error: 'Failed to download file' });
+    }
   }
 });
 

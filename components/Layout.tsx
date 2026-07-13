@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Role, Notification, Screen, NotificationPreferences, Task, NotificationType, Post } from '../types';
-import { HomeIcon, CheckSquareIcon, ClipboardIcon, NewspaperIcon, TargetIcon, SettingsIcon, LogOutIcon, ShieldIcon, UserIcon, TrendingUpIcon, SearchIcon, XIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from './icons';
+import { HomeIcon, CheckSquareIcon, ClipboardIcon, NewspaperIcon, TargetIcon, SettingsIcon, LogOutIcon, ShieldIcon, UserIcon, TrendingUpIcon, SearchIcon, XIcon, MenuIcon, ChevronLeftIcon, ChevronRightIcon, CalendarIcon, MessageCircleIcon } from './icons';
 import { HardDrive as HardDriveIcon } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import ProfileModal from './ProfileModal';
@@ -103,7 +103,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
         { id: 'tasks', label: 'Tarefas', icon: ClipboardIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'agenda', label: 'Agenda', icon: CalendarIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'drive', label: 'Drive', icon: HardDriveIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
-        { id: 'mural', label: 'Mural da Equipe', icon: NewspaperIcon, roles: [Role.ADMIN, Role.USER] },
+        { id: 'reports', label: 'Relatórios', icon: ClipboardIcon, roles: [Role.ADMIN, Role.USER] },
+        { id: 'mural', label: 'Comunicação', icon: MessageCircleIcon, roles: [Role.ADMIN, Role.USER] },
         { id: 'focus-tools', label: 'Ferramentas de Foco', icon: TargetIcon, roles: [Role.ADMIN, Role.USER] },
         { id: 'admin', label: 'Admin', icon: SettingsIcon, roles: [Role.ADMIN] },
     ];
@@ -178,9 +179,21 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
                     {isSidebarCollapsed ? <ChevronRightIcon className="w-4 h-4" /> : <ChevronLeftIcon className="w-4 h-4" />}
                 </button>
 
-                <div className={`flex items-center justify-center gap-2 text-2xl font-bold text-center mb-8 py-2 transition-all duration-200 ${isSidebarCollapsed ? 'opacity-0 scale-0' : 'opacity-100 scale-100'}`}>
-                    <img src="/icons/icon-192.png" alt="Logo" className="w-8 h-8" />
-                    <div><span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span></div>
+                <div className="flex items-center justify-center gap-2 text-2xl font-bold text-center mb-8 py-2">
+                    <img src="/icons/icon-192.png" alt="Logo" className="w-8 h-8 flex-shrink-0" />
+                    <AnimatePresence>
+                        {!isSidebarCollapsed && (
+                            <motion.div 
+                                initial={{ opacity: 0, width: 0 }} 
+                                animate={{ opacity: 1, width: 'auto' }} 
+                                exit={{ opacity: 0, width: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden whitespace-nowrap"
+                            >
+                                <span className="text-white">Focus</span><span className="text-[#FF6B00]">Hub</span>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
 
                 <nav className="flex-1 space-y-2">

@@ -4,18 +4,24 @@ import { LinkItem, ContentItem, ContentType, ContentCategory, AccessGroup, Acces
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     CameraIcon, CodeIcon, EditIcon, ExternalLinkIcon, FileTextIcon, GlobeIcon, NewspaperIcon,
-    PlusIcon, SearchIcon, StarIcon, TargetIcon, Trash2Icon, UserIcon, XIcon, BookOpenIcon, AwardIcon, FileCodeIcon, SettingsIcon, LinkIcon, LockIcon, FolderIcon, FolderOpenIcon
+    PlusIcon, SearchIcon, StarIcon, TargetIcon, Trash2Icon, UserIcon, XIcon, BookOpenIcon, AwardIcon, FileCodeIcon, SettingsIcon, LinkIcon, LockIcon, FolderIcon, FolderOpenIcon,
+    InstagramIcon, LinkedinIcon, FacebookIcon, YoutubeIcon, TwitterIcon, WhatsappIcon, TelegramIcon, PinterestIcon, ThreadsIcon, TiktokIcon, GithubIcon, VercelIcon, MicIcon, BarChartIcon, ClickupIcon
 } from '../components/icons';
 import { useToast } from '../components/Toast';
 import * as LucideIcons from 'lucide-react';
 
 const MOCK_LINKS: LinkItem[] = [
-    { id: 'tool-1', title: 'Focus Site', description: 'Acesso ao site institucional da Focus Marketing.', link: 'https://focusmarketing.com', icon: 'Globe', isFavorite: true },
+    { id: 'tool-1', title: 'Focus Site', description: 'Acesso ao site institucional da Focus Tecnologia.', link: 'https://focusmarketing.com', icon: 'Globe', isFavorite: true },
     { id: 'tool-2', title: 'Focus Contrato', description: 'Plataforma de geração e assinatura de contratos.', link: '#', icon: 'FileText', isFavorite: false },
     { id: 'tool-3', title: 'Focus Estúdios', description: 'Setor audiovisual (produção de vídeo, social media).', link: '#', icon: 'Camera', isFavorite: true },
     { id: 'tool-4', title: 'Focus Tech', description: 'Desenvolvimento de sistemas e automações.', link: '#', icon: 'Code', isFavorite: false },
     { id: 'tool-5', title: 'Focus News', description: 'Portal de notícias e atualizações da empresa.', link: '#', icon: 'Newspaper', isFavorite: false },
     { id: 'tool-6', title: 'Painel Equipe', description: 'Links internos, dashboards e relatórios.', link: '#', icon: 'User', isFavorite: true },
+    { id: 'social-1', title: 'Instagram', description: '@focus.tecnologia', link: 'https://instagram.com/', icon: 'Instagram', category: 'Social' },
+    { id: 'social-2', title: 'LinkedIn', description: 'Página oficial no LinkedIn', link: 'https://linkedin.com/', icon: 'LinkedIn', category: 'Social' },
+    { id: 'social-3', title: 'Facebook', description: 'Nossa fanpage', link: 'https://facebook.com/', icon: 'Facebook', category: 'Social' },
+    { id: 'social-4', title: 'YouTube', description: 'Canal Oficial', link: 'https://youtube.com/', icon: 'YouTube', category: 'Social' },
+    { id: 'social-5', title: 'X / Twitter', description: 'Acompanhe as novidades', link: 'https://twitter.com/', icon: 'Twitter', category: 'Social' },
 ];
 
 const MOCK_CONTENT: ContentItem[] = [
@@ -33,7 +39,7 @@ const MOCK_ACCESS_GROUPS: AccessGroup[] = [
         name: 'Focus',
         links: [
             { id: 'acc-1', nome: "Canva", link: "https://www.canva.com", icon: 'GlobeIcon', descricao: 'Acesso à conta Pro da Focus para criação de materiais de marketing.', login: 'admin@focus.com', senha: 'securepassword123', isFavorite: true },
-            { id: 'acc-2', nome: "Instagram", link: "https://www.instagram.com", icon: 'LinkIcon', descricao: 'Conta principal da Focus Marketing.', login: '@focusmarketing', senha: 'securepassword123', isFavorite: false },
+            { id: 'acc-2', nome: "Instagram", link: "https://www.instagram.com", icon: 'LinkIcon', descricao: 'Conta principal da Focus Tecnologia.', login: '@focusmarketing', senha: 'securepassword123', isFavorite: false },
         ]
     },
     {
@@ -55,8 +61,25 @@ const iconMap: { [key: string]: React.FC<React.SVGProps<SVGSVGElement>> } = {
     Target: TargetIcon,
     User: UserIcon,
     Link: LinkIcon,
+    Instagram: InstagramIcon,
+    LinkedIn: LinkedinIcon,
+    Facebook: FacebookIcon,
+    YouTube: YoutubeIcon,
+    Twitter: TwitterIcon,
+    WhatsApp: WhatsappIcon,
+    Telegram: TelegramIcon,
+    Pinterest: PinterestIcon,
+    Threads: ThreadsIcon,
+    TikTok: TiktokIcon,
+    GitHub: GithubIcon,
+    Vercel: VercelIcon,
+    Mic: MicIcon,
+    BarChart: BarChartIcon,
+    ClickUp: ClickupIcon,
 };
 const iconOptions = Object.keys(iconMap);
+const socialIconOptions = ['Instagram', 'LinkedIn', 'Facebook', 'YouTube', 'Twitter', 'WhatsApp', 'Telegram', 'Pinterest', 'Threads', 'TikTok'];
+const generalIconOptions = iconOptions.filter(icon => !socialIconOptions.includes(icon));
 
 const accessIconMap: { [key in AccessLink['icon']]: React.FC<React.SVGProps<SVGSVGElement>> } = {
     LinkIcon: LinkIcon,
@@ -70,7 +93,7 @@ interface FocusToolsScreenProps {
 
 const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const toast = useToast();
-    const [activeTab, setActiveTab] = useState<'integrations' | 'links' | 'content' | 'acessos'>('acessos');
+    const [activeTab, setActiveTab] = useState<'integrations' | 'links' | 'content' | 'acessos' | 'social'>('acessos');
 
     // State for Links Tab
     const [links, setLinks] = useState<LinkItem[]>([]);
@@ -78,6 +101,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const [showFavorites, setShowFavorites] = useState(false);
     const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
     const [editingLink, setEditingLink] = useState<LinkItem | null>(null);
+    const [linkModalCategory, setLinkModalCategory] = useState<'General' | 'Social'>('General');
 
     // State for Content Tab
     const [contents, setContents] = useState<ContentItem[]>([]);
@@ -269,6 +293,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     const filteredLinks = useMemo(() => {
         return links
             .filter(link => {
+                if (link.category === 'Social') return false;
                 const term = searchTerm.toLowerCase();
                 const matchesSearch = link.title.toLowerCase().includes(term) || link.description.toLowerCase().includes(term);
                 const matchesFavorite = showFavorites ? link.isFavorite : true;
@@ -276,6 +301,10 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
             })
             .sort((a, b) => (b.isFavorite ? 1 : 0) - (a.isFavorite ? 1 : 0));
     }, [links, searchTerm, showFavorites]);
+
+    const socialLinks = useMemo(() => {
+        return links.filter(l => l.category === 'Social');
+    }, [links]);
 
     const filteredContent = useMemo(() => {
         let result = contents;
@@ -333,7 +362,8 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
         }
     };
 
-    const handleOpenLinkModal = (link: LinkItem | null) => {
+    const handleOpenLinkModal = (link: LinkItem | null, category: 'General' | 'Social' = 'General') => {
+        setLinkModalCategory(category);
         setEditingLink(link);
         setIsLinkModalOpen(true);
     };
@@ -351,7 +381,8 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                     title: linkData.title,
                     description: linkData.description,
                     link: linkData.link,
-                    icon: linkData.icon
+                    icon: linkData.icon,
+                    category: linkModalCategory
                 });
                 setLinks(prev => prev.map(l => l.id === editingLink.id ? res.data : l));
             } else {
@@ -359,7 +390,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                     title: linkData.title,
                     description: linkData.description,
                     link: linkData.link,
-                    category: 'General',
+                    category: linkModalCategory,
                     icon: linkData.icon,
                     userId: currentUser?.id
                 });
@@ -427,7 +458,7 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                 <p className="text-[#B3B3B3]">Centralize os principais acessos, materiais e integrações da empresa.</p>
             </header>
 
-            <div className="flex items-center gap-2 border-b border-[#2E2E2E] mb-6">
+            <div className="flex items-center gap-2 border-b border-[#2E2E2E] mb-6 flex-wrap">
                 <button onClick={() => setActiveTab('links')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'links' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
                     <LinkIcon className="w-5 h-5" /> Links Focus
                 </button>
@@ -439,6 +470,9 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                 </button>
                 <button onClick={() => setActiveTab('integrations')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'integrations' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
                     <SettingsIcon className="w-5 h-5" /> Integrações
+                </button>
+                <button onClick={() => setActiveTab('social')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'social' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
+                    <LucideIcons.Share2 className="w-5 h-5" /> Redes Sociais
                 </button>
             </div>
 
@@ -460,11 +494,57 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                 />}
                 {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} onDeleteGroup={handleDeleteAccessGroup} onDeleteLink={handleDeleteAccessLink} />}
                 {activeTab === 'integrations' && <IntegrationsTabContent />}
+                {activeTab === 'social' && <SocialTabContent links={socialLinks} onOpenModal={handleOpenLinkModal} onDelete={handleDeleteLink} />}
             </div>
-            {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} />}
+            {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} category={linkModalCategory} />}
             {isAccessModalOpen && accessModalContext && <AccessModal isOpen={isAccessModalOpen} onClose={handleCloseAccessModal} onSave={handleSaveAccessLink} context={accessModalContext} />}
             {isContentModalOpen && <ContentModal isOpen={isContentModalOpen} onClose={handleCloseContentModal} onSave={handleSaveContent} editingContent={editingContent} />}
             {previewContent && <PreviewModal content={previewContent} onClose={() => setPreviewContent(null)} />}
+        </div>
+    );
+};
+
+const SocialTabContent: React.FC<any> = ({ links, onOpenModal, onDelete }) => {
+    return (
+        <div>
+            <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-xl font-bold">Redes Sociais Oficiais</h2>
+                    <p className="text-[#B3B3B3] text-sm">Acesse e compartilhe os canais da Focus Tecnologia.</p>
+                </div>
+                <button onClick={() => onOpenModal(null, 'Social')} className="mt-4 sm:mt-0 flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors">
+                    <PlusIcon className="w-5 h-5 mr-2" /> Adicionar
+                </button>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {links.map((social: any) => {
+                    const Icon = iconMap[social.icon] || LinkIcon;
+                    return (
+                        <div key={social.id} className="relative group">
+                            <a href={social.link} target="_blank" rel="noopener noreferrer" className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-xl p-6 flex flex-col items-center justify-center hover:bg-[#2A2A2A] hover:border-[#FF6B00] transition-all h-full block">
+                                <div className="p-4 rounded-full bg-[#2E2E2E] mb-4 group-hover:scale-110 transition-transform text-[#FF6B00]">
+                                    <Icon className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white text-center">{social.title}</h3>
+                                {social.description && <p className="text-xs text-[#B3B3B3] mt-2 text-center">{social.description}</p>}
+                                <p className="text-sm text-[#B3B3B3] mt-2 group-hover:text-[#FF6B00] transition-colors text-center">Acessar perfil</p>
+                            </a>
+                            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
+                                <button onClick={(e) => { e.preventDefault(); onOpenModal(social, 'Social'); }} className="p-1.5 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white rounded shadow-sm">
+                                    <EditIcon className="w-4 h-4" />
+                                </button>
+                                <button onClick={(e) => { e.preventDefault(); onDelete(social.id); }} className="p-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-500 rounded shadow-sm">
+                                    <Trash2Icon className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+                    )
+                })}
+                {links.length === 0 && (
+                    <div className="col-span-full text-center text-[#B3B3B3] py-16"><p>Nenhuma rede social adicionada.</p></div>
+                )}
+            </div>
         </div>
     );
 };
@@ -1181,15 +1261,17 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
     );
 };
 
-const LinkModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (data: any) => void; editingLink: LinkItem | null }> = ({ isOpen, onClose, onSave, editingLink }) => {
+const LinkModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (data: any) => void; editingLink: LinkItem | null; category: 'General' | 'Social' }> = ({ isOpen, onClose, onSave, editingLink, category }) => {
     const [formData, setFormData] = useState({
         title: editingLink?.title || '',
         description: editingLink?.description || '',
         link: editingLink?.link || '',
-        icon: editingLink?.icon || 'Target',
+        icon: editingLink?.icon || (category === 'Social' ? 'Instagram' : 'Target'),
     });
 
     if (!isOpen) return null;
+
+    const currentIconOptions = category === 'Social' ? socialIconOptions : generalIconOptions;
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
@@ -1205,7 +1287,7 @@ const LinkModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (data:
                     <div>
                         <label className="block text-sm font-medium text-[#B3B3B3] mb-2">Ícone</label>
                         <div className="grid grid-cols-7 gap-2 p-2 bg-[#0E0E0E] rounded-lg">
-                            {iconOptions.map(iconName => {
+                            {currentIconOptions.map(iconName => {
                                 const IconComponent = iconMap[iconName];
                                 return (
                                     <button type="button" key={iconName} onClick={() => setFormData(p => ({ ...p, icon: iconName }))} className={`flex items-center justify-center p-3 rounded-md transition-all ${formData.icon === iconName ? 'bg-[#FF6B00]' : 'bg-[#2E2E2E] hover:bg-[#3a3a3a]'}`} title={iconName}>

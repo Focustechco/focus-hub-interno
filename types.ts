@@ -6,7 +6,7 @@ export enum Role {
     COLLABORATOR = 'COLLABORATOR',
 }
 
-export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations' | 'drive';
+export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations' | 'drive' | 'reports';
 
 export type Sector = 'Administração' | 'Tech' | 'RH' | 'Comercial' | 'Financeiro';
 

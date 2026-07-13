@@ -34,6 +34,7 @@ const TasksScreen = lazy(() => import('./screens/TasksScreen'));
 const AdminScreen = lazy(() => import('./screens/AdminScreen'));
 const FocusToolsScreen = lazy(() => import('./screens/FocusToolsScreen'));
 const DriveScreen = lazy(() => import('./screens/DriveScreen'));
+const ReportsScreen = lazy(() => import('./screens/ReportsScreen'));
 
 // Force deploy: 2024-12-24 v4 - fix infinite loop
 const App: React.FC = () => {
@@ -344,6 +345,8 @@ const App: React.FC = () => {
                 return <DashboardScreen {...dashboardProps} />;
             case 'drive':
                 return <DriveScreen currentUser={currentUser} />;
+            case 'reports':
+                return <ReportsScreen />;
             default:
                 return <DashboardScreen {...dashboardProps} />;
         }

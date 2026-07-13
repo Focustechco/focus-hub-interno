@@ -316,6 +316,10 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                 if (!isOnline) {
                     updatedTask.isOffline = true;
                     setOfflineActionQueue(prev => [...prev, { type: 'UPDATE_TASK', payload: updatedTask, timestamp: Date.now() }]);
+                } else {
+                    api.put(`/tasks/${activeTask.id}`, updatedTask).catch(err => {
+                        console.error('Failed to update task status on drag:', err);
+                    });
                 }
 
                 setTasks(prev => prev.map(t => t.id === activeId ? updatedTask : t));

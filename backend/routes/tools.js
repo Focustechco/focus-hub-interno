@@ -16,6 +16,7 @@ router.get('/links', async (req, res) => {
             description: row.description || '',
             link: row.url, // Map 'url' to 'link' for frontend
             icon: row.icon || 'Target',
+            category: row.category,
             isFavorite: row.is_favorite || false
         }));
 
@@ -60,6 +61,7 @@ router.post('/links', async (req, res) => {
             description: row.description || '',
             link: row.url,
             icon: row.icon || 'Target',
+            category: row.category,
             isFavorite: row.is_favorite || false
         });
     } catch (err) {
@@ -71,7 +73,7 @@ router.post('/links', async (req, res) => {
 // PUT /api/tools/links/:id - Update a link
 router.put('/links/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description, link, url, icon, isFavorite } = req.body;
+    const { title, description, link, url, icon, isFavorite, category } = req.body;
     const finalUrl = link || url;
 
     try {
@@ -81,9 +83,10 @@ router.put('/links/:id', async (req, res) => {
                  description = COALESCE($2, description), 
                  url = COALESCE($3, url), 
                  icon = COALESCE($4, icon),
-                 is_favorite = COALESCE($5, is_favorite)
-             WHERE id = $6 RETURNING *`,
-            [title, description, finalUrl, icon, isFavorite, id]
+                 is_favorite = COALESCE($5, is_favorite),
+                 category = COALESCE($6, category)
+             WHERE id = $7 RETURNING *`,
+            [title, description, finalUrl, icon, isFavorite, category, id]
         );
 
         if (result.rowCount === 0) {
@@ -97,6 +100,7 @@ router.put('/links/:id', async (req, res) => {
             description: row.description || '',
             link: row.url,
             icon: row.icon || 'Target',
+            category: row.category,
             isFavorite: row.is_favorite || false
         });
     } catch (err) {

@@ -18,7 +18,20 @@ pool.query(`
     ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'active',
     ADD COLUMN IF NOT EXISTS whatsapp_notifications JSONB,
     ADD COLUMN IF NOT EXISTS whatsapp_dnd_start VARCHAR(10),
-    ADD COLUMN IF NOT EXISTS whatsapp_dnd_end VARCHAR(10)
+    ADD COLUMN IF NOT EXISTS whatsapp_dnd_end VARCHAR(10);
+
+    -- Tabela para o Chat Interno
+    CREATE TABLE IF NOT EXISTS chat_messages (
+        id VARCHAR(50) PRIMARY KEY,
+        sender_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        attachments JSONB,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Tabela para grupos de chat
 `).catch(e => {
     // Ignore error if columns already exist
 });
@@ -153,11 +166,13 @@ app.use('/api/posts', authMiddleware, require('./routes/posts'));
 app.use('/api/goals', authMiddleware, require('./routes/goals'));
 app.use('/api/users', authMiddleware, require('./routes/users'));
 app.use('/api/tools', authMiddleware, require('./routes/tools'));
+app.use('/api/reports', authMiddleware, require('./routes/reports'));
 app.use('/api/daily-checklist', authMiddleware, require('./routes/dailyChecklist'));
 app.use('/api/notifications', authMiddleware, require('./routes/notifications'));
 app.use('/api/push', authMiddleware, require('./routes/push'));
 app.use('/api/contents', authMiddleware, require('./routes/contents'));
 app.use('/api/drive', authMiddleware, require('./routes/drive'));
+app.use('/api/communication', authMiddleware, require('./routes/communication'));
 
 // Serve storage directory statically
 const path = require('path');
@@ -191,7 +206,19 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const http = require('http');
+const server = http.createServer(app);
+
+const { Server } = require('socket.io');
+const io = new Server(server, {
+    cors: {
+        origin: allowedOrigins,
+        methods: ['GET', 'POST', 'PUT', 'DELETE']
+    }
+});
+require('./sockets/chat')(io);
+
+server.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`CORS allowed origins: ${allowedOrigins.join(', ')}`);
 

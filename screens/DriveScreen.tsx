@@ -13,6 +13,7 @@ import {
   ChevronRight,
   X,
   ExternalLink,
+  Download,
   Plus,
   Loader2,
   FolderOpen,
@@ -48,6 +49,7 @@ interface DriveFile {
   iconLink?: string;
   thumbnailLink?: string;
   webViewLink?: string;
+  webContentLink?: string;
   parents?: string[];
 }
 
@@ -181,7 +183,75 @@ function SkeletonRow() {
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Blob Previewer Component (PDFs & Images) ──────────────────────────────────
+const BlobPreviewer = ({ fileId, mimeType, fileName }: { fileId: string; mimeType: string; fileName: string }) => {
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    const fetchFile = async () => {
+      try {
+        const res = await api.get(`/drive/files/${fileId}/download`, { responseType: 'blob' });
+        if (!active) return;
+        const url = URL.createObjectURL(res.data);
+        setBlobUrl(url);
+      } catch (err) {
+        if (!active) return;
+        console.error("Erro ao carregar arquivo", err);
+        setError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    fetchFile();
+    return () => {
+      active = false;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [fileId]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-[#B3B3B3]">
+        <Loader2 className="w-8 h-8 animate-spin text-[#FF6B00]" />
+        <p>Carregando arquivo...</p>
+      </div>
+    );
+  }
+
+  if (error || !blobUrl) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-red-400">
+        <FileText size={48} className="text-[#B3B3B3]" />
+        <p>Erro ao carregar o arquivo.</p>
+      </div>
+    );
+  }
+
+  if (mimeType.startsWith('image/')) {
+    return (
+      <div className="flex items-center justify-center h-full w-full">
+        <img
+          src={blobUrl}
+          alt={fileName}
+          className="max-w-full max-h-full object-contain rounded-lg"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full h-full bg-white rounded-lg overflow-hidden flex items-center justify-center">
+      <object data={`${blobUrl}#toolbar=0&navpanes=0&view=FitH`} type="application/pdf" width="100%" height="100%">
+        <p className="p-4 text-center text-gray-500">Seu navegador não suporta a visualização embutida de PDFs.</p>
+      </object>
+    </div>
+  );
+};
+
+// ── Main Component ───────────────────────────────────────────────────────────
 
 export default function DriveScreen({ currentUser }: DriveScreenProps) {
   const { showToast } = useToast();
@@ -202,6 +272,10 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   const [loading, setLoading] = useState(false);
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  
+  // Upload
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // View
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
@@ -317,6 +391,40 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
         .catch(() => {});
     }
   }, [connected, fetchFiles]);
+
+  // ── Upload files ───────────────────────────────────────────────────────────
+
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      // If we are inside a folder, append folderId
+      if (currentFolderId && currentFolderId !== 'root') {
+        formData.append('folderId', currentFolderId);
+      }
+
+      await api.post('/drive/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      showToast('Arquivo enviado com sucesso', 'success');
+      // Refresh current folder
+      fetchFiles(currentFolderId);
+    } catch (err: any) {
+      console.error(err);
+      showToast(err.response?.data?.error || 'Erro ao fazer upload do arquivo', 'error');
+    } finally {
+      setIsUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // Tab changes
   useEffect(() => {
@@ -446,56 +554,15 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
   function getPreviewContent(file: DriveFile) {
     const { mimeType, webViewLink, thumbnailLink } = file;
 
-    // Google Docs / Sheets / Slides — embeddable via webViewLink
-    // For Docs, Sheets, Slides, and PDFs, opening in an iframe usually fails for private files
-    // due to modern browsers blocking third-party cookies. We show a nice button to open in Drive instead.
+    // Use built-in Blob Previewer for images, PDFs, and Google Docs (which are exported as PDFs)
     if (
+      mimeType === MIME_TYPES.pdf ||
+      mimeType.startsWith('image/') ||
       mimeType === MIME_TYPES.document ||
       mimeType === MIME_TYPES.spreadsheet ||
-      mimeType === MIME_TYPES.presentation ||
-      mimeType === MIME_TYPES.pdf
+      mimeType === MIME_TYPES.presentation
     ) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full gap-6 p-6">
-          <div className="p-6 bg-[#2E2E2E]/40 rounded-3xl shadow-inner">
-            {(() => {
-              const { Icon, color } = getFileIcon(mimeType);
-              return <Icon size={72} style={{ color }} />;
-            })()}
-          </div>
-          <div className="text-center space-y-2 max-w-sm">
-            <h4 className="text-white font-medium text-lg">Visualização Protegida</h4>
-            <p className="text-[#B3B3B3] text-sm leading-relaxed">
-              Por questões de segurança e privacidade do Google, este documento deve ser aberto diretamente no Drive.
-            </p>
-          </div>
-          {webViewLink && (
-            <a
-              href={webViewLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 flex items-center gap-2 px-6 py-3.5 bg-[#FF6B00] hover:bg-[#E25E00] text-white rounded-xl font-semibold transition-all shadow-lg shadow-[#FF6B00]/20 hover:shadow-[#FF6B00]/40 hover:-translate-y-0.5"
-            >
-              <ExternalLink size={18} />
-              Abrir no Google Drive
-            </a>
-          )}
-        </div>
-      );
-    }
-
-    // Images
-    if (mimeType.startsWith('image/')) {
-      const src = thumbnailLink?.replace(/=s\d+/, '=s1600') || webViewLink;
-      return (
-        <div className="flex items-center justify-center h-full">
-          <img
-            src={src}
-            alt={file.name}
-            className="max-w-full max-h-full object-contain rounded-lg"
-          />
-        </div>
-      );
+      return <BlobPreviewer fileId={file.id} mimeType={mimeType} fileName={file.name} />;
     }
 
     // Fallback
@@ -853,6 +920,26 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
                   <List size={16} />
                 </button>
               </div>
+
+              {/* Upload */}
+              {activeTab === 'my-drive' && !isSearching && (
+                <div className="flex items-center ml-auto">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleUpload}
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#FF6B00] hover:bg-[#E25E00] disabled:opacity-50 text-white rounded-xl font-medium transition-colors shadow-lg shadow-[#FF6B00]/20"
+                  >
+                    {isUploading ? <Loader2 size={16} className="animate-spin" /> : <Cloud size={16} />}
+                    Fazer Upload
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Breadcrumb */}
@@ -1081,6 +1168,18 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {previewFile.webContentLink && (
+                    <a
+                      href={previewFile.webContentLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg bg-[#2E2E2E] hover:bg-[#3E3E3E] text-[#B3B3B3] hover:text-white transition-colors"
+                      title="Baixar Arquivo"
+                      download
+                    >
+                      <Download size={16} />
+                    </a>
+                  )}
                   {previewFile.webViewLink && (
                     <a
                       href={previewFile.webViewLink}

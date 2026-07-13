@@ -24,7 +24,7 @@ const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost
 const SCOPES = [
     'https://www.googleapis.com/auth/calendar',
     'https://www.googleapis.com/auth/calendar.events',
-    'https://www.googleapis.com/auth/drive.readonly'
+    'https://www.googleapis.com/auth/drive'
 ].join(' ');
 
 /**
@@ -100,6 +100,8 @@ router.get('/callback', async (req, res) => {
 
         // TEMPORARY: Update ALL admin users (assuming single tenant/team context)
         // In a real multi-user app, pass userId in 'state'
+        const expiryDate = tokens.expiry_date || (tokens.expires_in ? new Date(Date.now() + tokens.expires_in * 1000).toISOString() : null);
+        
         await pool.query(
             `UPDATE users SET 
                 google_access_token = $1, 
@@ -109,7 +111,7 @@ router.get('/callback', async (req, res) => {
             [
                 tokens.access_token,
                 tokens.refresh_token || null, // Refresh token only returned on first consent
-                tokens.expiry_date
+                expiryDate
             ]
         );
 

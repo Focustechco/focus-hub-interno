@@ -43,7 +43,7 @@ router.put('/:id', async (req, res) => {
              WHERE id = $12
              RETURNING id, name, email, role, avatar_url, sector, job_title, bio, join_date, 
                        whatsapp, whatsapp_notifications, whatsapp_dnd_start, whatsapp_dnd_end, status`,
-            [name, role, sector, jobTitle, bio, avatarUrl, whatsapp,
+            [name || null, role || null, sector || null, jobTitle || null, bio || null, avatarUrl || null, whatsapp || null,
                 whatsappNotifications ? JSON.stringify(whatsappNotifications) : null,
                 whatsappDndStart || null, whatsappDndEnd || null, status || 'active', id]
         );
@@ -90,9 +90,9 @@ router.post('/', async (req, res) => {
 
     try {
         const result = await pool.query(
-            `INSERT INTO users (id, name, email, password, role, sector, job_title, bio, approved)
+            `INSERT INTO users (id, name, email, password, role, sector, job_title, bio, is_approved)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
-             RETURNING id, name, email, role, sector, job_title, bio, avatar_url, approved`,
+             RETURNING id, name, email, role, sector, job_title, bio, avatar_url, is_approved`,
             ['u' + Date.now(), name, email, password, role || 'USER', sector, jobTitle, bio] // Note: Password should be hashed in a real app, assuming plaintext for now based on existing context or relying on frontend hash? Ideally backend hashes.
             // CAUTION: If auth routes hash password, we must hash here too. Checking auth route recommended.
             // For now, inserting as is to match likely dev environment or assuming auth service handles hashing elsewhere. 
@@ -113,6 +113,18 @@ router.post('/', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // Remover dependências estritas
+        await pool.query('DELETE FROM push_subscriptions WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM daily_checklist WHERE user_id = $1', [id]);
+        await pool.query('DELETE FROM notifications WHERE user_id = $1', [id]);
+        
+        // Manter tarefas, posts, etc., desvinculando o usuário
+        await pool.query('UPDATE tasks SET assignee_id = NULL WHERE assignee_id = $1', [id]);
+        await pool.query('UPDATE check_ins SET user_id = NULL WHERE user_id = $1', [id]);
+        await pool.query('UPDATE posts SET author_id = NULL WHERE author_id = $1', [id]);
+        await pool.query('UPDATE goals SET user_id = NULL WHERE user_id = $1', [id]);
+        await pool.query('UPDATE focus_links SET user_id = NULL WHERE user_id = $1', [id]);
+
         const result = await pool.query('DELETE FROM users WHERE id = $1 RETURNING id', [id]);
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'User not found' });

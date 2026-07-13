@@ -21,6 +21,8 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
     const [isCreateUserModalOpen, setIsCreateUserModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [reportSearchTerm, setReportSearchTerm] = useState('');
+    const [archivedReports, setArchivedReports] = useState<string[]>([]);
+    const [archivingId, setArchivingId] = useState<string | null>(null);
 
     // Estados para aprovação de usuários
     const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -98,15 +100,16 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
         .sort((a, b) => new Date(b.checkOutTime!).getTime() - new Date(a.checkOutTime!).getTime());
 
     const filteredDailyReports = useMemo(() => {
+        let activeReports = dailyReports.filter(r => !archivedReports.includes(r.id));
         if (!reportSearchTerm.trim()) {
-            return dailyReports;
+            return activeReports;
         }
         const searchTermLower = reportSearchTerm.toLowerCase();
-        return dailyReports.filter(report => {
+        return activeReports.filter(report => {
             const user = users.find(u => u.id === report.userId);
             return user ? user.name.toLowerCase().includes(searchTermLower) : false;
         });
-    }, [dailyReports, reportSearchTerm, users]);
+    }, [dailyReports, reportSearchTerm, users, archivedReports]);
 
     return (
         <div>
@@ -266,7 +269,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
             <div className="mt-8 bg-[#1C1C1C] p-6 rounded-lg shadow-md">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
                     <h2 className="text-xl font-bold flex items-center">
-                        <FileTextIcon className="w-5 h-5 mr-2" /> 📋 Relatórios da Equipe
+                        <FileTextIcon className="w-5 h-5 mr-2" /> 📋 Reports da Equipe
                     </h2>
                     <div className="relative w-full sm:max-w-xs">
                         <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#B3B3B3]" />
@@ -285,7 +288,7 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                             const user = users.find(u => u.id === report.userId);
                             if (!user) return null;
                             return (
-                                <div key={report.id} className="p-4 bg-[#2E2E2E] rounded-lg">
+                                <div key={report.id} className="p-4 bg-[#1C1C1C] border border-[#2E2E2E] rounded-lg transition-all duration-300 relative overflow-hidden" style={{ opacity: archivingId === report.id ? 0.5 : 1 }}>
                                     <div className="flex items-center justify-between mb-3">
                                         <div className="flex items-center">
                                             <img src={user.avatarUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
@@ -294,11 +297,26 @@ const AdminScreen: React.FC<AdminScreenProps> = ({ currentUser, users, tasks, ch
                                                 <p className="text-xs text-[#B3B3B3]">{user.sector}</p>
                                             </div>
                                         </div>
-                                        <p className="text-xs text-[#B3B3B3]">
-                                            {new Date(report.checkOutTime!).toLocaleString()}
-                                        </p>
+                                        <div className="flex items-center space-x-3">
+                                            <p className="text-xs text-[#B3B3B3]">
+                                                {new Date(report.checkOutTime!).toLocaleString()}
+                                            </p>
+                                            <button 
+                                                onClick={() => {
+                                                    setArchivingId(report.id);
+                                                    setTimeout(() => {
+                                                        setArchivedReports(prev => [...prev, report.id]);
+                                                        setArchivingId(null);
+                                                    }, 400); // tempo do efeito visual
+                                                }}
+                                                className={`p-1 transition-colors rounded-md ${archivingId === report.id ? 'text-green-500 bg-green-500/20' : 'text-[#B3B3B3] hover:text-green-500 hover:bg-[#2E2E2E]'}`}
+                                                title="Arquivar report"
+                                            >
+                                                <CheckCircle2Icon className="w-5 h-5" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p className="text-sm text-white/90 whitespace-pre-wrap bg-[#1c1c1c] p-3 rounded-md">{report.dailyReport}</p>
+                                    <p className="text-sm text-white opacity-90 whitespace-pre-wrap bg-[#2E2E2E] p-3 rounded-md border border-transparent dark:border-none">{report.dailyReport}</p>
                                 </div>
                             );
                         })}

@@ -255,8 +255,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
     };
 
     // --- Daily Checklist Data ---
-    const todayStr = new Date().toISOString().split('T')[0];
-    const myDailyTasks = dailyChecklistItems.filter(item => item.userId === currentUser.id && item.date === todayStr);
+    const _now = new Date();
+    const localTodayStr = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
+    const myDailyTasks = dailyChecklistItems.filter(item => item.userId === currentUser.id && item.date === localTodayStr);
     const myCompletedDailyTasks = myDailyTasks.filter(item => item.completed);
     const dailyProgress = (myDailyTasks || []).length > 0 ? (myCompletedDailyTasks.length / myDailyTasks.length) * 100 : 0;
     const incompleteDailyTasks = myDailyTasks.filter(item => !item.completed).slice(0, 5);
@@ -425,77 +426,84 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                 </motion.div>
             </div>
 
-            {/* NEW SECTION: Daily Checklist */}
-            <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold flex items-center"><CheckSquareIcon2 className="w-5 h-5 mr-2 text-white" /> Minhas Tarefas do Dia</h2>
-                    <button onClick={() => setActiveScreen('tasks')} className="text-sm font-semibold text-[#FF6B00] hover:underline">
-                        Ver todas
-                    </button>
+            {/* NEW SECTION: Combined Tasks Card */}
+            <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex flex-col md:flex-row gap-8">
+                
+                {/* Left Column: Daily Checklist */}
+                <div className="flex-1">
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-xl font-bold flex items-center"><CheckSquareIcon2 className="w-5 h-5 mr-2 text-white" /> Minhas Tarefas do Dia</h2>
+                        <button onClick={() => setActiveScreen('tasks')} className="text-sm font-semibold text-[#FF6B00] hover:underline">
+                            Ver todas
+                        </button>
+                    </div>
+                    {(myDailyTasks || []).length > 0 ? (
+                        <>
+                            <div className="w-full bg-[#2E2E2E] rounded-full h-2.5 mb-4">
+                                <motion.div
+                                    className="bg-[#FF6B00] h-2.5 rounded-full"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${dailyProgress}%` }}
+                                    transition={{ duration: 1, ease: "circOut" }}
+                                />
+                            </div>
+                            <p className="text-sm text-center text-[#B3B3B3] mb-4">
+                                Você concluiu {Math.round(dailyProgress)}% do seu checklist de hoje!
+                            </p>
+                            <ul className="space-y-3">
+                                {incompleteDailyTasks.map(task => (
+                                    <li key={task.id} className="flex items-center p-3 bg-[#2E2E2E] rounded-md transition-colors hover:bg-[#3a3a3a]">
+                                        <input
+                                            type="checkbox"
+                                            checked={task.completed}
+                                            onChange={() => handleToggleDailyTask(task.id)}
+                                            className="h-5 w-5 rounded bg-[#1C1C1C] border-gray-600 text-[#FF6B00] focus:ring-[#FF8C33] cursor-pointer"
+                                        />
+                                        <span className={`ml-3 font-semibold ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>{task.text}</span>
+                                    </li>
+                                ))}
+                                {(incompleteDailyTasks || []).length === 0 && (myDailyTasks || []).length > 0 && (
+                                    <p className="text-center text-green-400 font-semibold p-4">🎉 Todas as tarefas do dia foram concluídas!</p>
+                                )}
+                            </ul>
+                        </>
+                    ) : (
+                        <p className="text-center text-[#B3B3B3] py-4">Nenhuma tarefa adicionada ao seu checklist de hoje. Vá para a tela de Tarefas para adicionar.</p>
+                    )}
                 </div>
-                {(myDailyTasks || []).length > 0 ? (
-                    <>
-                        <div className="w-full bg-[#2E2E2E] rounded-full h-2.5 mb-4">
-                            <motion.div
-                                className="bg-[#FF6B00] h-2.5 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${dailyProgress}%` }}
-                                transition={{ duration: 1, ease: "circOut" }}
-                            />
-                        </div>
-                        <p className="text-sm text-center text-[#B3B3B3] mb-4">
-                            Você concluiu {Math.round(dailyProgress)}% do seu checklist de hoje!
-                        </p>
+
+                <div className="hidden md:block w-px bg-[#2E2E2E] my-2"></div>
+
+                {/* Right Column: Pending Tasks */}
+                <div className="flex-1">
+                    <h2 className="text-xl font-bold mb-4">Minhas Tarefas Pendentes</h2>
+                    {(tasks || []).filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').length > 0 ? (
                         <ul className="space-y-3">
-                            {incompleteDailyTasks.map(task => (
-                                <li key={task.id} className="flex items-center p-3 bg-[#2E2E2E] rounded-md transition-colors hover:bg-[#3a3a3a]">
-                                    <input
-                                        type="checkbox"
-                                        checked={task.completed}
-                                        onChange={() => handleToggleDailyTask(task.id)}
-                                        className="h-5 w-5 rounded bg-[#1C1C1C] border-gray-600 text-[#FF6B00] focus:ring-[#FF8C33] cursor-pointer"
-                                    />
-                                    <span className={`ml-3 font-semibold ${task.completed ? 'line-through text-gray-500' : 'text-white'}`}>{task.text}</span>
+                            {tasks.filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').slice(0, 5).map(task => (
+                                <li key={task.id} className="flex justify-between items-center p-3 bg-[#2E2E2E] rounded-md">
+                                    <span className="font-semibold">{task.title}</span>
+                                    <span className={`px-2 py-1 text-xs rounded-full capitalize font-semibold ${task.priority === 'alta' ? 'bg-red-500/20 text-red-400' :
+                                        task.priority === 'media' ? 'bg-yellow-500/20 text-yellow-400' :
+                                            'bg-green-500/20 text-green-400'
+                                        }`}>
+                                        {task.priority}
+                                    </span>
+                                    {(currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
+                                        <button
+                                            onClick={() => handleDeleteTask(task.id)}
+                                            className="ml-2 text-gray-500 hover:text-red-500 transition-colors"
+                                            title="Excluir tarefa"
+                                        >
+                                            <Trash2Icon className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </li>
                             ))}
-                            {(incompleteDailyTasks || []).length === 0 && (myDailyTasks || []).length > 0 && (
-                                <p className="text-center text-green-400 font-semibold p-4">🎉 Todas as tarefas do dia foram concluídas!</p>
-                            )}
                         </ul>
-                    </>
-                ) : (
-                    <p className="text-center text-[#B3B3B3] py-4">Nenhuma tarefa adicionada ao seu checklist de hoje. Vá para a tela de Tarefas para adicionar.</p>
-                )}
-            </motion.div>
-
-            <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10">
-                <h2 className="text-xl font-bold mb-4">Minhas Tarefas Pendentes</h2>
-                {(tasks || []).filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').length > 0 ? (
-                    <ul className="space-y-3">
-                        {tasks.filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').slice(0, 5).map(task => (
-                            <li key={task.id} className="flex justify-between items-center p-3 bg-[#2E2E2E] rounded-md">
-                                <span className="font-semibold">{task.title}</span>
-                                <span className={`px-2 py-1 text-xs rounded-full capitalize font-semibold ${task.priority === 'alta' ? 'bg-red-500/20 text-red-400' :
-                                    task.priority === 'media' ? 'bg-yellow-500/20 text-yellow-400' :
-                                        'bg-green-500/20 text-green-400'
-                                    }`}>
-                                    {task.priority}
-                                </span>
-                                {(currentUser.role === Role.ADMIN || task.assigneeId === currentUser.id) && (
-                                    <button
-                                        onClick={() => handleDeleteTask(task.id)}
-                                        className="ml-2 text-gray-500 hover:text-red-500 transition-colors"
-                                        title="Excluir tarefa"
-                                    >
-                                        <Trash2Icon className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-center text-[#B3B3B3]">Você não tem tarefas pendentes. Bom trabalho!</p>
-                )}
+                    ) : (
+                        <p className="text-center text-[#B3B3B3]">Você não tem tarefas pendentes. Bom trabalho!</p>
+                    )}
+                </div>
             </motion.div>
 
             {/* NEW SECTION: Daily Summary (Admin only) */}

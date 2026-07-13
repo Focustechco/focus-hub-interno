@@ -19,10 +19,33 @@ const REQUIRED_TABLES = [
     'notifications',
     'task_comments',
     'task_tags',
+    'reports',
+    'report_templates'
 ];
 
 // Migration queries to run (idempotent)
 const MIGRATIONS = [
+    // Add reports table
+    `CREATE TABLE IF NOT EXISTS reports (
+        id VARCHAR(255) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        content TEXT,
+        author_id VARCHAR(255),
+        department VARCHAR(100),
+        is_favorite BOOLEAN DEFAULT false,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+
+    // Add report templates table
+    `CREATE TABLE IF NOT EXISTS report_templates (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        config JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
     // Add task_comments table
     `CREATE TABLE IF NOT EXISTS task_comments (
         id SERIAL PRIMARY KEY,

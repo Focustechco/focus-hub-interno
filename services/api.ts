@@ -13,8 +13,9 @@ const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
     headers: {
         'Content-Type': 'application/json',
+        'Bypass-Tunnel-Reminder': 'true',
     },
-    timeout: 30000, // 30 second timeout
+    timeout: 300000, // 5 minute timeout for AI processing and rate limits
 });
 
 // Add a request interceptor to include the auth token in requests
