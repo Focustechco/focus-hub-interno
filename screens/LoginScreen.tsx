@@ -27,17 +27,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [selectedRole, setSelectedRole] = useState<Role | null>(null);
     const [sector, setSector] = useState('');
     const [jobTitle, setJobTitle] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
-        if (!isLogin && !selectedRole) {
-            // Role selection is mandatory for registration
-            return;
-        }
 
         try {
             if (isLogin) {
@@ -48,7 +42,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                     name,
                     email,
                     password,
-                    role: selectedRole,
+                    role: Role.COLLABORATOR, // Default safe role
                     sector,
                     jobTitle
                 });
@@ -103,7 +97,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                             setName('');
                             setEmail('');
                             setPassword('');
-                            setSelectedRole(null);
                             setSector('');
                             setJobTitle('');
                         }}
@@ -183,27 +176,6 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                                 <div>
                                     <label className="text-sm font-medium text-[#B3B3B3]">Cargo</label>
                                     <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium text-[#B3B3B3] mb-2 block">Selecione sua função:</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(Object.keys(roleConfig) as Role[]).map(role => {
-                                        const { label, icon: Icon } = roleConfig[role];
-                                        const isSelected = selectedRole === role;
-                                        return (
-                                            <button
-                                                key={role}
-                                                type="button"
-                                                onClick={() => setSelectedRole(role)}
-                                                className={`p-2 rounded-lg text-center font-semibold transition-all duration-300 border-2 flex flex-col items-center justify-center ${isSelected ? 'bg-[#FF6B00] border-[#FF8C33] text-white' : 'bg-[#2E2E2E] border-transparent hover:border-[#FF6B00]'}`}
-                                            >
-                                                <Icon className="w-5 h-5 mb-1" />
-                                                <span className="text-[10px]">{label}</span>
-                                            </button>
-                                        );
-                                    })}
                                 </div>
                             </div>
                         </>
