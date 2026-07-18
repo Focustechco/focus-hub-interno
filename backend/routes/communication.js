@@ -86,6 +86,24 @@ router.post('/announcements', async (req, res, next) => {
             RETURNING *
         `, [id, title, content, author_id, priority || 'Normal', expires_at || null, pinned || false, attachments ? JSON.stringify(attachments) : null]);
         
+        // Handle Notifications for NEW_POST
+        try {
+            const usersRes = await pool.query("SELECT id FROM users WHERE status = 'active' AND id != $1", [author_id]);
+            if (usersRes.rows.length > 0) {
+                const values = [];
+                const params = [];
+                let i = 1;
+                usersRes.rows.forEach(user => {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    values.push(`($${i++}, $${i++}, $${i++}, $${i++}, $${i++}, $${i++})`);
+                    params.push(notifId, user.id, 'NEW_POST', `Novo aviso no mural: ${title}`, 'mural', false);
+                });
+                await pool.query(`INSERT INTO notifications (id, user_id, type, message, link_to, is_read) VALUES ${values.join(',')}`, params);
+            }
+        } catch (notifErr) {
+            console.error('Failed to create NEW_POST notifications:', notifErr);
+        }
+
         res.status(201).json(result.rows[0]);
     } catch (error) {
         next(error);

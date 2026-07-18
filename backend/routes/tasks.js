@@ -427,6 +427,21 @@ router.put('/:id', async (req, res) => {
                         whatsAppService.sendMessage(userRes.rows[0].whatsapp, message).catch(console.error);
                     }
                 }
+                // If status changed (but not to concluida since that is handled above)
+                else if (status && prevTask.status && status !== prevTask.status && status !== 'concluida') {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await client.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, cleanAssigneeId, 'TASK_STATUS_CHANGED', `O status da tarefa "${title}" mudou para ${status.replace('_', ' ')}.`, 'tasks', false, id]
+                    );
+                    pushService.sendPushToUser(cleanAssigneeId, {
+                        title: '🔄 Status Atualizado',
+                        body: `A tarefa "${title}" mudou para ${status.replace('_', ' ')}.`,
+                        url: '/',
+                        tag: `notification-TASK_STATUS_CHANGED-${notifId}`,
+                    }).catch(err => console.warn('Push failed:', err.message));
+                }
             } catch (error) {
                 console.error('Failed to handle notifications on update:', error);
             }

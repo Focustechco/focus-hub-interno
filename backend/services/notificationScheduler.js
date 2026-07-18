@@ -185,6 +185,17 @@ class NotificationScheduler {
             for (const task of urgent.rows) {
                 if (!this.canSendNotification(task, 'reminders')) continue;
 
+                // Add In-App notification
+                try {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await pool.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, task.user_id, 'TASK_DUE_SOON', `Lembrete Urgente: A tarefa ${task.title} vence em 1 hora!`, 'tasks', false, task.id]
+                    );
+                } catch (e) {
+                    console.error('[Scheduler] Error inserting in-app notification:', e);
+                }
+
                 const dueTime = new Date(task.due_date).toLocaleTimeString('pt-BR', {
                     hour: '2-digit', minute: '2-digit'
                 });
@@ -216,6 +227,17 @@ class NotificationScheduler {
 
             for (const task of upcoming.rows) {
                 if (!this.canSendNotification(task, 'reminders')) continue;
+
+                // Add In-App notification
+                try {
+                    const notifId = 'n' + Date.now() + Math.floor(Math.random() * 1000);
+                    await pool.query(
+                        `INSERT INTO notifications (id, user_id, type, message, link_to, is_read, task_id) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                        [notifId, task.user_id, 'TASK_DUE_SOON', `Lembrete: A tarefa ${task.title} vence amanhã!`, 'tasks', false, task.id]
+                    );
+                } catch (e) {
+                    console.error('[Scheduler] Error inserting in-app notification:', e);
+                }
 
                 const dueDate = new Date(task.due_date).toLocaleDateString('pt-BR');
                 const dueTime = new Date(task.due_date).toLocaleTimeString('pt-BR', {
