@@ -179,9 +179,9 @@ const StatCard: React.FC<StatCardProps> = ({
       whileHover={{ scale: 1.03, y: -4 }}
       whileTap={{ scale: 0.97 }}
       onClick={() => onClick(section)}
-      className="relative group w-full text-left rounded-2xl border border-[#2E2E2E]
-                 bg-[#1C1C1C] dark:bg-[#1C1C1C] p-5 overflow-hidden
-                 transition-shadow duration-300
+      className="relative group w-full text-left rounded-2xl border border-gray-200 dark:border-[#2E2E2E]
+                 bg-white dark:bg-[#1C1C1C] p-5 overflow-hidden
+                 transition-shadow duration-300 shadow-sm dark:shadow-none
                  hover:shadow-[0_0_32px_-8px_rgba(255,107,0,0.25)]
                  hover:border-[#FF6B00]/40
                  focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF6B00]"
@@ -214,12 +214,12 @@ const StatCard: React.FC<StatCardProps> = ({
 
         {/* Content */}
         <div className="min-w-0 flex-1">
-          <p className="text-2xl font-bold text-white leading-tight tracking-tight">
+          <p className="text-2xl font-bold text-gray-900 dark:text-white leading-tight tracking-tight">
             {typeof value === 'number' ? formatNumber(value) : value}
           </p>
-          <p className="text-sm text-[#B3B3B3] mt-0.5 truncate">{label}</p>
+          <p className="text-sm text-gray-500 dark:text-[#B3B3B3] mt-0.5 truncate">{label}</p>
           {subtitle && (
-            <p className="text-xs text-[#666] mt-1 flex items-center gap-1">
+            <p className="text-xs text-gray-400 dark:text-[#666] mt-1 flex items-center gap-1">
               <TrendingUp className="w-3 h-3 text-[#10B981]" />
               {subtitle}
             </p>
@@ -249,10 +249,10 @@ const SectionHeader: React.FC<{
       >
         <Icon className="w-5 h-5" style={{ color: palette.ring }} />
       </div>
-      <h2 className="text-lg font-semibold text-white tracking-tight">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">
         {title}
       </h2>
-      <div className="flex-1 h-px bg-gradient-to-r from-[#2E2E2E] to-transparent" />
+      <div className="flex-1 h-px bg-gradient-to-r from-gray-200 dark:from-[#2E2E2E] to-transparent" />
     </motion.div>
   );
 };
@@ -267,11 +267,11 @@ const BarChart: React.FC<{
   return (
     <motion.div
       variants={cardVariants}
-      className="rounded-2xl border border-[#2E2E2E] bg-[#1C1C1C] p-6"
+      className="rounded-2xl border border-gray-200 dark:border-[#2E2E2E] bg-white dark:bg-[#1C1C1C] p-6 shadow-sm dark:shadow-none"
     >
       <div className="flex items-center gap-2 mb-6">
         <BarChart3 className="w-5 h-5 text-[#FF6B00]" />
-        <h3 className="text-base font-semibold text-white">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           Usuários por Setor
         </h3>
       </div>
@@ -294,14 +294,14 @@ const BarChart: React.FC<{
               className="group"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-[#B3B3B3] truncate max-w-[60%]">
+                <span className="text-sm text-gray-500 dark:text-[#B3B3B3] truncate max-w-[60%]">
                   {item.sector}
                 </span>
-                <span className="text-sm font-semibold text-white tabular-nums">
+                <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                   {item.count}
                 </span>
               </div>
-              <div className="w-full h-3 bg-[#2E2E2E] rounded-full overflow-hidden">
+              <div className="w-full h-3 bg-gray-100 dark:bg-[#2E2E2E] rounded-full overflow-hidden">
                 <motion.div
                   className="h-full rounded-full relative"
                   style={{
@@ -325,7 +325,7 @@ const BarChart: React.FC<{
       </div>
 
       {data.length === 0 && (
-        <p className="text-sm text-[#666] text-center py-6">
+        <p className="text-sm text-gray-400 dark:text-[#666] text-center py-6">
           Nenhum dado disponível
         </p>
       )}
@@ -382,11 +382,11 @@ const SystemHealthPanel: React.FC<{
   return (
     <motion.div
       variants={cardVariants}
-      className="rounded-2xl border border-[#2E2E2E] bg-[#1C1C1C] p-6"
+      className="rounded-2xl border border-gray-200 dark:border-[#2E2E2E] bg-white dark:bg-[#1C1C1C] p-6 shadow-sm dark:shadow-none"
     >
       <div className="flex items-center gap-2 mb-6">
         <Wifi className="w-5 h-5 text-[#10B981]" />
-        <h3 className="text-base font-semibold text-white">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           Saúde do Sistema
         </h3>
         <div className="ml-auto flex items-center gap-2">
@@ -405,16 +405,16 @@ const SystemHealthPanel: React.FC<{
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 + i * 0.07 }}
-            className="flex items-center gap-3 p-3 rounded-xl bg-[#0E0E0E]/60 border border-[#2E2E2E]/50
-                        hover:border-[#2E2E2E] transition-colors"
+            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[#0E0E0E]/60 border border-gray-200 dark:border-[#2E2E2E]/50
+                        hover:border-gray-300 dark:hover:border-[#2E2E2E] transition-colors"
           >
             <item.icon
               className="w-5 h-5 flex-shrink-0"
               style={{ color: item.color }}
             />
             <div className="min-w-0">
-              <p className="text-xs text-[#666] truncate">{item.label}</p>
-              <p className="text-sm font-semibold text-white truncate">
+              <p className="text-xs text-gray-500 dark:text-[#666] truncate">{item.label}</p>
+              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                 {item.value}
               </p>
             </div>
@@ -423,7 +423,7 @@ const SystemHealthPanel: React.FC<{
       </div>
 
       {/* Timestamp */}
-      <p className="text-xs text-[#555] mt-4 text-right">
+      <p className="text-xs text-gray-500 dark:text-[#555] mt-4 text-right">
         Última atualização:{' '}
         {new Date(system.timestamp).toLocaleString('pt-BR', {
           day: '2-digit',
@@ -620,7 +620,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E] dark:bg-[#0E0E0E]">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0E0E0E]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         {/* ── Header ── */}
         <motion.div
@@ -631,10 +631,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
         >
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
                 Painel Administrativo
               </h1>
-              <p className="text-[#B3B3B3] text-sm mt-1">
+              <p className="text-gray-500 dark:text-[#B3B3B3] text-sm mt-1">
                 Visão geral em tempo real do Focus Hub
               </p>
             </div>
@@ -646,8 +646,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate }) => {
               onClick={fetchDashboard}
               disabled={loading}
               className="self-start sm:self-auto flex items-center gap-2 px-4 py-2
-                         bg-[#1C1C1C] border border-[#2E2E2E] rounded-xl text-sm text-[#B3B3B3]
-                         hover:text-white hover:border-[#FF6B00]/40 transition-colors
+                         bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-[#2E2E2E] rounded-xl text-sm text-gray-600 dark:text-[#B3B3B3]
+                         hover:text-gray-900 dark:hover:text-white hover:border-[#FF6B00]/40 transition-colors shadow-sm dark:shadow-none
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Activity
