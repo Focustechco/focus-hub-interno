@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Notification, User, Screen, NotificationPreferences, NotificationType } from '../types';
 import { BellIcon, SettingsIcon, CheckIcon, XIcon, ClipboardIcon, NewspaperIcon, CalendarIcon } from './icons';
 import pushNotifications from '../src/utils/pushNotifications';
+import api from '../services/api';
 
 interface NotificationBellProps {
     currentUser: User;
@@ -84,14 +85,24 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
         }
     };
     
-    const handleNotificationClick = (notification: Notification) => {
+    const handleNotificationClick = async (notification: Notification) => {
         setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
         setActiveScreen(notification.linkTo);
         setIsOpen(false);
+        try {
+            await api.put(`/notifications/${notification.id}/read`);
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
-    const handleMarkAllAsRead = () => {
+    const handleMarkAllAsRead = async () => {
         setNotifications(prev => prev.map(n => n.userId === currentUser.id ? { ...n, isRead: true } : n));
+        try {
+            await api.put('/notifications/mark-all-read', { userId: currentUser.id });
+        } catch (error) {
+            console.error('Error marking all notifications as read:', error);
+        }
     };
 
     const handlePrefChange = (type: NotificationType, value: boolean) => {
