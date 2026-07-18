@@ -2,28 +2,39 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
 
+// Helper to calculate progress
+const calculateProgress = (current, target) => {
+    return target > 0 ? (Number(current) / Number(target)) * 100 : 0;
+};
+
 // GET /api/goals - Get all goals
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query('SELECT * FROM goals ORDER BY created_at DESC');
-
         const goals = result.rows.map(row => ({
             id: row.id,
             title: row.title,
             description: row.description,
-            // progress is not in DB, calculate it or remove if frontend calculates it.
-            // But frontend typically expects it or calculates it. Let's send 0 if not present.
-            progress: row.target_value > 0 ? (row.current_value / row.target_value) * 100 : 0,
-            current: row.current_value,
-            target: row.target_value,
-            metric: row.metric,
-            status: row.status,
-            dueDate: row.due_date,
             sector: row.sector,
-            period: row.period,
-            type: row.type,
-            userId: row.user_id,
-            isMonthlyHighlight: row.is_monthly_highlight
+            responsible_id: row.responsible_id,
+            team: row.team,
+            start_date: row.start_date,
+            end_date: row.end_date,
+            target_value: Number(row.target_value),
+            current_value: Number(row.current_value),
+            progress: calculateProgress(row.current_value, row.target_value),
+            metric: row.metric,
+            category: row.category,
+            scope: row.scope,
+            priority: row.priority,
+            status: row.status,
+            color: row.color,
+            weight: row.weight,
+            allow_overflow: row.allow_overflow,
+            observations: row.observations,
+            created_by: row.created_by,
+            created_at: row.created_at,
+            subgoals: row.subgoals || []
         }));
         res.json(goals);
     } catch (err) {
@@ -34,11 +45,8 @@ router.get('/', async (req, res) => {
 
 // POST /api/goals - Create a new goal
 router.post('/', async (req, res) => {
-    const { title, description, progress, current, target, metric, status, dueDate, sector, period, type, userId: bodyUserId } = req.body;
-
-    // Use userId from auth token (req.user is populated by authMiddleware)
-    // Fallback to bodyUserId only if strictly necessary (e.g. admin creating for others), but for now default to authenticated user.
-    const userId = req.user ? req.user.id : bodyUserId;
+    const data = req.body;
+    const userId = req.user ? req.user.id : data.created_by;
 
     if (!userId) {
         return res.status(400).json({ message: 'User ID is required' });
@@ -46,37 +54,24 @@ router.post('/', async (req, res) => {
 
     try {
         const id = 'g' + Date.now();
-        // Provide defaults for required fields to prevent null constraint violations
-        const finalType = type || 'individual';
-        const finalStatus = status || 'active';
-        const finalMetric = metric || 'BRL';
-        const finalPeriod = period || 'monthly';
-        const finalSector = sector || 'Comercial';
-
         const result = await pool.query(
-            `INSERT INTO goals (id, title, description, current_value, target_value, metric, status, due_date, sector, period, type, user_id, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
-             RETURNING *`,
-            [id, title, description, current || 0, target || 0, finalMetric, finalStatus, dueDate, finalSector, finalPeriod, finalType, userId]
+            `INSERT INTO goals (
+                id, title, description, sector, responsible_id, team, start_date, end_date, 
+                target_value, current_value, metric, category, scope, priority, status, 
+                color, weight, allow_overflow, observations, created_by, subgoals
+            ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+            ) RETURNING *`,
+            [
+                id, data.title, data.description, data.sector || 'Comercial', data.responsible_id || null, data.team || null,
+                data.start_date || null, data.end_date || null, data.target_value || 0, data.current_value || 0,
+                data.metric || 'count', data.category || 'quantity', data.scope || 'individual', data.priority || 'medium',
+                data.status || 'active', data.color || '#FF6B00', data.weight || 1, data.allow_overflow || false,
+                data.observations || null, userId, JSON.stringify(data.subgoals || [])
+            ]
         );
 
-        const newGoal = {
-            id: result.rows[0].id,
-            title: result.rows[0].title,
-            description: result.rows[0].description,
-            progress: result.rows[0].target_value > 0 ? (result.rows[0].current_value / result.rows[0].target_value) * 100 : 0,
-            current: result.rows[0].current_value,
-            target: result.rows[0].target_value,
-            metric: result.rows[0].metric,
-            status: result.rows[0].status,
-            dueDate: result.rows[0].due_date,
-            sector: result.rows[0].sector,
-            period: result.rows[0].period,
-            type: result.rows[0].type,
-            userId: result.rows[0].user_id
-        };
-
-        res.status(201).json(newGoal);
+        res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -86,27 +81,30 @@ router.post('/', async (req, res) => {
 // PUT /api/goals/:id - Update a goal
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description, progress, current, target, status, dueDate, sector } = req.body;
+    const data = req.body;
+    const userId = req.user ? req.user.id : null;
 
     try {
-        // Build dynamic query
         let query = 'UPDATE goals SET ';
         const values = [];
         let valueIndex = 1;
+        
+        // Remove id and calculated fields from update
+        delete data.id;
+        delete data.progress;
+        delete data.created_at;
 
-        const fields = { title, description, progress, current_value: current, target_value: target, status, due_date: dueDate, sector };
-
-        for (const [key, value] of Object.entries(fields)) {
+        for (const [key, value] of Object.entries(data)) {
             if (value !== undefined) {
                 query += `${key} = $${valueIndex}, `;
-                values.push(value);
+                values.push(key === 'subgoals' ? JSON.stringify(value) : value);
                 valueIndex++;
             }
         }
 
-        // Remove trailing comma and space
-        query = query.slice(0, -2);
+        if (values.length === 0) return res.json({ message: 'No fields to update' });
 
+        query = query.slice(0, -2);
         query += ` WHERE id = $${valueIndex} RETURNING *`;
         values.push(id);
 
@@ -116,22 +114,15 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Goal not found' });
         }
 
-        const updatedGoal = {
-            id: result.rows[0].id,
-            title: result.rows[0].title,
-            description: result.rows[0].description,
-            progress: result.rows[0].progress, // Keep for backward compatibility if needed, but current/target is better
-            current: result.rows[0].current_value,
-            target: result.rows[0].target_value,
-            metric: result.rows[0].metric, // Ensure metric is returned
-            status: result.rows[0].status,
-            dueDate: result.rows[0].due_date,
-            sector: result.rows[0].sector,
-            period: result.rows[0].period,
-            type: result.rows[0].type
-        };
+        // Log history
+        if (userId) {
+            await pool.query(
+                `INSERT INTO goal_history (id, goal_id, user_id, action, details) VALUES ($1, $2, $3, $4, $5)`,
+                ['gh-' + Date.now(), id, userId, 'UPDATED', JSON.stringify(data)]
+            );
+        }
 
-        res.json(updatedGoal);
+        res.json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });

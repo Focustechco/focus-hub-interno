@@ -98,6 +98,137 @@ pool.query(`
     console.error('[Server] Error creating drive_folder_permissions table:', e.message);
 });
 
+// Auto-migrate: Create google_corporate_integration and google_calendar_events tables
+pool.query(`
+    CREATE TABLE IF NOT EXISTS google_corporate_integration (
+        id SERIAL PRIMARY KEY,
+        google_email VARCHAR(255) NOT NULL,
+        google_name VARCHAR(255),
+        google_avatar_url TEXT,
+        access_token TEXT NOT NULL,
+        refresh_token TEXT NOT NULL,
+        token_expires_at TIMESTAMP WITH TIME ZONE,
+        selected_calendars JSONB DEFAULT '["primary"]',
+        sync_interval_minutes INTEGER DEFAULT 5,
+        allow_user_create_events BOOLEAN DEFAULT false,
+        last_sync_at TIMESTAMP WITH TIME ZONE,
+        sync_status VARCHAR(50) DEFAULT 'never',
+        events_count INTEGER DEFAULT 0,
+        connected_by VARCHAR(255) REFERENCES users(id),
+        connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS google_calendar_events (
+        id VARCHAR(255) PRIMARY KEY,
+        calendar_id VARCHAR(255) DEFAULT 'primary',
+        title VARCHAR(500) NOT NULL,
+        description TEXT,
+        location TEXT,
+        start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+        all_day BOOLEAN DEFAULT false,
+        status VARCHAR(50) DEFAULT 'confirmed',
+        google_meet_link TEXT,
+        hangout_link TEXT,
+        html_link TEXT,
+        organizer_email VARCHAR(255),
+        organizer_name VARCHAR(255),
+        attendees JSONB,
+        recurrence JSONB,
+        color_id VARCHAR(10),
+        color_hex VARCHAR(10),
+        reminders JSONB,
+        raw_event JSONB,
+        synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+`).catch(e => {
+    console.error('[Server] Error creating google calendar integration tables:', e.message);
+});
+
+// Auto-migrate: Create discord_integration table and update users
+pool.query(`
+    CREATE TABLE IF NOT EXISTS discord_integration (
+        id SERIAL PRIMARY KEY,
+        bot_token TEXT NOT NULL,
+        server_id VARCHAR(255) NOT NULL,
+        connected_by VARCHAR(255) REFERENCES users(id),
+        connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS discord_user_id VARCHAR(255);
+`).catch(e => {
+    console.error('[Server] Error creating discord integration tables:', e.message);
+});
+
+// Auto-migrate: Phase 2 Admin Center (Sectors, Modules, Permissions)
+pool.query(`
+    CREATE TABLE IF NOT EXISTS sectors (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        color VARCHAR(50) DEFAULT '#FF6B00',
+        description TEXT,
+        manager_id VARCHAR(255) REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS system_modules (
+        id VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT,
+        icon VARCHAR(50),
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS module_sector_access (
+        module_slug VARCHAR(100) REFERENCES system_modules(slug) ON DELETE CASCADE,
+        sector_name VARCHAR(255) REFERENCES sectors(name) ON DELETE CASCADE,
+        PRIMARY KEY (module_slug, sector_name)
+    );
+
+    CREATE TABLE IF NOT EXISTS role_permissions (
+        id SERIAL PRIMARY KEY,
+        role VARCHAR(50) NOT NULL,
+        module_slug VARCHAR(100) NOT NULL,
+        can_view BOOLEAN DEFAULT true,
+        can_create BOOLEAN DEFAULT false,
+        can_edit BOOLEAN DEFAULT false,
+        can_delete BOOLEAN DEFAULT false,
+        can_admin BOOLEAN DEFAULT false,
+        UNIQUE(role, module_slug)
+    );
+
+    -- Insert default sectors if none exist
+    INSERT INTO sectors (id, name, color) VALUES 
+        ('sec_admin', 'Administração', '#FF6B00'),
+        ('sec_tech', 'Tech', '#3B82F6'),
+        ('sec_rh', 'RH', '#10B981'),
+        ('sec_com', 'Comercial', '#F59E0B'),
+        ('sec_fin', 'Financeiro', '#8B5CF6')
+    ON CONFLICT (name) DO NOTHING;
+
+    -- Insert default modules if none exist
+    INSERT INTO system_modules (id, name, slug, description, icon) VALUES 
+        ('mod_dash', 'Dashboard', 'dashboard', 'Visão geral', 'LayoutDashboard'),
+        ('mod_checkin', 'Check-in', 'check-in', 'Registro de ponto', 'Clock'),
+        ('mod_tasks', 'Tarefas', 'tasks', 'Gestão de tarefas', 'CheckSquare'),
+        ('mod_mural', 'Mural', 'mural', 'Comunicação interna', 'MessageSquare'),
+        ('mod_goals', 'Metas', 'goals', 'Acompanhamento de metas', 'Target'),
+        ('mod_tools', 'Focus Tools', 'focus-tools', 'Ferramentas', 'Wrench'),
+        ('mod_admin', 'Admin Center', 'admin', 'Administração', 'Shield'),
+        ('mod_integ', 'Integrações', 'integrations', 'Conexões', 'Link2'),
+        ('mod_drive', 'Drive', 'drive', 'Arquivos', 'HardDrive'),
+        ('mod_reports', 'Relatórios', 'reports', 'Métricas', 'FileText'),
+        ('mod_agenda', 'Agenda', 'agenda', 'Calendário corporativo', 'Calendar')
+    ON CONFLICT (slug) DO NOTHING;
+`).catch(e => {
+    console.error('[Server] Error creating Admin Center Phase 2 tables:', e.message);
+});
+
 console.log('[Server] Environment keys:', Object.keys(process.env).sort());
 console.log('[Server] GOOGLE_CLIENT_ID present:', !!process.env.GOOGLE_CLIENT_ID);
 if (process.env.GOOGLE_CLIENT_ID) {
@@ -121,8 +252,8 @@ const corsOptions = {
         // Allow requests with no origin (like mobile apps or Postman in dev)
         if (!origin) return callback(null, true);
 
-        // Check if origin is explicitly allowed OR if it's a Vercel preview URL
-        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.endsWith('.github.io')) {
+        // Check if origin is explicitly allowed OR if it's a Vercel preview URL OR localhost or local network IP
+        if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com') || origin.endsWith('.github.io') || origin.startsWith('http://localhost:') || origin.startsWith('http://192.168.') || origin.startsWith('http://10.')) {
             callback(null, true);
         } else {
             console.warn(`CORS blocked request from origin: ${origin}`);
@@ -138,13 +269,15 @@ app.use(express.json({ limit: '10mb' })); // Limit payload size
 
 // Security: Add helmet for security headers
 const helmet = require('helmet');
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // Security: Rate limiting to prevent brute-force attacks
 const rateLimit = require('express-rate-limit');
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // 1000 requests per IP per window
+    max: 100000, // Increased max limit to prevent blocking during development
     message: { message: 'Muitas requisições. Tente novamente em 15 minutos.' },
     standardHeaders: true,
     legacyHeaders: false,
@@ -155,6 +288,14 @@ app.use('/api/', apiLimiter);
 
 // Import auth middleware
 const { authMiddleware } = require('./middleware/auth');
+
+// Importar e inicializar Discord Service
+const discordService = require('./services/discordService');
+discordService.init().then(res => {
+    if (res.success) {
+        console.log('[Discord] Integration initialized automatically.');
+    }
+}).catch(console.error);
 
 // Public routes (no auth required)
 app.use('/api/auth', require('./routes/auth'));
@@ -173,6 +314,7 @@ app.use('/api/push', authMiddleware, require('./routes/push'));
 app.use('/api/contents', authMiddleware, require('./routes/contents'));
 app.use('/api/drive', authMiddleware, require('./routes/drive'));
 app.use('/api/communication', authMiddleware, require('./routes/communication'));
+app.use('/api/discord', authMiddleware, require('./routes/discord'));
 
 // Serve storage directory statically
 const path = require('path');
@@ -183,6 +325,28 @@ app.use('/storage', express.static(path.join(__dirname, 'storage')));
 app.use('/api/migrate', require('./routes/migrate')); // Public migration route
 app.use('/api/whatsapp', require('./routes/whatsapp')); // WhatsApp integration
 app.use('/api/google', require('./routes/google')); // Google Calendar integration
+app.use('/api/agenda', authMiddleware, require('./routes/agenda')); // Agenda Corporativa leitura
+app.use('/api/admin', require('./routes/admin')); // Admin Center routes
+
+// API to get active modules for frontend navigation (accessible to all authenticated users)
+app.get('/api/system/modules', authMiddleware, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT slug, is_active FROM system_modules');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch modules' });
+    }
+});
+
+// API to get role permissions for frontend navigation
+app.get('/api/system/permissions', authMiddleware, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT module_slug, can_view FROM role_permissions WHERE role = $1', [req.user.role]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch permissions' });
+    }
+});
 
 // Health check and root routes
 app.get('/', (req, res) => {

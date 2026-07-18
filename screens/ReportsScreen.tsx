@@ -1,10 +1,18 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Calendar, Users, BarChart2, Plus, Search, Folder, Star, Upload, FileSignature, CloudUpload, Eye, Download } from 'lucide-react';
+import { FileText, Calendar, Users, BarChart2, Plus, Search, Folder, Star, Upload, FileSignature, CloudUpload, Eye, Download, Target } from 'lucide-react';
 import api from '../services/api';
+import { Goal, User } from '../types';
+import GoalsScreen from './GoalsScreen';
 
-const ReportsScreen: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'dashboard' | 'archive' | 'meeting'>('dashboard');
+interface ReportsScreenProps {
+    goals?: Goal[];
+    users?: User[];
+    setGoals?: (goals: Goal[] | ((prev: Goal[]) => Goal[])) => void;
+}
+
+const ReportsScreen: React.FC<ReportsScreenProps> = ({ goals = [], users = [], setGoals }) => {
+    const [activeTab, setActiveTab] = useState<'dashboard' | 'archive' | 'meeting' | 'goals'>('meeting');
     const [stats, setStats] = useState<any>(null);
 
     const [archivedReports, setArchivedReports] = useState<any[]>(() => {
@@ -18,6 +26,8 @@ const ReportsScreen: React.FC = () => {
     const [filterType, setFilterType] = useState('Todos');
     const [filterDate, setFilterDate] = useState('');
     const [viewingReport, setViewingReport] = useState<any>(null);
+    const [reportStartDate, setReportStartDate] = useState('');
+    const [reportEndDate, setReportEndDate] = useState('');
 
     const filteredReports = useMemo(() => {
         return archivedReports.filter(report => {
@@ -161,8 +171,11 @@ const ReportsScreen: React.FC = () => {
                 }
             } catch (e) {}
             
-            const dateStr = new Date().toLocaleDateString('pt-BR');
-            const timeStr = new Date().toLocaleTimeString('pt-BR');
+            const emissionDateStr = new Date().toLocaleDateString('pt-BR');
+            const emissionTimeStr = new Date().toLocaleTimeString('pt-BR');
+            
+            const meetingDateStr = meetingAnalysis.date && meetingAnalysis.date !== 'Data não identificada' ? meetingAnalysis.date : emissionDateStr;
+            const meetingTimeStr = meetingAnalysis.time && meetingAnalysis.time !== 'Horário não identificado' ? meetingAnalysis.time : emissionTimeStr;
 
             const ataHeader = `
                 <div style="margin-bottom: 30px;">
@@ -184,8 +197,8 @@ const ReportsScreen: React.FC = () => {
                     <tr><td style="padding: 4px 0;"><b>Título da reunião:</b></td><td>${meetingAnalysis.title || 'Reunião Estratégica'}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Departamento:</b></td><td>${meetingAnalysis.department || 'Geral'}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Projeto:</b></td><td>${meetingAnalysis.project || 'N/A'}</td></tr>
-                    <tr><td style="padding: 4px 0;"><b>Data:</b></td><td>${dateStr}</td></tr>
-                    <tr><td style="padding: 4px 0;"><b>Horário:</b></td><td>${timeStr}</td></tr>
+                    <tr><td style="padding: 4px 0;"><b>Data:</b></td><td>${meetingDateStr}</td></tr>
+                    <tr><td style="padding: 4px 0;"><b>Horário:</b></td><td>${meetingTimeStr}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Responsável pela ata:</b></td><td>${userName}</td></tr>
                 </table>
             `;
@@ -193,7 +206,7 @@ const ReportsScreen: React.FC = () => {
             const ataFooter = `
                 <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; font-size: 10px; color: #999;">
                     <p style="margin: 2px 0;">&copy; ${new Date().getFullYear()} Focus Tech<sup style="font-size: 7px;">&reg;</sup>. Todos os direitos reservados.</p>
-                    <p style="margin: 2px 0;">Documento gerado automaticamente pelo FocusHub | Data de emissão: ${dateStr} às ${timeStr}</p>
+                    <p style="margin: 2px 0;">Documento gerado automaticamente pelo FocusHub | Data de emissão: ${emissionDateStr} às ${emissionTimeStr}</p>
                 </div>
             `;
             
@@ -311,6 +324,21 @@ const ReportsScreen: React.FC = () => {
             };
 
             html2pdf().set(opt).from(element).save();
+            
+            // Add to history
+            const newReportObj = {
+                id: Date.now().toString(),
+                title: `Ata: ${meetingAnalysis.title || 'Reunião'}`,
+                type: 'Ata de Reunião',
+                date: new Date().toISOString().split('T')[0],
+                htmlContent: element.innerHTML
+            };
+            
+            setArchivedReports(prev => {
+                const updated = [newReportObj, ...prev];
+                localStorage.setItem('focus_archived_reports', JSON.stringify(updated));
+                return updated;
+            });
         }).catch(err => {
             console.error("Erro ao carregar gerador de PDF", err);
             alert("Erro ao gerar PDF.");
@@ -333,8 +361,11 @@ const ReportsScreen: React.FC = () => {
                 }
             } catch (e) {}
             
-            const dateStr = new Date().toLocaleDateString('pt-BR');
-            const timeStr = new Date().toLocaleTimeString('pt-BR');
+            const emissionDateStr = new Date().toLocaleDateString('pt-BR');
+            const emissionTimeStr = new Date().toLocaleTimeString('pt-BR');
+            
+            const meetingDateStr = meetingAnalysis.date && meetingAnalysis.date !== 'Data não identificada' ? meetingAnalysis.date : emissionDateStr;
+            const meetingTimeStr = meetingAnalysis.time && meetingAnalysis.time !== 'Horário não identificado' ? meetingAnalysis.time : emissionTimeStr;
 
             const ataHeader = `
                 <div style="margin-bottom: 30px;">
@@ -356,8 +387,8 @@ const ReportsScreen: React.FC = () => {
                     <tr><td style="padding: 4px 0;"><b>Título da reunião:</b></td><td>${meetingAnalysis.title || 'Reunião Estratégica'}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Departamento:</b></td><td>${meetingAnalysis.department || 'Geral'}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Projeto:</b></td><td>${meetingAnalysis.project || 'N/A'}</td></tr>
-                    <tr><td style="padding: 4px 0;"><b>Data:</b></td><td>${dateStr}</td></tr>
-                    <tr><td style="padding: 4px 0;"><b>Horário:</b></td><td>${timeStr}</td></tr>
+                    <tr><td style="padding: 4px 0;"><b>Data:</b></td><td>${meetingDateStr}</td></tr>
+                    <tr><td style="padding: 4px 0;"><b>Horário:</b></td><td>${meetingTimeStr}</td></tr>
                     <tr><td style="padding: 4px 0;"><b>Responsável pela ata:</b></td><td>${userName}</td></tr>
                 </table>
             `;
@@ -365,7 +396,7 @@ const ReportsScreen: React.FC = () => {
             const ataFooter = `
                 <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #eee; text-align: center; font-size: 10px; color: #999;">
                     <p style="margin: 2px 0;">&copy; ${new Date().getFullYear()} Focus Tech<sup style="font-size: 7px;">&reg;</sup>. Todos os direitos reservados.</p>
-                    <p style="margin: 2px 0;">Documento gerado automaticamente pelo FocusHub | Data de emissão: ${dateStr} às ${timeStr}</p>
+                    <p style="margin: 2px 0;">Documento gerado automaticamente pelo FocusHub | Data de emissão: ${emissionDateStr} às ${emissionTimeStr}</p>
                 </div>
             `;
             
@@ -494,6 +525,20 @@ const ReportsScreen: React.FC = () => {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     });
                     alert('Ata salva no Google Drive com sucesso!');
+
+                    // Add to history
+                    const newReportObj = {
+                        id: Date.now().toString(),
+                        title: `Ata: ${meetingAnalysis.title || 'Reunião'}`,
+                        type: 'Ata de Reunião',
+                        date: new Date().toISOString().split('T')[0],
+                        htmlContent: element.innerHTML
+                    };
+                    setArchivedReports(prev => {
+                        const updated = [newReportObj, ...prev];
+                        localStorage.setItem('focus_archived_reports', JSON.stringify(updated));
+                        return updated;
+                    });
                 } catch (err: any) {
                     console.error("Erro ao salvar no Drive:", err);
                     const msg = err.response?.data?.error || err.message || "Erro desconhecido";
@@ -564,7 +609,14 @@ const ReportsScreen: React.FC = () => {
 
     const handleGenerateModuleReport = async (type: string, title: string, saveToDrive: boolean = false) => {
         try {
-            const response = await api.get(`/reports/generate/${type}`);
+            let url = `/reports/generate/${type}`;
+            const queryParams = new URLSearchParams();
+            if (reportStartDate) queryParams.append('start', reportStartDate);
+            if (reportEndDate) queryParams.append('end', reportEndDate);
+            if (queryParams.toString()) {
+                url += `?${queryParams.toString()}`;
+            }
+            const response = await api.get(url);
             const data = response.data;
             
             import('html2pdf.js').then((html2pdfModule) => {
@@ -790,6 +842,18 @@ const ReportsScreen: React.FC = () => {
                     `;
                 }
                 
+                let periodText = '';
+                if (reportStartDate || reportEndDate) {
+                    const formatBr = (d: string) => d.split('-').reverse().join('/');
+                    if (reportStartDate && reportEndDate) {
+                        periodText = `<p style="margin: 4px 0; font-weight: bold; color: #666;">Período analisado: ${formatBr(reportStartDate)} a ${formatBr(reportEndDate)}</p>`;
+                    } else if (reportStartDate) {
+                        periodText = `<p style="margin: 4px 0; font-weight: bold; color: #666;">Período analisado: A partir de ${formatBr(reportStartDate)}</p>`;
+                    } else {
+                        periodText = `<p style="margin: 4px 0; font-weight: bold; color: #666;">Período analisado: Até ${formatBr(reportEndDate)}</p>`;
+                    }
+                }
+
                 element.innerHTML = `
                     <div style="font-family: Arial, sans-serif; padding: 40px; color: #333;">
                         ${generatePDFHeader(title)}
@@ -800,6 +864,7 @@ const ReportsScreen: React.FC = () => {
                         
                         <br/><br/><br/>
                         <div style="text-align: center; font-size: 10px; color: #999; border-top: 1px solid #eee; padding-top: 15px; margin-top: 40px;">
+                            ${periodText}
                             <p style="margin: 2px 0;">&copy; ${new Date().getFullYear()} Focus Tech<sup style="font-size: 7px;">&reg;</sup>. Todos os direitos reservados.</p>
                             <p style="margin: 2px 0;">Documento gerado automaticamente pelo Módulo de Relatórios do FocusHub.</p>
                         </div>
@@ -870,16 +935,16 @@ const ReportsScreen: React.FC = () => {
 
             <div className="flex space-x-4 border-b border-[#2E2E2E] pb-2">
                 <button 
+                    onClick={() => setActiveTab('meeting')}
+                    className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'meeting' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}
+                >
+                    Transcrição
+                </button>
+                <button 
                     onClick={() => setActiveTab('dashboard')}
                     className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'dashboard' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}
                 >
                     Painel Gerencial
-                </button>
-                <button 
-                    onClick={() => setActiveTab('meeting')}
-                    className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'meeting' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}
-                >
-                    Ata de Reunião
                 </button>
                 <button 
                     onClick={() => setActiveTab('archive')}
@@ -887,10 +952,54 @@ const ReportsScreen: React.FC = () => {
                 >
                     Arquivo
                 </button>
+                <button 
+                    onClick={() => setActiveTab('goals')}
+                    className={`px-4 py-2 font-semibold transition-colors ${activeTab === 'goals' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}
+                >
+                    Metas
+                </button>
             </div>
 
+            {activeTab === 'goals' && setGoals && (
+                <div className="h-full mt-4">
+                    <GoalsScreen goals={goals} users={users} setGoals={setGoals} />
+                </div>
+            )}
+
             {activeTab === 'dashboard' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="flex flex-col space-y-6 mt-4">
+                    <div className="flex flex-wrap items-center gap-4 bg-[#1C1C1C] p-4 rounded-xl border border-[#2E2E2E]">
+                        <span className="text-white font-semibold flex items-center"><Calendar className="w-5 h-5 mr-2 text-[#FF6B00]"/> Filtro de Período:</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[#B3B3B3] text-sm">De</span>
+                            <input 
+                                type="date" 
+                                value={reportStartDate}
+                                onChange={(e) => setReportStartDate(e.target.value)}
+                                className="bg-[#0E0E0E] text-[#B3B3B3] border border-[#2E2E2E] rounded-lg px-3 py-1.5 focus:border-[#FF6B00] focus:ring-1 focus:ring-[#FF6B00] outline-none text-sm custom-date-input"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[#B3B3B3] text-sm">Até</span>
+                            <input 
+                                type="date" 
+                                value={reportEndDate}
+                                onChange={(e) => setReportEndDate(e.target.value)}
+                                className="bg-[#0E0E0E] text-[#B3B3B3] border border-[#2E2E2E] rounded-lg px-3 py-1.5 focus:border-[#FF6B00] focus:ring-1 focus:ring-[#FF6B00] outline-none text-sm custom-date-input"
+                            />
+                        </div>
+                        {(reportStartDate || reportEndDate) && (
+                            <button 
+                                onClick={() => { setReportStartDate(''); setReportEndDate(''); }}
+                                className="text-sm text-[#FF6B00] hover:underline"
+                            >
+                                Limpar
+                            </button>
+                        )}
+                        <span className="text-[#B3B3B3] text-xs ml-auto">Os filtros serão aplicados ao gerar os relatórios.</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     <ReportCard 
                         icon={FileText} 
                         title="Tarefas" 
@@ -923,6 +1032,7 @@ const ReportsScreen: React.FC = () => {
                         onClick={() => handleGenerateModuleReport('team', 'Relatório de Equipe')}
                         onCloudClick={() => handleGenerateModuleReport('team', 'Relatório de Equipe', true)}
                     />
+                    </div>
                 </div>
             )}
 
@@ -1206,7 +1316,7 @@ const ReportsScreen: React.FC = () => {
                                 <button onClick={(e) => handleDownloadArchive(e, viewingReport)} className="bg-[#FF6B00] hover:bg-[#e66000] px-4 py-2 rounded text-sm font-bold transition-colors">
                                     Baixar PDF
                                 </button>
-                                <button onClick={() => setViewingReport(null)} className="bg-[#333] hover:bg-[#444] px-4 py-2 rounded text-sm font-bold transition-colors">
+                                <button onClick={() => setViewingReport(null)} className="bg-[#333] hover:bg-[#444] text-white force-text-white px-4 py-2 rounded text-sm font-bold transition-colors">
                                     Fechar
                                 </button>
                             </div>

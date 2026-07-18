@@ -8,6 +8,7 @@ import ProfileModal from './ProfileModal';
 import OfflineIndicator from './OfflineIndicator';
 import { ThemeToggle } from './ThemeToggle';
 import { useLocalStorage } from '../hooks/useLocalStorage';
+import api from '../services/api';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -33,6 +34,35 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
 
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorage('sidebarCollapsed', false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    
+    // Module permissions
+    const [activeModules, setActiveModules] = useState<string[] | null>(null);
+    const [modulePermissions, setModulePermissions] = useState<any[] | null>(null);
+
+    useEffect(() => {
+        const fetchSystemConfig = async () => {
+            try {
+                const [modRes, permRes] = await Promise.all([
+                    api.get('/system/modules'),
+                    api.get('/system/permissions').catch(() => ({ data: [] }))
+                ]);
+                const active = modRes.data.filter((m: any) => m.is_active).map((m: any) => m.slug);
+                setActiveModules(active);
+                setModulePermissions(permRes.data);
+            } catch (error) {
+                console.error('Failed to load system config:', error);
+                setActiveModules(null); // Fallback to show all if request fails
+            }
+        };
+        fetchSystemConfig();
+
+        window.addEventListener('modules-updated', fetchSystemConfig);
+        window.addEventListener('permissions-updated', fetchSystemConfig);
+        return () => {
+            window.removeEventListener('modules-updated', fetchSystemConfig);
+            window.removeEventListener('permissions-updated', fetchSystemConfig);
+        };
+    }, []);
 
 
     const openProfileModalFor = (user: User) => {
@@ -99,17 +129,37 @@ const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout, active
 
     const allNavItems = [
         { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
-        { id: 'check-in', label: 'Registro de Ponto', icon: CheckSquareIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
+        { id: 'check-in', label: 'Check-in', icon: CheckSquareIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'tasks', label: 'Tarefas', icon: ClipboardIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'agenda', label: 'Agenda', icon: CalendarIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'drive', label: 'Drive', icon: HardDriveIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
         { id: 'reports', label: 'Relatórios', icon: ClipboardIcon, roles: [Role.ADMIN, Role.USER] },
-        { id: 'mural', label: 'Comunicação', icon: MessageCircleIcon, roles: [Role.ADMIN, Role.USER] },
-        { id: 'focus-tools', label: 'Ferramentas de Foco', icon: TargetIcon, roles: [Role.ADMIN, Role.USER] },
-        { id: 'admin', label: 'Admin', icon: SettingsIcon, roles: [Role.ADMIN] },
+        { id: 'mural', label: 'Comunicação', icon: MessageCircleIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
+        { id: 'focus-tools', label: 'Focus OS', icon: TargetIcon, roles: [Role.ADMIN, Role.USER, Role.COLLABORATOR] },
+        { id: 'admin', label: 'Administrativo', icon: SettingsIcon, roles: [Role.ADMIN] },
     ];
 
-    const navItems = allNavItems.filter(item => item.roles.includes(currentUser.role));
+    const navItems = allNavItems.filter(item => {
+        const roleAllowed = item.roles.includes(currentUser.role);
+        
+        // Admin center ('admin') should always be visible to admins to prevent locking themselves out
+        if (item.id === 'admin') return roleAllowed;
+
+        // If module is disabled globally
+        if (activeModules && !activeModules.includes(item.id)) {
+            return false;
+        }
+
+        // If user's role does not have 'can_view' permission
+        if (modulePermissions) {
+            const rolePerm = modulePermissions.find(p => p.module_slug === item.id);
+            if (rolePerm && rolePerm.can_view === false) {
+                return false;
+            }
+        }
+
+        return roleAllowed;
+    });
 
     const NavLink: React.FC<{ screen: Screen, label: string, Icon: React.ElementType, isCollapsed: boolean }> = ({ screen, label, Icon, isCollapsed }) => {
         const isActive = activeScreen === screen;

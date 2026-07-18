@@ -92,6 +92,7 @@ router.get('/', async (req, res) => {
             createdAt: task.created_at,
             isOffline: task.is_offline,
             goalId: task.goal_id,
+            goalWeight: task.goal_weight,
             startTime: task.start_time,
             endTime: task.end_time,
             sector: task.sector,
@@ -125,7 +126,8 @@ router.post('/',
     ],
     validate,
     async (req, res) => {
-        let { id, title, description, status, priority, assigneeId, estimatedTime, dueDate, subtasks, startTime, endTime, sector, location, color, repetition } = req.body;
+        let { id, title, description, status, priority, assigneeId, estimatedTime, dueDate, subtasks, startTime, endTime, sector, location, color, repetition, goalId, goalWeight } = req.body;
+        goalWeight = parseInt(goalWeight) || 1;
 
         // Sanitize dates to ensure empty strings become null for Postgres
         const cleanDate = (d) => (d && typeof d === 'string' && d.trim() !== '') ? d : null;
@@ -143,9 +145,9 @@ router.post('/',
             await client.query('BEGIN');
 
             await client.query(
-                `INSERT INTO tasks (id, title, description, status, priority, assignee_id, estimated_time, due_date, start_time, end_time, sector, location, color, repetition)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-                [id, title, description, status, priority, cleanAssigneeId, estimatedTime, dueDate || null, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none']
+                `INSERT INTO tasks (id, title, description, status, priority, assignee_id, estimated_time, due_date, start_time, end_time, sector, location, color, repetition, goal_id, goal_weight)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
+                [id, title, description, status, priority, cleanAssigneeId, estimatedTime, dueDate || null, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none', goalId || null, goalWeight]
             );
 
             if (subtasks && subtasks.length > 0) {
@@ -158,6 +160,10 @@ router.post('/',
                 }
             }
 
+            if (status === 'concluida' && goalId) {
+                await client.query('UPDATE goals SET current_value = current_value + $1 WHERE id = $2', [goalWeight, goalId]);
+                await client.query('INSERT INTO goal_history (id, goal_id, action, details) VALUES ($1, $2, $3, $4)', ['gh-'+Date.now(), goalId, 'TASK_COMPLETED', 'Tarefa criada como concluída']);
+            }
             await client.query('COMMIT');
 
             const newTask = {
@@ -224,7 +230,8 @@ router.post('/',
 // PUT /api/tasks/:id - Update a task
 router.put('/:id', async (req, res) => {
     const { id } = req.params;
-    const { title, description, status, priority, assigneeId, estimatedTime, dueDate: rawDueDate, subtasks, startTime, endTime, sector, location, color, repetition } = req.body;
+    let { title, description, status, priority, assigneeId, estimatedTime, dueDate: rawDueDate, subtasks, startTime, endTime, sector, location, color, repetition, goalId, goalWeight } = req.body;
+    goalWeight = parseInt(goalWeight) || 1;
 
     console.log('[PUT /tasks/:id] Updating task:', id);
     console.log('[PUT /tasks/:id] Body:', JSON.stringify(req.body, null, 2));
@@ -241,15 +248,15 @@ router.put('/:id', async (req, res) => {
         await client.query('BEGIN');
 
         // Get previous task state to check for changes
-        const prevTaskRes = await client.query('SELECT assignee_id, status FROM tasks WHERE id = $1', [id]);
+        const prevTaskRes = await client.query('SELECT assignee_id, status, goal_id, goal_weight FROM tasks WHERE id = $1', [id]);
         const prevTask = prevTaskRes.rows.length > 0 ? prevTaskRes.rows[0] : null;
 
         // Update main task
         const updateResult = await client.query(
-            `UPDATE tasks SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, estimated_time = $6, due_date = $7, start_time = $8, end_time = $9, sector = $10, location = $11, color = $12, repetition = $13
-             WHERE id = $14
+            `UPDATE tasks SET title = $1, description = $2, status = $3, priority = $4, assignee_id = $5, estimated_time = $6, due_date = $7, start_time = $8, end_time = $9, sector = $10, location = $11, color = $12, repetition = $13, goal_id = $14, goal_weight = $15
+             WHERE id = $16
              RETURNING *`,
-            [title, description, status, priority, cleanAssigneeId, estimatedTime ?? null, dueDate, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none', id]
+            [title, description, status, priority, cleanAssigneeId, estimatedTime ?? null, dueDate, startTime || null, endTime || null, sector || null, location || null, color || null, repetition || 'none', goalId || null, goalWeight, id]
         );
 
         if (updateResult.rowCount === 0) {
@@ -328,6 +335,8 @@ router.put('/:id', async (req, res) => {
             location: updatedTaskRow.location,
             color: updatedTaskRow.color,
             repetition: updatedTaskRow.repetition,
+            goalId: updatedTaskRow.goal_id,
+            goalWeight: updatedTaskRow.goal_weight,
             subtasks: subtasksResult.rows.map(st => ({
                 id: st.id,
                 text: st.text,
@@ -335,6 +344,19 @@ router.put('/:id', async (req, res) => {
             }))
         };
 
+        // Handle Goal Progress Logic
+        if (prevTask) {
+            // Revert previous goal progress if it was completed
+            if (prevTask.status === 'concluida' && prevTask.goal_id) {
+                await client.query('UPDATE goals SET current_value = current_value - $1 WHERE id = $2', [prevTask.goal_weight, prevTask.goal_id]);
+                await client.query('INSERT INTO goal_history (id, goal_id, action, details) VALUES ($1, $2, $3, $4)', ['gh-rev-'+Date.now(), prevTask.goal_id, 'TASK_REVERTED', 'Tarefa desfeita ou reaberta']);
+            }
+            // Apply new goal progress if currently completed
+            if (status === 'concluida' && goalId) {
+                await client.query('UPDATE goals SET current_value = current_value + $1 WHERE id = $2', [goalWeight, goalId]);
+                await client.query('INSERT INTO goal_history (id, goal_id, action, details) VALUES ($1, $2, $3, $4)', ['gh-com-'+Date.now(), goalId, 'TASK_COMPLETED', 'Tarefa concluída']);
+            }
+        }
         await client.query('COMMIT');
         console.log('[PUT /tasks/:id] Task updated successfully:', id);
         res.json({ message: 'Task updated', task: updatedTask });

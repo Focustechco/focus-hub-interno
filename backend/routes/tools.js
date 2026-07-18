@@ -138,7 +138,7 @@ router.get('/access-groups', async (req, res) => {
                 id: cred.id,
                 nome: cred.service_name,
                 link: cred.url || '',
-                icon: 'LinkIcon',
+                icon: cred.icon || 'LinkIcon',
                 descricao: cred.notes || '',
                 login: cred.username || '',
                 senha: cred.password || '',
@@ -148,6 +148,7 @@ router.get('/access-groups', async (req, res) => {
             return {
                 id: group.id,
                 name: group.name,
+                color: group.color || '#F97316',
                 links: links
             };
         }));
@@ -161,13 +162,18 @@ router.get('/access-groups', async (req, res) => {
 
 // POST /api/tools/access-groups - Create a group
 router.post('/access-groups', async (req, res) => {
-    const { title, description, category } = req.body;
+    const { title, name, description, category, color } = req.body;
+    const finalName = name || title;
+    
+    if (!finalName) {
+        return res.status(400).json({ message: 'O nome do grupo é obrigatório' });
+    }
+
     try {
         const id = 'ag' + Date.now();
-        // Use 'title' from frontend but store as 'name' in DB
         const result = await pool.query(
-            'INSERT INTO access_groups (id, name, description, category) VALUES ($1, $2, $3, $4) RETURNING *',
-            [id, title, description, category]
+            'INSERT INTO access_groups (id, name, description, category, color) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [id, finalName, description, category, color || '#F97316']
         );
         const newGroup = result.rows[0];
 
@@ -187,7 +193,7 @@ router.post('/access-groups', async (req, res) => {
 // PUT /api/tools/access-groups/:id - Update a group
 router.put('/access-groups/:id', async (req, res) => {
     const { id } = req.params;
-    const { name, title, description, category } = req.body;
+    const { name, title, description, category, color } = req.body;
     const finalName = name || title;
 
     try {
@@ -195,9 +201,10 @@ router.put('/access-groups/:id', async (req, res) => {
             `UPDATE access_groups 
              SET name = COALESCE($1, name), 
                  description = COALESCE($2, description), 
-                 category = COALESCE($3, category)
-             WHERE id = $4 RETURNING *`,
-            [finalName, description, category, id]
+                 category = COALESCE($3, category),
+                 color = COALESCE($4, color)
+             WHERE id = $5 RETURNING *`,
+            [finalName, description, category, color, id]
         );
 
         if (result.rowCount === 0) {
@@ -207,6 +214,7 @@ router.put('/access-groups/:id', async (req, res) => {
         res.json({
             id: result.rows[0].id,
             name: result.rows[0].name,
+            color: result.rows[0].color,
             links: [] // Simplified - caller should refetch if needed
         });
     } catch (err) {
@@ -233,12 +241,12 @@ router.delete('/access-groups/:id', async (req, res) => {
 // POST /api/tools/access-groups/:id/credentials - Add credential
 router.post('/access-groups/:id/credentials', async (req, res) => {
     const { id: groupId } = req.params;
-    const { serviceName, username, password, url, notes } = req.body;
+    const { serviceName, username, password, url, notes, icon } = req.body;
     try {
         const id = 'ac' + Date.now();
         const result = await pool.query(
-            'INSERT INTO access_credentials (id, group_id, service_name, username, password, url, notes) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-            [id, groupId, serviceName, username, password, url, notes]
+            'INSERT INTO access_credentials (id, group_id, service_name, username, password, url, notes, icon) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
+            [id, groupId, serviceName, username, password, url, notes, icon || 'LinkIcon']
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -250,7 +258,7 @@ router.post('/access-groups/:id/credentials', async (req, res) => {
 // PUT /api/tools/credentials/:id - Update credential
 router.put('/credentials/:id', async (req, res) => {
     const { id } = req.params;
-    const { serviceName, username, password, url, notes, isFavorite } = req.body;
+    const { serviceName, username, password, url, notes, isFavorite, icon } = req.body;
 
     try {
         const result = await pool.query(
@@ -260,9 +268,10 @@ router.put('/credentials/:id', async (req, res) => {
                  password = COALESCE($3, password),
                  url = COALESCE($4, url),
                  notes = COALESCE($5, notes),
-                 is_favorite = COALESCE($6, is_favorite)
-             WHERE id = $7 RETURNING *`,
-            [serviceName, username, password, url, notes, isFavorite, id]
+                 is_favorite = COALESCE($6, is_favorite),
+                 icon = COALESCE($7, icon)
+             WHERE id = $8 RETURNING *`,
+            [serviceName, username, password, url, notes, isFavorite, icon, id]
         );
 
         if (result.rowCount === 0) {
@@ -274,7 +283,7 @@ router.put('/credentials/:id', async (req, res) => {
             id: cred.id,
             nome: cred.service_name,
             link: cred.url || '',
-            icon: 'LinkIcon',
+            icon: cred.icon || 'LinkIcon',
             descricao: cred.notes || '',
             login: cred.username || '',
             senha: cred.password || '',

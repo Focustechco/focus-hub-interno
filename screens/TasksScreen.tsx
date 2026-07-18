@@ -62,12 +62,68 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
     const [searchTerm, setSearchTerm] = useState('');
     const [filterAssignee, setFilterAssignee] = useState<string>('all');
     const [filterPriority, setFilterPriority] = useState<TaskPriority | 'all'>('all');
+    const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(true); // assume true to avoid flicker
+    const [googleEvents, setGoogleEvents] = useState<Task[]>([]);
 
     const [newChecklistItem, setNewChecklistItem] = useState('');
     const [selectedUserIdForChecklist, setSelectedUserIdForChecklist] = useState<string>(currentUser.id);
 
     useEffect(() => {
         setView(mode === 'agenda' ? 'calendar' : 'board');
+        api.get('/google/status').then(res => {
+            setIsGoogleConnected(res.data.connected);
+            if (res.data.connected && mode === 'agenda') {
+                api.get('/google/events').then(eventsRes => {
+                    const mappedEvents = eventsRes.data.map((e: any) => {
+                        // Date parsing logic
+                        let dueDate = '';
+                        let startTime = '';
+                        let endTime = '';
+
+                        if (e.start.dateTime) {
+                            // Convert to local time string that matches our system
+                            // e.start.dateTime is ISO string with timezone
+                            const startObj = new Date(e.start.dateTime);
+                            const endObj = e.end?.dateTime ? new Date(e.end.dateTime) : null;
+                            
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            const sy = startObj.getFullYear();
+                            const sm = pad(startObj.getMonth() + 1);
+                            const sd = pad(startObj.getDate());
+                            const sh = pad(startObj.getHours());
+                            const smin = pad(startObj.getMinutes());
+                            
+                            dueDate = `${sy}-${sm}-${sd}T${sh}:${smin}`;
+                            startTime = `${sh}:${smin}`;
+                            
+                            if (endObj) {
+                                endTime = `${pad(endObj.getHours())}:${pad(endObj.getMinutes())}`;
+                            }
+                        } else if (e.start.date) {
+                            dueDate = e.start.date; // YYYY-MM-DD
+                        }
+
+                        return {
+                            id: `google-${e.id}`,
+                            title: e.summary || '(Sem título)',
+                            description: e.description || 'Evento do Google Calendar',
+                            status: 'pendente' as TaskStatus,
+                            priority: 'media' as TaskPriority,
+                            assigneeId: '',
+                            estimatedTime: 60,
+                            createdAt: new Date().toISOString(),
+                            dueDate: dueDate,
+                            startTime: startTime,
+                            endTime: endTime,
+                            isGoogleEvent: true,
+                            googleEventLink: e.htmlLink,
+                            color: '#4285F4' // Google Blue
+                        };
+                    });
+                    setGoogleEvents(mappedEvents);
+                }).catch(err => console.error("Error fetching Google events", err));
+            }
+        }).catch(() => {});
     }, [mode]);
 
     useEffect(() => {
@@ -149,6 +205,16 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
         setEditingTask(null);
     };
 
+    const handleConnectGoogle = async () => {
+        try {
+            const res = await api.get('/google/auth-url');
+            window.open(res.data.authUrl, '_blank', 'noopener,noreferrer');
+            toast.info('Conclua a autenticação na janela aberta');
+        } catch {
+            toast.error('Erro ao obter URL de autenticação');
+        }
+    };
+
     const handleSaveTask = async (taskData: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => {
         // Keep dueDate in local format (YYYY-MM-DD or YYYY-MM-DDTHH:mm) to avoid timezone issues
         const payload = { ...taskData };
@@ -183,6 +249,11 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                     const newTasks = responses.map(r => r.data);
                     setTasks(prev => [...newTasks, ...prev]);
 
+                    // Sync all new tasks to Google Calendar
+                    if (payload.dueDate) {
+                        newTasks.forEach(t => handleSyncGoogle(t, true));
+                    }
+
                 } else {
                     // Treat as editing only if it has an ID and it's not a temporary one from Calendar creation
                     const isEditing = !!editingTask && !!editingTask.id && !editingTask.id.toString().startsWith('new-');
@@ -215,6 +286,11 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
 
                         // Re-fetch to guarantee sync
                         api.get('/tasks').then(res => setTasks(res.data));
+
+                        // Sync to Google Calendar automatically on creation
+                        if (savedTask.dueDate) {
+                            handleSyncGoogle(savedTask, true);
+                        }
                     }
                 }
             } catch (error) {
@@ -327,14 +403,14 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
         }
     };
 
-    const handleSyncGoogle = async (task: Task) => {
+    const handleSyncGoogle = async (task: Task, isAutomatic: boolean = false) => {
         try {
             if (!task.dueDate) {
-                toast.error("Defina uma data para a tarefa antes de sincronizar.");
+                if (!isAutomatic) toast.error("Defina uma data para a tarefa antes de sincronizar.");
                 return;
             }
 
-            toast.info("Sincronizando com Google Calendar...");
+            if (!isAutomatic) toast.info("Sincronizando com Google Calendar...");
 
             // Send the dueDate as-is (local format) - server should handle timezone
             const taskPayload = {
@@ -344,17 +420,19 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
 
             const { data } = await api.post('/google/sync', { task: taskPayload });
 
-            toast.success("Evento criado no Google Calendar!");
-            if (data.link) {
+            if (!isAutomatic) toast.success("Evento criado no Google Calendar!");
+            if (data.link && !isAutomatic) {
                 window.open(data.link, '_blank');
             }
         } catch (error: any) {
             console.error('Google Sync Error:', error);
-            if (error.response?.status === 401) {
-                toast.error("Google Calendar não conectado. Vá em Integrações.");
-            } else {
-                const errorMessage = error.response?.data?.error || error.message || 'Falha na sincronização';
-                toast.error(`Erro: ${errorMessage}`);
+            if (!isAutomatic) {
+                if (error.response?.status === 401) {
+                    toast.error("Google Calendar não conectado. Vá em Integrações.");
+                } else {
+                    const errorMessage = error.response?.data?.error || error.message || 'Falha na sincronização';
+                    toast.error(`Erro: ${errorMessage}`);
+                }
             }
         }
     };
@@ -373,7 +451,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                                 <CheckSquareIcon className="w-5 h-5" /> Checklist
                             </button>
                             <button onClick={() => setView('board')} className={`px-3 py-2 rounded-md flex items-center gap-2 text-sm font-semibold ${view === 'board' ? 'bg-[#FF6B00] text-white' : 'text-[#B3B3B3] hover:bg-[#2E2E2E]'}`}>
-                                <ClipboardIcon className="w-5 h-5" /> Quadro
+                                <ClipboardIcon className="w-5 h-5" /> Tasks
                             </button>
                         </div>
                     )}
@@ -386,11 +464,16 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                             <input type="text" placeholder="Buscar tarefa..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full bg-[#1C1C1C] text-white rounded-lg py-2 pl-10 pr-4 focus:ring-1 focus:ring-[#FF6B00]" />
                         </div>
                         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+                            {!isGoogleConnected && (
+                                <button onClick={handleConnectGoogle} className="flex items-center gap-2 px-3 py-2 text-sm font-semibold bg-[#1C1C1C] border border-[#3a3a3a] text-[#B3B3B3] hover:text-[#4285F4] hover:border-[#4285F4] rounded-lg transition-colors" title="Conectar ao Google Calendar">
+                                    <CalendarIcon className="w-4 h-4" /> Conectar Google
+                                </button>
+                            )}
                             <button onClick={() => {
                                 const events = tasks.map(t => taskToCalendarEvent(t));
                                 downloadICS(events);
                                 toast.success("Agenda exportada!");
-                            }} className="p-2 text-[#B3B3B3] hover:text-[#FF6B00] transition-colors" title="Exportar para Google Calendar (.ics)">
+                            }} className="p-2 text-[#B3B3B3] hover:text-[#FF6B00] transition-colors" title="Exportar para arquivo local (.ics)">
                                 <CalendarIcon className="w-6 h-6" />
                             </button>
                             <button onClick={() => {
@@ -498,7 +581,7 @@ const TasksScreen: React.FC<TasksScreenProps> = ({ currentUser, tasks, users, go
                     </DndContext>
                 )}
                 {view === 'calendar' && (
-                    <CalendarView tasks={filteredTasks} users={users} onTaskClick={handleOpenModal} setTasks={setTasks} />
+                    <CalendarView tasks={[...filteredTasks, ...googleEvents]} users={users} onTaskClick={handleOpenModal} setTasks={setTasks} />
                 )}
             </div>
 
@@ -724,7 +807,8 @@ const TaskCard: React.FC<{ task: Task; users: User[]; currentUser: User; onEdit:
     );
 };
 
-const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[]; goals: Goal[]; onSave: (taskData: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => void; onDelete: (taskId: string) => void; onSync?: (task: Task) => void; onClose: () => void }> = ({ currentUser, task, users, goals, onSave, onDelete, onSync, onClose }) => {
+const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[]; goals: Goal[]; onSave: (taskData: Omit<Task, 'id' | 'createdAt'> & { id?: string }) => Promise<void> | void; onDelete: (taskId: string) => void; onSync?: (task: Task) => void; onClose: () => void }> = ({ currentUser, task, users, goals, onSave, onDelete, onSync, onClose }) => {
+    const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState<Omit<Task, 'id' | 'createdAt'>>({
         title: task?.title || '',
         description: task?.description || '',
@@ -734,6 +818,7 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
         estimatedTime: task?.estimatedTime || 60,
         dueDate: task?.dueDate || '',
         goalId: task?.goalId || '',
+        goalWeight: task?.goalWeight || 1,
         subtasks: task?.subtasks || [],
         startTime: task?.startTime || '',
         endTime: task?.endTime || '',
@@ -814,9 +899,15 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData);
+        if (isSaving) return;
+        setIsSaving(true);
+        try {
+            await onSave(formData);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -912,12 +1003,25 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Vincular a uma Meta</label>
-                            <select value={formData.goalId} onChange={e => setFormData({ ...formData, goalId: e.target.value })} className="w-full p-2 bg-[#2E2E2E] rounded-md">
-                                <option value="">Nenhuma meta vinculada</option>
-                                {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
-                            </select>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Vincular a uma Meta</label>
+                                <select value={formData.goalId} onChange={e => setFormData({ ...formData, goalId: e.target.value })} className="w-full p-2 bg-[#2E2E2E] rounded-md">
+                                    <option value="">A tarefa não contabiliza nenhuma meta.</option>
+                                    {goals.map(g => <option key={g.id} value={g.id}>{g.title}</option>)}
+                                </select>
+                            </div>
+                            {formData.goalId && (
+                                <div>
+                                    <label className="block text-xs font-medium text-[#B3B3B3] mb-1">Peso da Tarefa na Meta</label>
+                                    <select value={formData.goalWeight || 1} onChange={e => setFormData({ ...formData, goalWeight: parseInt(e.target.value) })} className="w-full p-2 bg-[#2E2E2E] rounded-md">
+                                        <option value={1}>Pequena (1 ponto)</option>
+                                        <option value={3}>Média (3 pontos)</option>
+                                        <option value={5}>Grande (5 pontos)</option>
+                                        <option value={10}>Crítica (10 pontos)</option>
+                                    </select>
+                                </div>
+                            )}
                         </div>
 
                         {/* Campos da Agenda */}
@@ -1034,8 +1138,10 @@ const TaskModal: React.FC<{ currentUser: User; task: Task | null; users: User[];
                                 )}
                             </div>
                             <div className="flex">
-                                <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a]">Cancelar</button>
-                                <button type="submit" className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33]">Salvar</button>
+                                <button type="button" onClick={onClose} disabled={isSaving} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a] disabled:opacity-50">Cancelar</button>
+                                <button type="submit" disabled={isSaving} className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33] disabled:opacity-50 flex items-center">
+                                    {isSaving ? 'Salvando...' : 'Salvar'}
+                                </button>
                             </div>
                         </div>
                     </form>

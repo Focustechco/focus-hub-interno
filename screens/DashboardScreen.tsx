@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { User, Task, CheckIn, Post, Sector, Role, Screen, DailyChecklistItem } from '../types';
+import { User, Task, CheckIn, Post, Sector, Role, Screen, DailyChecklistItem, GoogleCalendarEvent } from '../types';
 import api from '../services/api';
 import { ClipboardIcon, ClockIcon, NewspaperIcon, TrendingUpIcon, CalendarIcon, LogInIcon, CheckCircle2Icon, FileTextIcon, TrophyIcon, CheckSquareIcon2, Trash2Icon } from '../components/icons';
 import { formatDate } from '../src/utils/formatters';
@@ -36,6 +36,34 @@ interface DashboardScreenProps {
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, checkIns, posts, users, setActiveScreen, dailyChecklistItems, setDailyChecklistItems, setTaskViewOverride, setTasks }) => {
     const toast = useToast();
     const [selectedSector, setSelectedSector] = useState<'Comercial' | 'RH' | 'Tech' | 'Administração' | 'Financeiro' | 'all'>('all');
+    const [googleEvents, setGoogleEvents] = useState<GoogleCalendarEvent[]>([]);
+    const [announcements, setAnnouncements] = useState<any[]>([]);
+
+    React.useEffect(() => {
+        const fetchAgenda = async () => {
+            try {
+                const start = new Date();
+                const end = new Date();
+                end.setDate(end.getDate() + 30);
+                const res = await api.get(`/agenda/events?start=${start.toISOString()}&end=${end.toISOString()}`);
+                setGoogleEvents(res.data);
+            } catch(e) {
+                console.error(e);
+            }
+        };
+
+        const fetchAnnouncements = async () => {
+            try {
+                const res = await api.get("/communication/announcements");
+                setAnnouncements(res.data);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        fetchAgenda();
+        fetchAnnouncements();
+    }, []);
 
     // Helper function to parse date string properly
     // Parse dates manually to avoid UTC interpretation that causes timezone issues
@@ -112,7 +140,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
             return a.dueDateObj.getTime() - b.dueDateObj.getTime();
         });
 
-    const nextEvent = upcomingTasks[0]; // Not used but kept for ref
+    const upcomingAgendaEvents = googleEvents
+        .filter(e => new Date(e.start_time) >= new Date(new Date().setHours(0,0,0,0)))
+        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+        .slice(0, 3);
 
     const formatEventDate = (dateString?: string): string => {
         if (!dateString) return '';
@@ -142,9 +173,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
         .sort((a, b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime())[0];
     const isCheckedIn = myLastCheckIn && !myLastCheckIn.checkOutTime;
 
-    // Mural data
-    const latestPost = posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    const latestPostAuthor = users.find(u => u.id === latestPost?.authorId);
+    // Mural data -> Aviso data
+    const latestAnnouncement = announcements.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    const latestAnnouncementAuthor = users.find(u => u.id === latestAnnouncement?.author_id);
 
     // --- Daily Summary Data (Admin only) ---
     const isToday = (dateStr: string) => new Date(dateStr).toDateString() === new Date().toDateString();
@@ -324,30 +355,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                             </div>
                             <div>
                                 <h3 className="text-lg font-semibold text-white">Próximos Eventos</h3>
-                                {upcomingTasks.length > 0 ? (
+                                {upcomingAgendaEvents.length > 0 ? (
                                     <div className="mt-2 space-y-3">
-                                        {upcomingTasks.slice(0, 3).map(event => (
+                                        {upcomingAgendaEvents.map(event => (
                                             <div key={event.id} className="flex justify-between items-start group">
                                                 <div className="flex-1 min-w-0 mr-2">
                                                     <p className="text-base font-bold text-white truncate" title={event.title}>
                                                         {event.title}
                                                     </p>
                                                     <p className="text-xs text-[#B3B3B3]">
-                                                        {formatEventDate(event.dueDate)}
+                                                        {formatEventDate(event.start_time)}
                                                     </p>
                                                 </div>
-                                                {(currentUser.role === Role.ADMIN || (event && event.assigneeId === currentUser.id)) && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteTask(event.id);
-                                                        }}
-                                                        className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 transition-opacity p-1"
-                                                        title="Excluir evento"
-                                                    >
-                                                        <Trash2Icon className="w-4 h-4" />
-                                                    </button>
-                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -361,8 +380,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                     </div>
                     <button
                         onClick={() => {
-                            setTaskViewOverride('calendar');
-                            setActiveScreen('tasks');
+                            setActiveScreen('agenda');
                         }}
                         className="mt-4 text-center text-sm font-semibold text-[#FF6B00] hover:underline"
                     >
@@ -401,38 +419,39 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                     </div>
                 </motion.div>
 
-                {/* Latest Post */}
+                {/* Latest Post / Announcement */}
                 <motion.div
                     custom={2}
                     variants={cardVariants}
                     initial="hidden"
                     animate="visible"
                     whileHover={{ y: -5, scale: 1.02 }}
-                    className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex items-start min-h-[170px]">
+                    onClick={() => setActiveScreen('mural')}
+                    className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex items-start min-h-[170px] cursor-pointer">
                     <div className="bg-[#00ADEF]/20 p-3 rounded-full mr-4">
                         <NewspaperIcon className="w-6 h-6 text-[#00ADEF]" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-semibold text-white">Último Post do Mural</h3>
-                        {latestPost ? (
+                        <h3 className="text-lg font-semibold text-white">Último Aviso do Mural</h3>
+                        {latestAnnouncement ? (
                             <>
-                                <p className="text-sm text-[#B3B3B3] mt-2 line-clamp-3">"{latestPost.content}"</p>
-                                <p className="text-xs text-right text-gray-400 mt-2">- {latestPostAuthor?.name || 'Desconhecido'}</p>
+                                <p className="text-sm text-[#B3B3B3] mt-2 line-clamp-3 font-bold">"{latestAnnouncement.title}"</p>
+                                <p className="text-sm text-[#B3B3B3] mt-1 line-clamp-2">{latestAnnouncement.content}</p>
+                                <p className="text-xs text-right text-gray-400 mt-2">- {latestAnnouncementAuthor?.name || 'Administração'}</p>
                             </>
                         ) : (
-                            <p className="text-sm text-[#B3B3B3] mt-2">Nenhum post no mural ainda.</p>
+                            <p className="text-sm text-[#B3B3B3] mt-2">Nenhum aviso no mural ainda.</p>
                         )}
                     </div>
                 </motion.div>
             </div>
 
-            {/* NEW SECTION: Combined Tasks Card */}
-            <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="mt-8 bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex flex-col md:flex-row gap-8">
-                
-                {/* Left Column: Daily Checklist */}
-                <div className="flex-1">
+            {/* NEW SECTION: Separated Tasks Cards */}
+            <div className="flex flex-col gap-6 mt-8">
+                {/* Daily Checklist Card */}
+                <motion.div custom={3} variants={cardVariants} initial="hidden" animate="visible" className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl font-bold flex items-center"><CheckSquareIcon2 className="w-5 h-5 mr-2 text-white" /> Minhas Tarefas do Dia</h2>
+                        <h2 className="text-xl font-bold flex items-center"><CheckSquareIcon2 className="w-5 h-5 mr-2 text-white" /> Checklist Diário</h2>
                         <button onClick={() => setActiveScreen('tasks')} className="text-sm font-semibold text-[#FF6B00] hover:underline">
                             Ver todas
                         </button>
@@ -470,12 +489,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                     ) : (
                         <p className="text-center text-[#B3B3B3] py-4">Nenhuma tarefa adicionada ao seu checklist de hoje. Vá para a tela de Tarefas para adicionar.</p>
                     )}
-                </div>
+                </motion.div>
 
-                <div className="hidden md:block w-px bg-[#2E2E2E] my-2"></div>
-
-                {/* Right Column: Pending Tasks */}
-                <div className="flex-1">
+                {/* Pending Tasks Card */}
+                <motion.div custom={4} variants={cardVariants} initial="hidden" animate="visible" className="bg-[#1C1C1C] p-6 rounded-2xl shadow-lg shadow-[#FF6B00]/10 flex flex-col">
                     <h2 className="text-xl font-bold mb-4">Minhas Tarefas Pendentes</h2>
                     {(tasks || []).filter(t => t.assigneeId === currentUser.id && t.status === 'pendente').length > 0 ? (
                         <ul className="space-y-3">
@@ -503,8 +520,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ currentUser, tasks, c
                     ) : (
                         <p className="text-center text-[#B3B3B3]">Você não tem tarefas pendentes. Bom trabalho!</p>
                     )}
-                </div>
-            </motion.div>
+                </motion.div>
+            </div>
 
             {/* NEW SECTION: Daily Summary (Admin only) */}
             {currentUser.role === Role.ADMIN && (

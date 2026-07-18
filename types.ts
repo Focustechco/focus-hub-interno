@@ -6,7 +6,7 @@ export enum Role {
     COLLABORATOR = 'COLLABORATOR',
 }
 
-export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations' | 'drive' | 'reports';
+export type Screen = 'dashboard' | 'check-in' | 'tasks' | 'mural' | 'goals' | 'focus-tools' | 'admin' | 'integrations' | 'drive' | 'reports' | 'agenda';
 
 export type Sector = 'Administração' | 'Tech' | 'RH' | 'Comercial' | 'Financeiro';
 
@@ -83,6 +83,7 @@ export interface Task {
     dueDate: string;
     dependsOn?: string[];
     goalId?: string;
+    goalWeight?: number;
     isOffline?: boolean;
     subtasks?: Subtask[];
     comments?: TaskComment[];
@@ -95,6 +96,10 @@ export interface Task {
     location?: string;
     color?: string;     // auto-derived from sector or custom
     repetition?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+    
+    // Google Calendar
+    isGoogleEvent?: boolean;
+    googleEventLink?: string;
 }
 
 export interface CheckIn {
@@ -144,19 +149,43 @@ export interface SubGoal {
     completed: boolean;
 }
 
+export interface GoalHistory {
+    id: string;
+    goal_id: string;
+    user_id: string;
+    action: string;
+    details: string;
+    created_at: string;
+}
+
 export interface Goal {
     id: string;
     title: string;
     description: string;
-    type: GoalType;
-    period: GoalPeriod;
-    metric: 'BRL' | '%' | 'count';
-    current: number;
-    target: number;
-    isMonthlyHighlight?: boolean;
     sector?: Sector;
-    userId?: string;
-    subGoals?: SubGoal[];
+    responsible_id?: string;
+    team?: string;
+    start_date?: string;
+    end_date?: string;
+    target_value: number;
+    current_value: number;
+    progress: number;
+    metric: 'BRL' | '%' | 'count';
+    category: string;
+    scope: string;
+    priority: string;
+    status: string;
+    color: string;
+    weight: number;
+    allow_overflow: boolean;
+    observations?: string;
+    created_by?: string;
+    created_at?: string;
+    subgoals?: SubGoal[];
+    
+    // Legacy fields mapped for compatibility
+    current?: number;
+    target?: number;
 }
 
 export interface DailyChecklistItem {
@@ -203,7 +232,7 @@ export interface AccessLink {
     id: string;
     nome: string;
     link: string;
-    icon: 'LinkIcon' | 'GlobeIcon';
+    icon: string;
     descricao: string;
     login?: string;
     senha?: string;
@@ -213,6 +242,7 @@ export interface AccessLink {
 export interface AccessGroup {
     id: string;
     name: string;
+    color?: string;
     links: AccessLink[];
 }
 
@@ -221,3 +251,54 @@ export type OfflineAction = {
     payload: any;
     timestamp: number;
 };
+
+// Google Calendar Corporate Integration
+export interface GoogleCorporateIntegration {
+    id: number;
+    google_email: string;
+    google_name: string;
+    google_avatar_url: string;
+    selected_calendars: string[];
+    sync_interval_minutes: number;
+    allow_user_create_events: boolean;
+    last_sync_at: string | null;
+    sync_status: 'never' | 'syncing' | 'success' | 'error';
+    events_count: number;
+    connected_at: string;
+}
+
+export interface GoogleCalendarEvent {
+    id: string;
+    calendar_id: string;
+    title: string;
+    description: string;
+    location: string;
+    start_time: string;
+    end_time: string;
+    all_day: boolean;
+    status: string;
+    google_meet_link: string | null;
+    hangout_link: string | null;
+    html_link: string;
+    organizer_email: string;
+    organizer_name: string;
+    attendees: Array<{
+        email: string;
+        displayName?: string;
+        responseStatus: 'accepted' | 'declined' | 'tentative' | 'needsAction';
+        organizer?: boolean;
+    }>;
+    recurrence: string[] | null;
+    color_id: string;
+    color_hex: string;
+    reminders: any;
+}
+
+export interface AgendaDashboard {
+    eventsToday: number;
+    eventsThisWeek: number;
+    nextMeeting: GoogleCalendarEvent | null;
+    meetingsToday: number;
+    hoursCommitted: number;
+    upcomingEvents: GoogleCalendarEvent[];
+}

@@ -21,6 +21,7 @@ interface CalendarViewProps {
 const DraggableTaskItem: React.FC<{ task: Task, onTaskClick: (task: Task) => void }> = ({ task, onTaskClick }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: task.id,
+        disabled: task.isGoogleEvent
     });
 
     const style = {
@@ -34,18 +35,20 @@ const DraggableTaskItem: React.FC<{ task: Task, onTaskClick: (task: Task) => voi
         <div
             ref={setNodeRef}
             style={style}
-            {...listeners}
-            {...attributes}
+            {...(task.isGoogleEvent ? {} : listeners)}
+            {...(task.isGoogleEvent ? {} : attributes)}
             onClick={(e) => {
                 e.stopPropagation();
                 onTaskClick(task);
             }}
-            className="text-xs text-left p-1 bg-[#2E2E2E] rounded cursor-grab active:cursor-grabbing hover:bg-[#3a3a3a] truncate"
+            className={`text-xs text-left p-1 rounded truncate ${task.isGoogleEvent ? 'bg-[#4285F4]/20 border-l-2 border-[#4285F4] text-[#4285F4] cursor-pointer hover:bg-[#4285F4]/30' : 'bg-[#2E2E2E] cursor-grab active:cursor-grabbing hover:bg-[#3a3a3a]'}`}
             title={task.title}
         >
-            <span className={`inline-block w-2 h-2 rounded-full mr-1 ${task.priority === 'alta' ? 'bg-red-500' :
-                task.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'
+            {!task.isGoogleEvent && (
+                <span className={`inline-block w-2 h-2 rounded-full mr-1 ${task.priority === 'alta' ? 'bg-red-500' :
+                    task.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'
                 }`}></span>
+            )}
             {task.title}
         </div>
     );
@@ -179,7 +182,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ tasks, users: _users, onTas
         const { active, over } = event;
         if (over && active.id !== over.id) {
             const taskToUpdate = tasks.find(t => t.id === active.id);
-            if (!taskToUpdate) return;
+            if (!taskToUpdate || taskToUpdate.isGoogleEvent) return;
 
             const newDatePart = String(over.id);
             let newDueDate = newDatePart;

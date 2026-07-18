@@ -7,9 +7,10 @@ interface CalendarWeekViewProps {
     currentDate: Date;
     onTaskClick: (task: Task) => void;
     onAddTask: (date: Date, hour: number) => void;
+    viewMode?: 'day' | 'week';
 }
 
-const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, currentDate, onTaskClick, onAddTask }) => {
+const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, currentDate, onTaskClick, onAddTask, viewMode = 'week' }) => {
     // Scroll to current time on mount
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -20,8 +21,12 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, curre
         }
     }, [currentDate]);
 
-    // Calculate days in the current week (Mon-Sun)
+    // Calculate days to show
     const weekDays = useMemo(() => {
+        if (viewMode === 'day') {
+            return [new Date(currentDate)];
+        }
+
         const date = new Date(currentDate);
         const day = date.getDay(); // 0 is Sunday
         const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Adjust for Monday start
@@ -34,7 +39,7 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, curre
             days.push(currentDay);
         }
         return days;
-    }, [currentDate]);
+    }, [currentDate, viewMode]);
 
     // Hours to show (0 to 23)
     const hours = Array.from({ length: 24 }, (_, i) => i);
@@ -59,7 +64,7 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, curre
                 <div className="w-16 shrink-0 bg-[#1C1C1C] border-r border-[#2E2E2E]" />
                 
                 {/* Days */}
-                <div className="flex-grow grid grid-cols-7">
+                <div className="flex-grow grid" style={{ gridTemplateColumns: `repeat(${weekDays.length}, minmax(0, 1fr))` }}>
                     {weekDays.map((day, idx) => {
                         const isToday = day.toDateString() === new Date().toDateString();
                         const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -87,7 +92,7 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, curre
                 </div>
 
                 {/* Grid columns */}
-                <div className="flex-grow grid grid-cols-7 relative">
+                <div className="flex-grow grid relative" style={{ gridTemplateColumns: `repeat(${weekDays.length}, minmax(0, 1fr))` }}>
                     {weekDays.map((day, dayIdx) => {
                         // Filter tasks for this day
                         const dayTasks = tasks.filter(t => {
@@ -149,17 +154,17 @@ const CalendarWeekView: React.FC<CalendarWeekViewProps> = ({ tasks, users, curre
                                     let heightPx = bottomPx - topPx;
                                     if (heightPx < 20) heightPx = 20; // min height
 
-                                    const bgColor = getSectorColor(task.sector, task.color);
+                                    const bgColor = task.color || (task.isGoogleEvent ? '#4285F4' : getSectorColor(task.sector));
 
                                     return (
                                         <div 
                                             key={task.id}
-                                            className="absolute left-1 right-1 rounded p-1 overflow-hidden shadow cursor-pointer transition-transform hover:scale-[1.02] z-10"
+                                            className={`absolute left-1 right-1 rounded p-1 overflow-hidden shadow cursor-pointer transition-transform hover:scale-[1.02] z-10 ${task.isGoogleEvent ? 'border-2 border-[#4285F4]' : ''}`}
                                             style={{
                                                 top: `${topPx}px`,
                                                 height: `${heightPx}px`,
                                                 backgroundColor: `${bgColor}20`,
-                                                borderLeft: `4px solid ${bgColor}`
+                                                borderLeft: task.isGoogleEvent ? `4px solid ${bgColor}` : `4px solid ${bgColor}`
                                             }}
                                             onClick={(e) => { e.stopPropagation(); onTaskClick(task); }}
                                         >

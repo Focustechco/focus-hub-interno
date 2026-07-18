@@ -111,6 +111,8 @@ Retorne APENAS um objeto JSON válido (sem marcação de bloco de código) com o
 
 {
   "title": "Título sugerido para a reunião",
+  "date": "Data da reunião no formato DD/MM/AAAA (Identificar a data em que ocorreu. Se não encontrar, retorne 'Data não identificada')",
+  "time": "Horário da reunião (Identificar o horário em que ocorreu. Se não encontrar, retorne 'Horário não identificado')",
   "department": "Departamento inferido (ou Geral)",
   "project": "Projeto inferido (ou N/A)",
   "objective": "Objetivo da Reunião (Identificar automaticamente o propósito principal da reunião e descrevê-lo em um ou dois parágrafos.)",
@@ -231,46 +233,74 @@ router.get('/dashboard/stats', async (req, res, next) => {
 router.get('/generate/:type', async (req, res, next) => {
     try {
         const { type } = req.params;
+        const { start, end } = req.query;
         let data;
 
         if (type === 'tasks') {
-            const result = await pool.query(`
+            let query = `
                 SELECT t.id, t.title, t.status, t.priority, t.due_date, u.name as assignee_name
                 FROM tasks t
                 LEFT JOIN users u ON t.assignee_id = u.id
-                ORDER BY t.created_at DESC
-            `);
+                WHERE 1=1
+            `;
+            let params = [];
+            let pIdx = 1;
+            if (start) { query += ` AND t.created_at >= $${pIdx++}`; params.push(start); }
+            if (end) { query += ` AND t.created_at <= $${pIdx++}`; params.push(end + ' 23:59:59'); }
+            query += ` ORDER BY t.created_at DESC`;
+            const result = await pool.query(query, params);
             data = result.rows;
         } else if (type === 'team') {
             const usersResult = await pool.query('SELECT id, name, email, sector, role FROM users ORDER BY name');
             const teamMembers = usersResult.rows;
             
-            const activityResult = await pool.query(`
+            let query = `
                 SELECT u.name as user_name, u.sector, c.timestamp as check_in_time, c.check_out_time, c.daily_report
                 FROM check_ins c
                 JOIN users u ON c.user_id = u.id
-                ORDER BY c.timestamp DESC
-                LIMIT 50
-            `);
+                WHERE 1=1
+            `;
+            let params = [];
+            let pIdx = 1;
+            if (start) { query += ` AND c.timestamp >= $${pIdx++}`; params.push(start); }
+            if (end) { query += ` AND c.timestamp <= $${pIdx++}`; params.push(end + ' 23:59:59'); }
+            query += ` ORDER BY c.timestamp DESC LIMIT 50`;
+            const activityResult = await pool.query(query, params);
             const recentActivity = activityResult.rows;
             
             data = { teamMembers, recentActivity };
         } else if (type === 'agenda') {
             try {
-                const result = await pool.query(`
-                    SELECT t.id, t.title, t.description, t.due_date, t.priority, t.status, u.name as assignee_name
-                    FROM tasks t
-                    LEFT JOIN users u ON t.assignee_id = u.id
-                    WHERE t.due_date IS NOT NULL
-                    ORDER BY t.due_date ASC
-                `);
+                let query = `
+                    SELECT 
+                        id, 
+                        title, 
+                        description, 
+                        start_time as due_date, 
+                        'Agendado' as status, 
+                        organizer_name as assignee_name
+                    FROM google_calendar_events
+                    WHERE start_time IS NOT NULL
+                `;
+                let params = [];
+                let pIdx = 1;
+                if (start) { query += ` AND start_time >= $${pIdx++}`; params.push(start); }
+                if (end) { query += ` AND start_time <= $${pIdx++}`; params.push(end + ' 23:59:59'); }
+                query += ` ORDER BY start_time ASC`;
+                const result = await pool.query(query, params);
                 data = result.rows;
             } catch(e) {
                 console.error("Error fetching agenda for report:", e);
                 data = [];
             }
         } else if (type === 'indicators') {
-            const tasksResult = await pool.query('SELECT status, COUNT(*) FROM tasks GROUP BY status');
+            let filterString = '';
+            let params = [];
+            let pIdx = 1;
+            if (start) { filterString += ` AND t.created_at >= $${pIdx++}`; params.push(start); }
+            if (end) { filterString += ` AND t.created_at <= $${pIdx++}`; params.push(end + ' 23:59:59'); }
+
+            const tasksResult = await pool.query(`SELECT t.status, COUNT(*) FROM tasks t WHERE 1=1 ${filterString} GROUP BY t.status`, params);
             const tasksCount = tasksResult.rows.reduce((acc, row) => ({ ...acc, [row.status]: parseInt(row.count) }), {});
             
             // Get completed tasks by sector
@@ -278,9 +308,9 @@ router.get('/generate/:type', async (req, res, next) => {
                 SELECT u.sector, COUNT(t.id) as count
                 FROM tasks t
                 JOIN users u ON t.assignee_id = u.id
-                WHERE t.status = 'concluida' AND u.sector IS NOT NULL
+                WHERE t.status = 'concluida' AND u.sector IS NOT NULL ${filterString}
                 GROUP BY u.sector
-            `);
+            `, params);
             const sectorCount = sectorResult.rows.reduce((acc, row) => ({ ...acc, [row.sector]: parseInt(row.count) }), {});
             
             // Get list of tasks for the table
@@ -288,8 +318,9 @@ router.get('/generate/:type', async (req, res, next) => {
                 SELECT t.id, t.title, t.status, t.priority, t.due_date, u.name as assignee_name
                 FROM tasks t
                 LEFT JOIN users u ON t.assignee_id = u.id
+                WHERE 1=1 ${filterString}
                 ORDER BY t.created_at DESC
-            `);
+            `, params);
             const tasksList = tasksListResult.rows;
             
             data = { tasksCount, sectorCount, tasksList };

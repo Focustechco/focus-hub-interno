@@ -63,6 +63,14 @@ html.light .bg-\[\#3E3E3E\] {
     background-color: #E2E8F0 !important;
 }
 
+html.light .bg-\[\#2A2A2A\] {
+    background-color: #FFFFFF !important;
+}
+
+html.light .hover\:bg-\[\#333\]:hover {
+    background-color: #F1F5F9 !important;
+}
+
 /* Text color overrides */
 /* Ensure text inside colored backgrounds stays white */
 html.light .text-white {
@@ -208,3 +216,19 @@ html.light .text-\[\#FF6B00\] {
 html.light .border-\[\#FF6B00\] {
     border-color: #FF6B00 !important;
 }
+
+/* Minimalist Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.3);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.6);
+}

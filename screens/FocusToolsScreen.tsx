@@ -9,6 +9,7 @@ import {
 } from '../components/icons';
 import { useToast } from '../components/Toast';
 import * as LucideIcons from 'lucide-react';
+import DiscordAdminPanel from '../components/DiscordAdminPanel';
 
 const MOCK_LINKS: LinkItem[] = [
     { id: 'tool-1', title: 'Focus Site', description: 'Acesso ao site institucional da Focus Tecnologia.', link: 'https://focusmarketing.com', icon: 'Globe', isFavorite: true },
@@ -115,6 +116,8 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
     // State for Acessos Tab
     const [accessGroups, setAccessGroups] = useState<AccessGroup[]>([]);
     const [openGroupId, setOpenGroupId] = useState<string | null>(null);
+    const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
+    const [editingGroup, setEditingGroup] = useState<AccessGroup | null>(null);
 
     // Fetch Data
     useEffect(() => {
@@ -242,6 +245,32 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
         }
     };
 
+    const handleOpenGroupModal = (group: AccessGroup | null = null) => {
+        setEditingGroup(group);
+        setIsGroupModalOpen(true);
+    };
+
+    const handleSaveAccessGroup = async (groupData: { name: string, color: string }) => {
+        try {
+            if (editingGroup) {
+                const res = await api.put(`/tools/access-groups/${editingGroup.id}`, { name: groupData.name, color: groupData.color });
+                setAccessGroups(prev => prev.map(g => g.id === editingGroup.id ? { ...g, name: res.data.name, color: res.data.color } : g));
+            } else {
+                const res = await api.post('/tools/access-groups', { name: groupData.name, color: groupData.color });
+                const newGroup: AccessGroup = {
+                    id: res.data.id,
+                    name: res.data.name,
+                    color: res.data.color,
+                    links: []
+                };
+                setAccessGroups(prev => [...prev, newGroup]);
+                setOpenGroupId(newGroup.id);
+            }
+        } catch (err: any) {
+            toast.error('Erro ao salvar grupo.');
+        }
+        setIsGroupModalOpen(false);
+    };
     const handleDeleteAccessGroup = async (groupId: string) => {
         if (!window.confirm("Tem certeza que deseja remover este grupo? Isso apagará todos os acessos dentro dele.")) return;
 
@@ -252,40 +281,6 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
         } catch (err) {
             console.error("Failed to delete access group:", err);
             toast.error("Erro ao remover grupo.");
-        }
-    };
-
-    const handleAddNewGroup = async () => {
-        const groupName = window.prompt("Digite o nome do novo grupo (pasta):");
-        if (groupName && groupName.trim()) {
-            try {
-                const res = await api.post('/tools/access-groups', {
-                    title: groupName.trim(),
-                    category: 'General',
-                    description: ''
-                });
-
-                const newGroup = res.data;
-                // Map backend response to frontend AccessGroup type if needed (backend returns title, frontend uses name)
-                const mappedGroup: AccessGroup = {
-                    id: newGroup.id,
-                    name: newGroup.title,
-                    links: []
-                };
-
-                setAccessGroups(prev => [...prev, mappedGroup]);
-                setOpenGroupId(mappedGroup.id);
-            } catch (err) {
-                console.error("Failed to create group:", err);
-                // Fallback
-                const newGroup: AccessGroup = {
-                    id: `group-${Date.now()}`,
-                    name: groupName.trim(),
-                    links: []
-                };
-                setAccessGroups(prev => [...prev, newGroup]);
-                setOpenGroupId(newGroup.id);
-            }
         }
     };
 
@@ -468,9 +463,6 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                 <button onClick={() => setActiveTab('acessos')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'acessos' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
                     <LockIcon className="w-5 h-5" /> Acessos
                 </button>
-                <button onClick={() => setActiveTab('integrations')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'integrations' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
-                    <SettingsIcon className="w-5 h-5" /> Integrações
-                </button>
                 <button onClick={() => setActiveTab('social')} className={`px-4 py-3 font-semibold transition-colors flex items-center gap-2 ${activeTab === 'social' ? 'text-[#FF6B00] border-b-2 border-[#FF6B00]' : 'text-[#B3B3B3] hover:text-white'}`}>
                     <LucideIcons.Share2 className="w-5 h-5" /> Redes Sociais
                 </button>
@@ -492,11 +484,19 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
                     onDelete={handleDeleteContent}
                     onPreview={setPreviewContent}
                 />}
-                {activeTab === 'acessos' && <AcessosTabContent accessGroups={accessGroups} openGroupId={openGroupId} setOpenGroupId={setOpenGroupId} onOpenModal={handleOpenAccessModal} onAddNewGroup={handleAddNewGroup} onDeleteGroup={handleDeleteAccessGroup} onDeleteLink={handleDeleteAccessLink} />}
-                {activeTab === 'integrations' && <IntegrationsTabContent />}
+                {activeTab === 'acessos' && <AcessosTabContent 
+                    accessGroups={accessGroups} 
+                    openGroupId={openGroupId} 
+                    setOpenGroupId={setOpenGroupId} 
+                    onOpenModal={handleOpenAccessModal} 
+                    onOpenGroupModal={handleOpenGroupModal} 
+                    onDeleteGroup={handleDeleteAccessGroup} 
+                    onDeleteLink={handleDeleteAccessLink} 
+                />}
                 {activeTab === 'social' && <SocialTabContent links={socialLinks} onOpenModal={handleOpenLinkModal} onDelete={handleDeleteLink} />}
             </div>
             {isLinkModalOpen && <LinkModal isOpen={isLinkModalOpen} onClose={handleCloseLinkModal} onSave={handleSaveLink} editingLink={editingLink} category={linkModalCategory} />}
+            {isGroupModalOpen && <GroupModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} onSave={handleSaveAccessGroup} editingGroup={editingGroup} />}
             {isAccessModalOpen && accessModalContext && <AccessModal isOpen={isAccessModalOpen} onClose={handleCloseAccessModal} onSave={handleSaveAccessLink} context={accessModalContext} />}
             {isContentModalOpen && <ContentModal isOpen={isContentModalOpen} onClose={handleCloseContentModal} onSave={handleSaveContent} editingContent={editingContent} />}
             {previewContent && <PreviewModal content={previewContent} onClose={() => setPreviewContent(null)} />}
@@ -505,6 +505,22 @@ const FocusToolsScreen: React.FC<FocusToolsScreenProps> = ({ currentUser }) => {
 };
 
 const SocialTabContent: React.FC<any> = ({ links, onOpenModal, onDelete }) => {
+    const getSocialColor = (iconName: string) => {
+        const colors: { [key: string]: string } = {
+            Instagram: '#E1306C',
+            LinkedIn: '#0A66C2',
+            Facebook: '#1877F2',
+            YouTube: '#FF0000',
+            Twitter: '#1DA1F2',
+            WhatsApp: '#25D366',
+            Telegram: '#229ED9',
+            Pinterest: '#E60023',
+            Threads: '#808080',
+            TikTok: '#FF0050'
+        };
+        return colors[iconName] || '#FF6B00';
+    };
+
     return (
         <div>
             <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
@@ -519,16 +535,17 @@ const SocialTabContent: React.FC<any> = ({ links, onOpenModal, onDelete }) => {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {links.map((social: any) => {
-                    const Icon = iconMap[social.icon] || LinkIcon;
+                    const Icon = iconMap[social.icon as keyof typeof iconMap] || LinkIcon;
+                    const brandColor = getSocialColor(social.icon);
                     return (
-                        <div key={social.id} className="relative group">
-                            <a href={social.link} target="_blank" rel="noopener noreferrer" className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-xl p-6 flex flex-col items-center justify-center hover:bg-[#2A2A2A] hover:border-[#FF6B00] transition-all h-full block">
-                                <div className="p-4 rounded-full bg-[#2E2E2E] mb-4 group-hover:scale-110 transition-transform text-[#FF6B00]">
+                        <div key={social.id} className="relative group" style={{ '--brand-color': brandColor } as React.CSSProperties}>
+                            <a href={social.link} target="_blank" rel="noopener noreferrer" className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-xl p-6 flex flex-col items-center justify-center hover:bg-[#2A2A2A] hover:border-[color:var(--brand-color)] transition-all h-full block">
+                                <div className="p-4 rounded-full mb-4 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${brandColor}1A`, color: brandColor }}>
                                     <Icon className="w-8 h-8" />
                                 </div>
                                 <h3 className="text-lg font-bold text-white text-center">{social.title}</h3>
                                 {social.description && <p className="text-xs text-[#B3B3B3] mt-2 text-center">{social.description}</p>}
-                                <p className="text-sm text-[#B3B3B3] mt-2 group-hover:text-[#FF6B00] transition-colors text-center">Acessar perfil</p>
+                                <p className="text-sm mt-2 transition-colors text-center opacity-80 group-hover:opacity-100" style={{ color: brandColor }}>Acessar perfil</p>
                             </a>
                             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-2">
                                 <button onClick={(e) => { e.preventDefault(); onOpenModal(social, 'Social'); }} className="p-1.5 bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white rounded shadow-sm">
@@ -625,34 +642,45 @@ const ContentTabContent: React.FC<any> = ({ content, selectedCategory, setSelect
     );
 };
 
-const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGroupId, onOpenModal, onAddNewGroup, onDeleteGroup, onDeleteLink }) => (
+const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGroupId, onOpenModal, onOpenGroupModal, onDeleteGroup, onDeleteLink }) => (
     <div className="max-w-4xl mx-auto">
         <div className="flex justify-end mb-4">
-            <button onClick={onAddNewGroup} className="flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors text-sm">
+            <button onClick={() => onOpenGroupModal()} className="flex items-center justify-center bg-[#FF6B00] text-white font-bold py-2 px-4 rounded-lg hover:bg-[#FF8C33] active:bg-[#CC5500] transition-colors text-sm">
                 <PlusIcon className="w-4 h-4 mr-2" /> Criar Novo Grupo
             </button>
         </div>
         <div className="space-y-4">
-            {accessGroups.map((group: AccessGroup) => (
-                <div key={group.id} className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-lg">
-                    <button
+            {accessGroups.map((group: AccessGroup) => {
+                const groupColor = group.color || '#F97316';
+                return (
+                <div key={group.id} className="bg-[#1C1C1C] border border-[#2E2E2E] rounded-lg overflow-hidden">
+                    <div
                         onClick={() => setOpenGroupId(openGroupId === group.id ? null : group.id)}
-                        className="w-full flex items-center justify-between p-4 text-left font-semibold text-white hover:bg-[#FF6B00]/10 transition-colors rounded-t-lg"
+                        className="w-full flex items-center justify-between p-4 text-left font-semibold text-white hover:bg-white/5 transition-colors cursor-pointer"
+                        style={{ borderLeft: `4px solid ${groupColor}` }}
                     >
                         <div className="flex items-center gap-3">
-                            {openGroupId === group.id ? <FolderOpenIcon className="w-5 h-5 text-[#FF6B00]" /> : <FolderIcon className="w-5 h-5 text-[#FF6B00]" />}
+                            {openGroupId === group.id ? <FolderOpenIcon className="w-5 h-5" style={{ color: groupColor }} /> : <FolderIcon className="w-5 h-5" style={{ color: groupColor }} />}
                             <span>{group.name}</span>
                         </div>
                         <div className="flex items-center gap-3">
                             <span className="text-sm text-[#B3B3B3]">{group.links.length} links</span>
                             <button
+                                onClick={(e) => { e.stopPropagation(); onOpenGroupModal(group); }}
+                                className="p-1 text-gray-500 hover:text-white hover:bg-[#2E2E2E] rounded transition-colors"
+                                title="Editar Grupo"
+                            >
+                                <EditIcon className="w-4 h-4" />
+                            </button>
+                            <button
                                 onClick={(e) => { e.stopPropagation(); onDeleteGroup(group.id); }}
                                 className="p-1 text-gray-500 hover:text-red-500 hover:bg-[#2E2E2E] rounded transition-colors"
+                                title="Excluir Grupo"
                             >
                                 <Trash2Icon className="w-4 h-4" />
                             </button>
                         </div>
-                    </button>
+                    </div>
                     <AnimatePresence>
                         {openGroupId === group.id && (
                             <motion.div
@@ -662,28 +690,26 @@ const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGr
                                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                                 className="overflow-hidden"
                             >
-                                <div className="p-4 border-t border-[#2E2E2E] space-y-2">
+                                <div className="p-4 border-t border-[#2E2E2E] space-y-2 bg-[#1A1A1A]">
                                     {group.links.map((link: AccessLink) => {
-                                        const Icon = accessIconMap[link.icon];
+                                        const Icon = iconMap[link.icon as string] || LinkIcon;
                                         return (
-                                            <button
-                                                key={link.id}
-                                                onClick={() => onOpenModal({ mode: 'edit', groupId: group.id, link: link })}
-                                                className="w-full flex items-center gap-3 text-left p-3 bg-[#2E2E2E] hover:bg-[#3a3a3a] transition-colors rounded-lg group"
-                                            >
-                                                <Icon className="w-4 h-4 text-[#FF6B00] flex-shrink-0" />
-                                                <span className="flex-grow truncate">{link.nome}</span>
-                                                {link.isFavorite && <StarIcon className="w-4 h-4 text-yellow-400 fill-current flex-shrink-0" />}
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); onDeleteLink(link.id, group.id); }}
-                                                    className="p-1 text-gray-500 hover:text-red-500 hover:bg-[#1C1C1C] rounded opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
+                                            <div key={link.id} className="w-full flex items-center gap-3 p-3 bg-[#2E2E2E] hover:bg-[#3a3a3a] transition-colors rounded-lg group">
+                                                <a href={link.link} target="_blank" rel="noopener noreferrer" className="flex-grow flex items-center gap-3 overflow-hidden" title={link.descricao}>
+                                                    <Icon className="w-4 h-4 flex-shrink-0" style={{ color: groupColor }} />
+                                                    <span className="truncate hover:underline text-white font-medium">{link.nome}</span>
+                                                    {link.isFavorite && <StarIcon className="w-4 h-4 text-yellow-400 fill-current flex-shrink-0" />}
+                                                </a>
+                                                <button onClick={() => onOpenModal({ mode: 'edit', groupId: group.id, link: link })} className="p-1.5 text-[#B3B3B3] hover:text-white hover:bg-[#1C1C1C] rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Editar">
+                                                    <EditIcon className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => onDeleteLink(link.id, group.id)} className="p-1.5 text-gray-500 hover:text-red-500 hover:bg-[#1C1C1C] rounded opacity-0 group-hover:opacity-100 transition-opacity" title="Excluir">
                                                     <Trash2Icon className="w-4 h-4" />
                                                 </button>
-                                            </button>
+                                            </div>
                                         );
                                     })}
-                                    <button onClick={() => onOpenModal({ mode: 'create', groupId: group.id })} className="w-full flex items-center justify-center gap-2 text-left p-3 bg-[#2E2E2E]/50 hover:bg-[#2E2E2E] transition-colors rounded-lg text-sm text-[#B3B3B3] border-2 border-dashed border-[#3a3a3a] hover:border-[#FF6B00]">
+                                    <button onClick={() => onOpenModal({ mode: 'create', groupId: group.id })} className="w-full flex items-center justify-center gap-2 text-left p-3 mt-2 bg-transparent hover:bg-white/5 transition-colors rounded-lg text-sm font-medium border border-dashed" style={{ color: groupColor, borderColor: groupColor }}>
                                         <PlusIcon className="w-4 h-4" /> Adicionar Acesso
                                     </button>
                                 </div>
@@ -691,492 +717,10 @@ const AcessosTabContent: React.FC<any> = ({ accessGroups, openGroupId, setOpenGr
                         )}
                     </AnimatePresence>
                 </div>
-            ))}
+            )})}
         </div>
     </div>
 );
-
-
-const IntegrationsTabContent: React.FC = () => {
-    const toast = useToast();
-    const [webhookUrl, setWebhookUrl] = useState(() => localStorage.getItem('focushub_discord_webhook') || '');
-    const [selectedEvents, setSelectedEvents] = useState<string[]>(() => {
-        const saved = localStorage.getItem('focushub_discord_events');
-        return saved ? JSON.parse(saved) : ['task.created', 'task.completed'];
-    });
-    const [isTesting, setIsTesting] = useState(false);
-    const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
-
-    const events = [
-        { id: 'task.created', label: '📋 Nova Tarefa', desc: 'Quando uma tarefa é criada' },
-        { id: 'task.completed', label: '✅ Tarefa Concluída', desc: 'Quando uma tarefa é marcada como concluída' },
-        { id: 'task.overdue', label: '⚠️ Tarefa Atrasada', desc: 'Quando uma tarefa passa do prazo' },
-        { id: 'user.checkin', label: '👋 Check-in', desc: 'Quando alguém registra entrada' },
-        { id: 'user.checkout', label: '🚪 Check-out', desc: 'Quando alguém registra saída' },
-        { id: 'post.created', label: '📝 Nova Publicação', desc: 'Quando um post é criado no mural' },
-    ];
-
-    const handleSave = () => {
-        localStorage.setItem('focushub_discord_webhook', webhookUrl);
-        localStorage.setItem('focushub_discord_events', JSON.stringify(selectedEvents));
-        setTestResult(null);
-        toast.success('Configurações salvas!');
-    };
-
-    const handleToggleEvent = (eventId: string) => {
-        setSelectedEvents(prev =>
-            prev.includes(eventId)
-                ? prev.filter(e => e !== eventId)
-                : [...prev, eventId]
-        );
-    };
-
-    const handleTest = async () => {
-        if (!webhookUrl) return;
-        setIsTesting(true);
-        setTestResult(null);
-
-        try {
-            const response = await fetch(webhookUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    embeds: [{
-                        title: '🔔 Teste de Integração',
-                        description: 'Webhook do Focus Hub configurado com sucesso!',
-                        color: 0xFF6B00,
-                        footer: { text: 'Focus Hub' },
-                        timestamp: new Date().toISOString()
-                    }]
-                })
-            });
-            setTestResult(response.ok ? 'success' : 'error');
-        } catch {
-            setTestResult('error');
-        } finally {
-            setIsTesting(false);
-        }
-    };
-
-    return (
-        <div className="max-w-4xl mx-auto">
-            <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md">
-                <h2 className="text-xl font-bold mb-4 flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-[#5865F2]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515a.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0a12.64 12.64 0 0 0-.617-1.25a.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057a19.9 19.9 0 0 0 5.993 3.03a.078.078 0 0 0 .084-.028a14.09 14.09 0 0 0 1.226-1.994a.076.076 0 0 0-.041-.106a13.107 13.107 0 0 1-1.872-.892a.077.077 0 0 1-.008-.128a10.2 10.2 0 0 0 .372-.292a.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127a12.299 12.299 0 0 1-1.873.892a.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028a19.839 19.839 0 0 0 6.002-3.03a.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.956-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419c0-1.333.955-2.419 2.157-2.419c1.21 0 2.176 1.096 2.157 2.42c0 1.333-.946 2.418-2.157 2.418z" />
-                    </svg>
-                    Discord
-                </h2>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-[#B3B3B3] mb-1">URL do Webhook</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="url"
-                                value={webhookUrl}
-                                onChange={e => setWebhookUrl(e.target.value)}
-                                placeholder="https://discord.com/api/webhooks/..."
-                                className="flex-grow p-2 bg-[#2E2E2E] rounded-md focus:ring-1 focus:ring-[#5865F2] border border-transparent focus:border-[#5865F2]"
-                            />
-                            <button
-                                onClick={handleTest}
-                                disabled={!webhookUrl || isTesting}
-                                className="px-4 py-2 bg-[#5865F2] text-white rounded-md hover:bg-[#4752C4] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                            >
-                                {isTesting ? (
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                                    </svg>
-                                ) : 'Testar'}
-                            </button>
-                            <button
-                                onClick={handleSave}
-                                className="px-4 py-2 bg-[#FF6B00] text-white rounded-md hover:bg-[#FF8C33] font-semibold"
-                            >
-                                Salvar
-                            </button>
-                        </div>
-                        {testResult === 'success' && (
-                            <p className="text-green-400 text-sm mt-2">✓ Webhook funcionando! Verifique seu canal no Discord.</p>
-                        )}
-                        {testResult === 'error' && (
-                            <p className="text-red-400 text-sm mt-2">✗ Erro ao enviar. Verifique a URL do webhook.</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-[#B3B3B3] mb-2">Eventos para notificar</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {events.map(event => (
-                                <label
-                                    key={event.id}
-                                    className={`flex items-center p-3 rounded-lg cursor-pointer transition-all ${selectedEvents.includes(event.id)
-                                        ? 'bg-[#5865F2]/20 border border-[#5865F2]'
-                                        : 'bg-[#2E2E2E] border border-transparent hover:border-[#5865F2]/50'
-                                        }`}
-                                >
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedEvents.includes(event.id)}
-                                        onChange={() => handleToggleEvent(event.id)}
-                                        className="h-4 w-4 rounded bg-[#1C1C1C] border-gray-600 text-[#5865F2] focus:ring-[#5865F2] cursor-pointer"
-                                    />
-                                    <div className="ml-3">
-                                        <p className="text-sm font-medium text-white">{event.label}</p>
-                                        <p className="text-xs text-[#B3B3B3]">{event.desc}</p>
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="bg-[#2E2E2E] p-4 rounded-lg text-sm text-[#B3B3B3]">
-                        <p className="font-semibold text-white mb-2">💡 Como criar um webhook no Discord:</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                            <li>Abra as Configurações do Servidor no Discord</li>
-                            <li>Acesse Integrações → Webhooks</li>
-                            <li>Clique em "Novo Webhook"</li>
-                            <li>Escolha o canal e copie a URL</li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-            {/* WhatsApp Integration Section */}
-            <WhatsAppIntegrationSection />
-
-            {/* Google Sheets Section */}
-            <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md mt-6">
-                <h2 className="text-xl font-bold mb-4 flex items-center">
-                    <svg className="w-6 h-6 mr-2 text-[#34A853]" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z" />
-                        <path d="M7 7h4v2H7zm0 4h4v2H7zm0 4h4v2H7zm6-8h4v2h-4zm0 4h4v2h-4zm0 4h4v2h-4z" />
-                    </svg>
-                    Google Sheets
-                </h2>
-
-                <div className="space-y-4">
-                    <div className="bg-[#2E2E2E] p-4 rounded-lg">
-                        <p className="text-white font-medium mb-2">📊 Exportação disponível em:</p>
-                        <ul className="list-disc list-inside text-[#B3B3B3] space-y-1">
-                            <li><strong>Tarefas</strong> - Quadro de tarefas (ícone verde no header)</li>
-                            <li><strong>Registro de Ponto</strong> - Tabela de check-ins</li>
-                        </ul>
-                    </div>
-
-                    <div className="bg-[#0E0E0E] p-4 rounded-lg text-sm text-[#B3B3B3]">
-                        <p className="font-semibold text-white mb-2">💡 Como usar:</p>
-                        <ol className="list-decimal list-inside space-y-1">
-                            <li>Clique no ícone do Sheets na tela desejada</li>
-                            <li>Os dados serão copiados para sua área de transferência</li>
-                            <li>Uma nova planilha abrirá no Google Sheets</li>
-                            <li>Cole os dados com <kbd className="bg-[#2E2E2E] px-2 py-1 rounded">Ctrl+V</kbd></li>
-                        </ol>
-                    </div>
-                </div>
-            </div>
-
-            {/* Google Calendar OAuth Section */}
-            <GoogleCalendarSection />
-        </div>
-    );
-};
-
-const GoogleCalendarSection: React.FC = () => {
-    const toast = useToast();
-    const [isConnected, setIsConnected] = useState(false);
-    const [isConfigured, setIsConfigured] = useState(false);
-    const [isLoading, setIsLoading] = useState(true);
-
-    useEffect(() => {
-        checkGoogleStatus();
-        // Check for OAuth callback
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('google_connected') === 'true') {
-            toast.success('Google Calendar conectado com sucesso!');
-            window.history.replaceState({}, '', window.location.pathname);
-            setIsConnected(true);
-            setIsConfigured(true);
-        }
-        if (params.get('google_error')) {
-            toast.error('Erro ao conectar Google Calendar');
-            window.history.replaceState({}, '', window.location.pathname);
-        }
-    }, []);
-
-    const checkGoogleStatus = async () => {
-        try {
-            const { data } = await api.get('/google/status');
-            setIsConnected(data.connected);
-            setIsConfigured(data.configured);
-        } catch (error) {
-            console.error('Error checking Google status:', error);
-            // If connection fails, keep isConfigured as false (default)
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleConnect = async () => {
-        try {
-            const { data } = await api.get('/google/auth-url');
-
-            if (data.error) {
-                toast.error(data.message || 'Google Calendar não configurado');
-                return;
-            }
-
-            window.location.href = data.authUrl;
-        } catch (error) {
-            toast.error('Erro ao conectar com Google');
-        }
-    };
-
-    const handleDisconnect = async () => {
-        try {
-            await api.delete('/google/disconnect');
-            setIsConnected(false);
-            toast.success('Desconectado do Google Calendar');
-        } catch (error) {
-            toast.error('Erro ao desconectar');
-        }
-    };
-
-    return (
-        <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md mt-6">
-            <h2 className="text-xl font-bold mb-4 flex items-center">
-                <svg className="w-6 h-6 mr-2 text-[#4285F4]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm-8 4H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z" />
-                </svg>
-                Google Calendar
-            </h2>
-
-            {isLoading ? (
-                <div className="text-[#B3B3B3]">Verificando conexão...</div>
-            ) : !isConfigured ? (
-                <div className="bg-[#2E2E2E] p-4 rounded-lg">
-                    <p className="text-yellow-400 font-medium mb-2">⚠️ Configuração Pendente</p>
-                    <p className="text-[#B3B3B3] text-sm">
-                        O administrador precisa configurar as credenciais do Google Cloud Console para habilitar esta integração.
-                        Verifique também se a variável VITE_API_URL está correta no Vercel.
-                    </p>
-                </div>
-            ) : isConnected ? (
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-green-400">
-                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                        <span className="font-medium">Conectado ao Google Calendar</span>
-                    </div>
-                    <button
-                        onClick={handleDisconnect}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                    >
-                        Desconectar
-                    </button>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <p className="text-[#B3B3B3]">
-                        Conecte sua conta Google para sincronizar tarefas automaticamente com seu calendário.
-                    </p>
-                    <button
-                        onClick={handleConnect}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#4285F4] text-white rounded-lg hover:bg-[#3367D6] transition-colors"
-                    >
-                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-                        </svg>
-                        Conectar Google Calendar
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const WhatsAppIntegrationSection: React.FC = () => {
-    const [qrCode, setQrCode] = useState<string | null>(null);
-    const [status, setStatus] = useState<string>('LOADING');
-    const [loading, setLoading] = useState(false);
-    const [testPhone, setTestPhone] = useState('');
-    const [stats, setStats] = useState<{ sentToday: number; sentThisWeek: number; connectedUsers: number } | null>(null);
-
-    const fetchStatus = async () => {
-        try {
-            const res = await api.get('/whatsapp/status');
-            setStatus(res.data.status);
-            if (res.data.status === 'WAITING_FOR_SCAN' || res.data.status === 'DISCONNECTED') {
-                fetchQr();
-            }
-        } catch (error) {
-            console.error('Failed to fetch status', error);
-            setStatus('ERROR');
-        }
-    };
-
-    const fetchQr = async () => {
-        try {
-            const res = await api.get('/whatsapp/qr');
-            if (res.data.qr) {
-                setQrCode(res.data.qr);
-            }
-        } catch (error) {
-            console.error('Failed to fetch QR', error);
-        }
-    };
-
-    useEffect(() => {
-        // Poll status every 5 seconds only if component is mounted
-        fetchStatus();
-        fetchStats();
-        const interval = setInterval(fetchStatus, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const fetchStats = async () => {
-        try {
-            const res = await api.get('/whatsapp/stats');
-            setStats(res.data);
-        } catch (error) {
-            console.error('Failed to fetch stats', error);
-        }
-    };
-
-    const handleSendTest = async () => {
-        if (!testPhone) return alert('Digite um número');
-        setLoading(true);
-        try {
-            await api.post('/whatsapp/send', {
-                to: testPhone,
-                message: '🔔 Teste de Integração Focus Hub: Seu WhatsApp está conectado com sucesso!'
-            });
-            alert('Mensagem enviada com sucesso!');
-        } catch (error) {
-            alert('Falha ao enviar mensagem');
-            console.error(error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <div className="bg-[#1C1C1C] p-6 rounded-lg shadow-md mt-6 border border-[#2E2E2E]">
-            <h2 className="text-xl font-bold mb-4 flex items-center text-white">
-                <svg className="w-6 h-6 mr-2 text-green-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z" />
-                </svg>
-                WhatsApp Bot
-            </h2>
-
-            <div className="bg-[#2E2E2E] p-4 rounded-lg">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div className="flex-1">
-                        <p className="text-white font-medium mb-1">Status da Conexão</p>
-                        <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${status === 'CONNECTED' ? 'bg-green-500/20 text-green-500' :
-                            status === 'WAITING_FOR_SCAN' ? 'bg-yellow-500/20 text-yellow-500' :
-                                'bg-red-500/20 text-red-500'
-                            }`}>
-                            {status === 'CONNECTED' ? '● CONECTADO' :
-                                status === 'WAITING_FOR_SCAN' ? '● AGUARDANDO LEITURA DO QR' :
-                                    `● DESCONECTADO (${status})`}
-                        </div>
-                        <p className="text-sm text-[#B3B3B3] mt-2">
-                            {status === 'CONNECTED'
-                                ? 'O bot do sistema está ativo e pronto para enviar notificações.'
-                                : 'Escaneie o QR Code para conectar o WhatsApp do sistema.'}
-                        </p>
-                        {stats?.error && (
-                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded text-xs text-red-500">
-                                <strong>Erro:</strong> {stats.error}
-                            </div>
-                        )}
-                    </div>
-
-                    {status !== 'CONNECTED' && (
-                        <div className="flex flex-col items-center mt-6">
-                            {qrCode ? (
-                                <div className="bg-white p-2 rounded-lg">
-                                    <img src={qrCode} alt="WhatsApp QR Code" className="w-32 h-32 md:w-40 md:h-40 object-contain" />
-                                </div>
-                            ) : (
-                                <div className="w-32 h-32 flex items-center justify-center bg-[#1C1C1C] rounded-lg border border-[#3E3E3E]">
-                                    <span className="text-xs text-[#B3B3B3]">Carregando QR...</span>
-                                </div>
-                            )}
-                            <p className="text-xs text-[#B3B3B3] mt-2 text-center">Abra o WhatsApp &gt; Aparelhos Conectados</p>
-                        </div>
-                    )}
-                </div>
-
-                {status === 'CONNECTED' && (
-                    <div className="mt-6 pt-4 border-t border-[#3E3E3E]">
-                        <h3 className="text-sm font-semibold text-white mb-2">Testar Envio</h3>
-                        <div className="flex gap-2 max-w-md">
-                            <input
-                                type="text"
-                                value={testPhone}
-                                onChange={e => setTestPhone(e.target.value)}
-                                placeholder="5511999999999"
-                                className="flex-1 bg-[#1C1C1C] border border-[#3E3E3E] rounded-lg text-white px-3 py-2 text-sm focus:ring-1 focus:ring-green-500 focus:border-green-500"
-                            />
-                            <button
-                                onClick={handleSendTest}
-                                disabled={loading}
-                                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
-                            >
-                                {loading ? '...' : 'Enviar'}
-                            </button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Stats Cards */}
-            {
-                status === 'CONNECTED' && stats && (
-                    <div className="grid grid-cols-3 gap-4 mt-4">
-                        <div className="bg-[#2E2E2E] p-4 rounded-lg text-center">
-                            <p className="text-2xl font-bold text-green-500">{stats.sentToday}</p>
-                            <p className="text-xs text-[#B3B3B3]">Enviadas Hoje</p>
-                        </div>
-                        <div className="bg-[#2E2E2E] p-4 rounded-lg text-center">
-                            <p className="text-2xl font-bold text-blue-500">{stats.sentThisWeek}</p>
-                            <p className="text-xs text-[#B3B3B3]">Esta Semana</p>
-                        </div>
-                        <div className="bg-[#2E2E2E] p-4 rounded-lg text-center">
-                            <p className="text-2xl font-bold text-orange-500">{stats.connectedUsers}</p>
-                            <p className="text-xs text-[#B3B3B3]">Usuários Conectados</p>
-                        </div>
-                    </div>
-                )
-            }
-
-            {/* Commands Reference */}
-            <div className="bg-[#0E0E0E] p-4 rounded-lg mt-4">
-                <p className="font-semibold text-white mb-2">🤖 Comandos do Chatbot</p>
-                <p className="text-xs text-[#B3B3B3] mb-2">Os usuários podem enviar estes comandos para o número do bot:</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!tarefas</code>
-                    <span className="text-[#B3B3B3]">Lista tarefas pendentes</span>
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!hoje</code>
-                    <span className="text-[#B3B3B3]">Tarefas do dia</span>
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!concluir ID</code>
-                    <span className="text-[#B3B3B3]">Marca tarefa como concluída</span>
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!entrada</code>
-                    <span className="text-[#B3B3B3]">Registra check-in</span>
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!saida</code>
-                    <span className="text-[#B3B3B3]">Registra check-out</span>
-                    <code className="bg-[#2E2E2E] px-2 py-1 rounded text-green-400">!status</code>
-                    <span className="text-[#B3B3B3]">Resumo do dia</span>
-                </div>
-            </div>
-        </div >
-    );
-};
 
 
 const LinkCard: React.FC<{ link: LinkItem, onToggleFavorite: (id: string) => void, onOpenModal: (link: LinkItem) => void, onDelete: (id: string) => void }> = ({ link, onToggleFavorite, onOpenModal, onDelete }) => {
@@ -1216,12 +760,12 @@ const ContentCard: React.FC<{ item: ContentItem; isAdmin: boolean; onOpenModal: 
     return (
         <div className="bg-[#1C1C1C] rounded-lg p-5 flex flex-col justify-between shadow-lg transition-transform transform hover:-translate-y-1 relative">
             {isAdmin && (
-                <div className="absolute top-3 right-3">
-                    <button onClick={() => setShowMenu(!showMenu)} className="p-1 text-gray-500 hover:text-white">
+                <div className="absolute top-3 right-3 z-20">
+                    <button onClick={() => setShowMenu(!showMenu)} className="p-1.5 text-white hover:bg-black/50 rounded-full bg-black/30 backdrop-blur-sm transition-colors">
                         <LucideIcons.MoreVertical className="w-5 h-5" />
                     </button>
                     {showMenu && (
-                        <div className="absolute right-0 mt-2 w-32 bg-[#2E2E2E] rounded-md shadow-lg z-10 py-1">
+                        <div className="absolute right-0 mt-1 w-32 bg-[#2E2E2E] rounded-md shadow-xl py-1 border border-[#3E3E3E]">
                             <button onClick={() => { setShowMenu(false); onOpenModal(item); }} className="w-full text-left px-4 py-2 text-sm text-white hover:bg-[#3a3a3a] flex items-center">
                                 <LucideIcons.Edit className="w-4 h-4 mr-2" /> Editar
                             </button>
@@ -1573,6 +1117,42 @@ const PreviewModal: React.FC<{ content: ContentItem; onClose: () => void }> = ({
                         title={content.title}
                     />
                 )}
+            </div>
+        </div>
+    );
+};
+const GroupModal: React.FC<{ isOpen: boolean; onClose: () => void; onSave: (data: { name: string, color: string }) => void; editingGroup: AccessGroup | null }> = ({ isOpen, onClose, onSave, editingGroup }) => {
+    const [name, setName] = useState(editingGroup?.name || '');
+    const [color, setColor] = useState(editingGroup?.color || '#F97316');
+    const colors = ['#F97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b', '#ec4899', '#6b7280'];
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-[#1C1C1C] rounded-lg shadow-xl w-full max-w-sm p-6 relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-[#B3B3B3] hover:text-white">
+                    <XIcon className="w-6 h-6" />
+                </button>
+                <h2 className="text-xl font-bold mb-4">{editingGroup ? 'Editar Grupo' : 'Novo Grupo'}</h2>
+                <form onSubmit={(e) => { e.preventDefault(); onSave({ name, color }); }} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-[#B3B3B3] mb-1">Nome do Grupo</label>
+                        <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 bg-[#2E2E2E] rounded-md focus:outline-none focus:ring-1 focus:ring-[#FF6B00]" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-[#B3B3B3] mb-2">Cor da Pasta</label>
+                        <div className="flex gap-2 flex-wrap">
+                            {colors.map(c => (
+                                <button type="button" key={c} onClick={() => setColor(c)} className={`w-8 h-8 rounded-full transition-transform ${color === c ? 'scale-125 ring-2 ring-white' : 'hover:scale-110'}`} style={{ backgroundColor: c }} />
+                            ))}
+                        </div>
+                    </div>
+                    <div className="flex justify-end pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 mr-2 bg-[#2E2E2E] rounded-md hover:bg-[#3a3a3a]">Cancelar</button>
+                        <button type="submit" className="px-4 py-2 bg-[#FF6B00] rounded-md text-white font-semibold hover:bg-[#FF8C33]">Salvar</button>
+                    </div>
+                </form>
             </div>
         </div>
     );

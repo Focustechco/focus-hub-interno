@@ -30,18 +30,28 @@ const TaskSidePanel: React.FC<TaskSidePanelProps> = ({ event, onClose, onEdit, u
                         <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-[#3a3a3a] text-[#B3B3B3] hover:text-white transition-colors" title="Fechar">
                             <LucideIcons.X className="w-5 h-5" />
                         </button>
-                        <span className="font-semibold text-white">Detalhes do Evento</span>
+                        <span className="font-semibold text-white">
+                            {event.isGoogleEvent ? 'Evento do Google Calendar' : 'Detalhes do Evento'}
+                        </span>
                     </div>
-                    <button onClick={onEdit} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white transition-colors text-sm font-medium" title="Editar">
-                        <LucideIcons.Edit2 className="w-4 h-4" /> Editar
-                    </button>
+                    {event.isGoogleEvent ? (
+                        event.googleEventLink && (
+                            <a href={event.googleEventLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#4285F4] hover:bg-[#3574E0] text-white transition-colors text-sm font-medium" title="Abrir no Google Calendar">
+                                <LucideIcons.ExternalLink className="w-4 h-4" /> Abrir no Google
+                            </a>
+                        )
+                    ) : (
+                        <button onClick={onEdit} className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#2E2E2E] hover:bg-[#3a3a3a] text-white transition-colors text-sm font-medium" title="Editar">
+                            <LucideIcons.Edit2 className="w-4 h-4" /> Editar
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                     {/* Title Row */}
                     <div className="flex gap-4 items-start mb-6">
                         <div className="mt-2 shrink-0">
-                            <span className={`inline-block w-4 h-4 rounded-sm ${event.priority === 'alta' ? 'bg-red-500' : event.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
+                            <span className={`inline-block w-4 h-4 rounded-sm ${event.isGoogleEvent ? 'bg-[#4285F4]' : event.priority === 'alta' ? 'bg-red-500' : event.priority === 'media' ? 'bg-yellow-500' : 'bg-green-500'}`}></span>
                         </div>
                         <div>
                             <h2 className="text-2xl font-normal text-white">{event.title}</h2>

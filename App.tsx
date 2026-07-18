@@ -35,6 +35,7 @@ const AdminScreen = lazy(() => import('./screens/AdminScreen'));
 const FocusToolsScreen = lazy(() => import('./screens/FocusToolsScreen'));
 const DriveScreen = lazy(() => import('./screens/DriveScreen'));
 const ReportsScreen = lazy(() => import('./screens/ReportsScreen'));
+const AgendaCorporativaScreen = lazy(() => import('./screens/AgendaCorporativaScreen'));
 
 // Force deploy: 2024-12-24 v4 - fix infinite loop
 const App: React.FC = () => {
@@ -328,12 +329,11 @@ const App: React.FC = () => {
             case 'check-in':
                 return <CheckInScreen currentUser={currentUser} checkIns={checkIns} setCheckIns={setCheckIns} users={users} />;
             case 'tasks':
-                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} mode="tasks" />;
+                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setGoals={setGoals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} mode="tasks" />;
             case 'agenda':
-                return <TasksScreen currentUser={currentUser} tasks={tasks} users={users} goals={goals} setTasks={setTasks} setNotifications={setNotifications} notificationPreferences={notificationPreferences} dailyChecklistItems={dailyChecklistItems} setDailyChecklistItems={setDailyChecklistItems} taskViewOverride={taskViewOverride} setTaskViewOverride={setTaskViewOverride} isOnline={isOnline} setOfflineActionQueue={setOfflineActionQueue} mode="agenda" />;
+                return <AgendaCorporativaScreen currentUser={currentUser} users={users} />;
             case 'mural':
-                if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
-                return <MuralScreen currentUser={currentUser} posts={posts} users={users} setPosts={setPosts} setNotifications={setNotifications} notificationPreferences={notificationPreferences} />;
+                return <MuralScreen currentUser={currentUser} posts={posts} users={users} setPosts={setPosts} setNotifications={setNotifications} notificationPreferences={notificationPreferences} setActiveScreen={setActiveScreen} />;
             case 'focus-tools':
                 if (currentUser.role === Role.COLLABORATOR) return <DashboardScreen {...dashboardProps} />;
                 return <FocusToolsScreen currentUser={currentUser} />;
@@ -346,7 +346,7 @@ const App: React.FC = () => {
             case 'drive':
                 return <DriveScreen currentUser={currentUser} />;
             case 'reports':
-                return <ReportsScreen />;
+                return <ReportsScreen goals={goals} setGoals={setGoals} users={users} />;
             default:
                 return <DashboardScreen {...dashboardProps} />;
         }

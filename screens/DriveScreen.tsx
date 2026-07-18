@@ -621,7 +621,7 @@ export default function DriveScreen({ currentUser }: DriveScreenProps) {
           className="bg-[#1C1C1C] rounded-2xl border border-[#2E2E2E] p-10 max-w-md w-full text-center shadow-2xl"
         >
           <div className="flex justify-center mb-6">
-            <div className="p-5 bg-[#2E2E2E]/60 rounded-2xl">
+            <div className="p-5 border border-[#FF6B00]/40 rounded-2xl bg-[#FF6B00]/5">
               <GoogleDriveLogo size={56} />
             </div>
           </div>
