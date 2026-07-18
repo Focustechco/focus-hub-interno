@@ -61,7 +61,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ currentUser, notifi
     };
 
     const userNotifications = useMemo(() => 
-        notifications.filter(n => n.userId === currentUser.id)
+        notifications.filter(n => n.userId === currentUser.id && !n.isRead)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     , [notifications, currentUser.id]);
     
