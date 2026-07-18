@@ -27,11 +27,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [sector, setSector] = useState('');
-    const [jobTitle, setJobTitle] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [formError, setFormError] = useState('');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setFormError('');
+
+        if (!isLogin && password !== confirmPassword) {
+            setFormError('As senhas não coincidem');
+            return;
+        }
 
         try {
             if (isLogin) {
@@ -43,8 +49,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                     email,
                     password,
                     role: Role.COLLABORATOR, // Default safe role
-                    sector,
-                    jobTitle
+                    sector: '',
+                    jobTitle: ''
                 });
 
                 // Show success screen if registration is pending
@@ -97,8 +103,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                             setName('');
                             setEmail('');
                             setPassword('');
-                            setSector('');
-                            setJobTitle('');
+                            setConfirmPassword('');
+                            setFormError('');
                         }}
                         className="w-full bg-[#FF6B00] hover:bg-[#FF8C33] text-white font-bold py-3 rounded-lg transition-all"
                     >
@@ -167,29 +173,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin, onForgotPassword }) 
                     )}
 
                     {!isLogin && (
-                        <>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-[#B3B3B3]">Setor</label>
-                                    <input type="text" value={sector} onChange={e => setSector(e.target.value)} className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-[#B3B3B3]">Cargo</label>
-                                    <input type="text" value={jobTitle} onChange={e => setJobTitle(e.target.value)} className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
-                                </div>
-                            </div>
-                        </>
+                        <div>
+                            <label className="text-sm font-medium text-[#B3B3B3]">Confirmar Senha</label>
+                            <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className="w-full mt-1 p-3 bg-[#2E2E2E] rounded-lg border border-transparent focus:border-[#FF6B00] focus:ring-[#FF6B00] transition" />
+                        </div>
                     )}
 
                     <AnimatePresence>
-                        {authError && (
+                        {(authError || formError) && (
                             <motion.p
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
                                 className="text-red-400 text-center text-sm"
                             >
-                                {authError}
+                                {authError || formError}
                             </motion.p>
                         )}
                     </AnimatePresence>
