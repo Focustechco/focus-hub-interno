@@ -1,8 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     process.env.JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_at_least_32_chars_long_for_security_reasons';
@@ -39,21 +40,6 @@ app.use('/api/drive', authMiddleware, require('../backend/routes/drive'));
 app.use('/api/communication', authMiddleware, require('../backend/routes/communication'));
 app.use('/api/agenda', authMiddleware, require('../backend/routes/agenda'));
 
-// Optional bot routes (safely guarded for serverless execution)
-if (process.env.ENABLE_BOTS === 'true') {
-    try {
-        app.use('/api/whatsapp', require('../backend/routes/whatsapp'));
-    } catch (e) {
-        console.warn('[Serverless] WhatsApp route disabled:', e.message);
-    }
-}
-
-try {
-    app.use('/api/discord', authMiddleware, require('../backend/routes/discord'));
-} catch (e) {
-    console.warn('[Serverless] Discord route disabled:', e.message);
-}
-
 app.get('/api/health', async (req, res) => {
     try {
         const result = await pool.query('SELECT NOW()');
@@ -68,5 +54,6 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message || 'Erro interno do servidor' });
 });
 
-module.exports = app;
+export default app;
+
 
