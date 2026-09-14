@@ -1,0 +1,8 @@
+{
+  "name": "Focus Hub: Daily Operations & Task Manager",
+  "description": "An all-in-one platform for teams to manage daily operations. Features include geo-tagged check-ins with photo proof, comprehensive task management with checklists, quick-fire support tickets, a team announcement mural, and a powerful admin dashboard with CSV exports. Designed for both on-site and remote teams with offline capabilities.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
