@@ -1,0 +1,144 @@
+# Meeting Transcription
+
+  Meeting started: 09/07/2026, 17:48:31
+  Duration: 25 minutes
+  Participants: Focus Tecnologia, Gabriel, Ora Vida
+
+  [View original transcript](https://app.tactiq.io/api/2/u/m/r/jOsQnwijrgLBgZFPdNMR?o=txt)
+
+    
+
+  
+
+  
+
+  ## Transcript
+
+  00:00 Focus Tecnologia: Isto o cara comemorando.
+00:38 Gabriel: mudança de planos na aplicação
+00:41 Focus Tecnologia: Eu tô lancei.
+01:03 Focus Tecnologia: Teve um monte. O que foi que o Jordão? Como é?
+01:21 Gabriel: mudança de estratégia de ligação
+01:22 Focus Tecnologia: mudança de plano Olha aí. Tá ele vai pedir para entrar aqui.
+01:34 Gabriel: Ora ora quem é? carnaval
+01:41 Ora Vida: E aí meus sócios.
+01:43 Focus Tecnologia: E aí meu garoto, calma que vai ter uma falta agora para
+01:51 Ora Vida: c******, mas tá rolando o game, né, mano?
+01:52 Focus Tecnologia: Olá, estou transcrevendo esta chamada com minha extensão Tactiq AI. https://tactiq.io/r/transcribing
+01:56 Focus Tecnologia: A gente tá aqui na no roda elefante.
+01:59 Ora Vida: Vamos pegar já no intervalo é bom para isso que a gente já agiliza as coisas rapidinho.
+02:09 Focus Tecnologia: E tu tá em Itarema?
+02:19 Gabriel: Tô esperando não comprar minha Harley Davidson. Ele disse que vai comprar.
+02:24 Focus Tecnologia: Ei vamos lá, né?
+02:29 Ora Vida: Sai desse trânsito aí, mano.
+02:32 Focus Tecnologia: Jordão E aí tu comemorou foi o gol do
+02:40 Gabriel: Não. toma
+03:08 Ora Vida: Tu é doida é mas faltei aqui que quebrar mesmo tava muito empolgado macho a emoção. Selma não acreditei não. Eba a Noruega vai eliminar a Inglaterra, tu vai ver mano.
+03:20 Focus Tecnologia: tá Tem chance tem chance?
+03:23 Ora Vida: Tem chance tem 100% chance, mas quem não tem chance a Inglaterra macho.
+03:28 Focus Tecnologia: E aí tem que ganhar da Argentina depois.
+03:31 Ora Vida: A Inglaterra tá com três jogadores pendurado, mano, os cara vão jogar só lá de boa, mano. E a Noruega vai jogar livre ali é jogo. Aí vai ser difícil, né, mano?
+03:43 Focus Tecnologia: a FIFA tá querendo dar para o
+03:47 Ora Vida: O cara me passou feedback ontem mano, tá dizendo que tinha fechado lá com a
+03:55 Focus Tecnologia: Vamos lá. Ei, não deu certo um cara vai dar certo, né? Depois alguma coisa
+04:07 Ora Vida: outra empresa lá fortex, sei lá. Aí ele me falou que me passou lá o feedback mandou o áudio eu até encaminhar para ti depois mas ele disse que salvou nosso contato, mano. Aí ele disse que tem outras coisas lá dentro da fábrica que acha que a gente vai se encaixar melhor, entendeu? Porque a empresa que ele pegou é de é focado em logística Dizendo ele e ele viu que a gente pode trabalhar em outras coisas fora a logística ali para a fábrica é? Pois é mano É porque ele pegou.
+05:10 Focus Tecnologia: com o cara do alho.
+05:13 Gabriel: Vários vários cases né tanto da concorrente do alimento pro né?
+05:20 Ora Vida: Macho foi? Porque mano, ele pegou ele fez o orçamento com outras empresas, mano, se liga e aí, tipo tem outras empresas que trabalha só com isso mano, aí realmente mano. Os cara tem um software já pronto e já entrega a solução para o cara, mas bem mais em conta, tá ligado aí tipo para ele realmente. Que é mais viável ele ele tentar aí para ver se dá certo, né? Mesmo que não seja nada, tipo muito personalizado, mas para ele ser mais viável, né? E com certeza, se ele não conseguir algo ele precisar de ajuda, ele vai vir falar com a gente macho que essa essa porta aí tá sempre aberta ali na fábrica, mano. Os caras são eles gostaram da gente deu para ver entendeu? Eles não fecharam mesmo.
+06:03 Focus Tecnologia: Foi uma boa uma boa oportunidade, né.
+06:06 Ora Vida: Eles não fecharam mesmo porque enfim não é não foi depender deles, né? Ele é fábrica várias pessoas e tal, mas é bom a gente conhecer esses ambientes que o cara vê os ares, né É irado aquilo ali.
+06:22 Focus Tecnologia: Sim, pois vamos lá, né? Os drama disso aí que ia ter uma mudança de estratégia.
+06:28 Ora Vida: Ah sim, mano, é assim eu andei pesquisando esse final de semana sobre algumas coisas do nosso modelo de negócio para poder validar, né? E aí eu me debati mano, que da própria plataforma também da Strike ou qualquer outra que a gente vai usar elas são muito rígidas com questão do modelo que a gente está aplicando, entendeu? Esse modelo que a gente está aplicando dentro do do Strike que é pegar o povo de investimentos que do dinheiro de jogadores de pessoas que vão perder dinheiro para pagar outras que vão ganhar sem mesmo a gente não fazendo casa de aposta, nem usando um jogo de azar. Eles acreditam que a gente Fazendo isso, entendeu? Porque a gente tá pegando dinheiro de uma pessoa e tá entregando para outra isso aí não pode tá ligado. Então ia inviabilizar esse nosso projeto então pensando em cima disso macho, então vamos pensar em uma forma para a gente testar validar a estrutura, né e não ficar preso a essas burocracias mais tipo digamos nisso, né? Aí foi o que eu pensei junto com Covas a gente colocar o dinheiro de moeda, não é um dinheiro fixo na plataforma, né? Tipo coin, né? O cara tem uma moeda de mentira. E aí ele vai ganhar vai ganhar o bônus diário, ele vai vai fazer a atitudes atividades dentro da plataforma que ele vai ganhar os pontos para ele poder jogar participar, entendeu? Quando ele atingir uma quantidade de pontos aí ele vai poder trocar por algum item da loja uma creatina um pré-treino, entendeu? A gente Vai colocar o tanto de pontos para esses produtos aí quando a pessoa tiver ela vai trocar lá a gente vai comprar e vai enviar para ela, entendeu? E a monetização vai vir dar as parceria vai vir da divulgação vai vir da própria venda do site, entendeu? Porque como a gente vai ter essa News é da Galera entrando todo dia, mas uma hora ou outra a gente vai conseguir vender algum produto lá fazendo alguma promoção, entendeu? Ele vai fidelizar a galera a gente imagina que acontecer isso. E aí no futuro.
+08:40 Ora Vida: A gente procura algum investidor. Algum cara que queira investir nesse projeto e queira fazer um evento que aí a premiação seja realmente dinheiro de verdade, entendeu? Aí ele banco evento a gente bota a inscrição da Galera. A galera
+08:50 Gabriel: Olá, estou transcrevendo esta chamada com minha extensão Tactiq AI. https://tactiq.io/r/transcribing
+08:54 Ora Vida: faz a inscrição porque já vai estar usando a plataforma já vai conhecer como é que funciona, entendeu? Mas que vai mudar não é mudar por um todo né? Mas a gente vai mudar. Nossa como é que eu posso dizer a nossa ferramenta de monetização antes a gente ia trabalhar com dinheiro das apostas. Agora a gente vai pensar dos desafios no caso, né? Agora a gente vai pensar em trabalhar as parcerias.
+09:24 Gabriel: Tivesse asso.
+09:27 Focus Tecnologia: Mudar o modelo de negócio então, né mesmo alterar. Não sei se ele tem que dar uma estudada ou se ele já tem alguma resposta enquanto a isso de se alteraria muito escopo demorar teria que mudar alguma coisa no projeto.
+09:45 Ora Vida: Macho então eu falei com ele mano, tá até ouvindo inclusive e ele já falou que dá certo como eu tô também querendo me aventurar nessa parte de desenvolvimento. Eu eu acredito que eu consiga fazer essa essa mudança também, não é muito grande, eu acho que a mudança maior que eu não conseguiria fazer era o que tivesse associado as imagens, né as Se liga a validação, mas quanto a moeda né trocar isso fazer todo o backing lá no render. Eu acho que eu consigo desenrolar aí eu vou fazendo um projeto e vou mandando para ele, ele vai só checando aí mano. Tá certo? Tá OK. Aí ele vai autorizando né? Ele disse que dá para fazer um projeto eu dá para eu copiar duplicar o projeto, né e trabalhar paralelo, não sei. E aí ele vai vendo só se tá certo e vai atualizando, entendeu? Eu vou trabalhando e ele vai só me guiando.
+10:43 Focus Tecnologia: Sim, é tanto tu acha que é melhor assim?
+10:49 Ora Vida: Macho é porque assim né? É como o Covas não o Covas ele é muito difícil de ter reunião com ele, mas tipo várias vezes eu marco o cara sempre tá? Tá com alguma coisa, entendeu? E aí tipo como eu sou amigo dele mais próximo é mais fácil. Eu tenho contato com ele para pegar o feedback da plataforma e ajustar esses essas coisas do que o próprio israno, mano. Tá ligado? Do que passar para ele tem a reunião com ele. Aí fica meio que esse telefone sem fio. Aí eu
+11:12 Gabriel: Olá, estou transcrevendo esta chamada com minha extensão Tactiq AI. https://tactiq.io/r/transcribing
+11:14 Ora Vida: acho que é melhor eu fazer as alteração, aí eu passo piso. Anéis mano, eu fiz as alteração isso e isso tá certo. Aí ele olha vê se tá tudo ok e atualiza lá e atualiza lá, se tiver alguma coisa que eu não sei fazer ele entra no circuito, entendeu?
+11:29 Gabriel: Mas o que tal assim a gente fala hoje é exatamente o que a gente precisa mudar certo.
+11:39 Ora Vida: E tu já faz aí?
+11:39 Gabriel: E comenta aqui a gente comenta aqui, aí eu vou fazer rapidamente tu tu checa válida, se tu quiser tu já pode ir trabalhando em cima disso. Aí eu acho que
+11:50 Ora Vida: não tem
+11:50 Gabriel: fica mais fácil.
+11:51 Ora Vida: Entendi, é porque assim o quando o cara faz esse negócio, né? Eu imagino que quando for mostrar para o Covas eu vou outra pessoa, o cara vai começar a ter um bocado de ideia, né para ficar colocando. Mas vamos pensar no simples e no básico, né? Tu já entendeu um pouco como é que funciona o projeto, então tu pensa mágico se ele vai funcionar dessa forma, o que que eu preciso fazer para que ele funcione? Só isso, não precisa ficar incluir nem inventar muita coisa, entendeu? Então basicamente é o cara coloca a moeda é os coins lá de mentira, né? E essa lojinha dos produtos eu posso até eu mesmo fazer eu boto creatino e bota poucos produtos aí bota os pontos lá e a gente só faz linkar esse esse site com o projeto, né? Para quando a pessoa atingir os pontos ela poder trocar com por algum item, entendeu? O rato voltou né? Vixe, mas ficou gravado na reunião Mano. Dá para pegar não dá não.
+13:06 Ora Vida: Mas enfim o que eu tava falando mano, é que tipo é?
+13:07 Gabriel: nada
+13:12 Ora Vida: Alteração do projeto né que é para como tu já entende do que é o escopo do projeto, não é para o cara pensar demais é para o cara fazer o simples o básico e o que vai funcionar, entendeu? Então o que que precisa para funcionar o cheque das fotos, né? Que já tá funcionando acredito eu se faltar pequei tu me avisa para a gente poder comprar lá e configurar o subais também da minha conta, eu acho que já te mandei. Se eu não tiver mandado aí tu me cobra aí que eu te mando também, né para colocar lá as moedas aí o dinheiro né falando do dinheiro, como é que vai funcionar ao invés de ser dia de verdade a gente bota esse dinheiro de mentira, eu vou falar com ele, mas eu não pode pensar em nome aí qualquer nome pode botar não importa não conheço aí.
+14:05 Gabriel: horas com
+14:06 Ora Vida: É pode ser legal vários coins top aí ó, gostei é pronto top aí, como é que o cara vai ganhar esse esse coins, né esse órus coins todo dia para ele ganhar 10 horas coins, ele tem que entrar na nossa newsletters, né? A gente vai criar um newsletter naquele no render, tu vai ver que o projeto lá em cima tem uma publicação que não tem nada ainda, né? Era ali onde vai ser a newsletter eu vou criar a gente pode criar junto também. Não sei eu acho que eu consigo fazer isso e essa News é eu vou pegar e vou fazer uma automação para ela pegar as notícias do dia de saúde de esporte colocar lá nessa newsletter e a gente pode botar algumas propagandas. Nossa também a promoção de creatina promoção de Whey, porque é isso que vai vender, entendeu? E aí para o cara ganhar esses 10 coins, ele tem que entrar nessa página e tem que rolar até lá embaixo, aí a gente coloca o Pixel nesse nessa página se liga a gente pode aproveitar. Inclusive até aquele domínio lá do site que tem
+15:11 Gabriel: certo
+15:16 Ora Vida: dois domínios que eu comprei ou o do aplicativo para rodar e o do site aí depois a gente compra um servidor aí que dá mais trabalho esse negócio do Servidor, tem que fazer a segurança, né?
+15:29 Gabriel: Certo, tem uma questão que tu faltou me mandar.
+15:30 Ora Vida: Pois é aí por enquanto vamos fazer dessa forma aí com esses coins, deixa eu ver o desafio vai funcionar da mesma forma, só que aí o cara ao invés de verdade vai ser as moedas do jogo, né? E acho que é isso mano, não tem uma mudança muito drástica, não. Acho que a mudança maior é na forma de monetizar como eu falei, a gente não vai ganhar dinheiro da dos jogadores assim em si, né? A gente vai ganhar dinheiro das vendas dos produtos e parceria o que eu acho que até melhor mano, porque a gente já já começa o projeto procurando a gente pode ser entendeu? Acho que vai entrar mais dinheiro fluxo de caixa dessa forma do que dinheiro dos jogadores, mano, entendeu? Pelo menos agora não tem tanta gente, né? O que era?
+16:27 Gabriel: A não que amam amam que e a service é bem fácil, tu vai lá e piais aí tem
+16:37 Ora Vida: pera aí
+16:38 Gabriel: na terceira aba.
+16:40 Ora Vida: Deixa eu compartilhar aqui minha tela que aí. É na super base, é? Oros Fit é isso aqui, qual é onde é que eu clico?
+17:04 Gabriel: Pronto, vai ali no menu lateral.
+17:09 Ora Vida: Não da lateral.
+17:10 Gabriel: Isso séries.
+17:11 Focus Tecnologia: meu fone descarregou
+17:13 Ora Vida: A projeto séries aqui, né?
+17:15 Focus Tecnologia: 5m
+17:16 Gabriel: isso ali em
+17:20 Ora Vida: Inglês do cara é muito cruel.
+17:25 Gabriel: Aí ali a segunda.
+17:28 Ora Vida: Esse aqui né? É o público a esse serviço.
+17:34 Gabriel: ambas
+17:35 Ora Vida: Vou te mandar separado então aqui pera aí. ano público E a outra?
+18:00 Gabriel: Apenas isso.
+18:01 Ora Vida: essa aqui obrigado mais algo Macho Pronto, acho que se tu tiver alguma dúvida de do projeto, né? Há alguma coisa assim. Pode perguntar mano para mim que aí eu vejo aqui com qual você não souber eu perguntei qual é a melhor forma que a gente vai fazer isso e te faço já entendeu? Mas eu acho que assim eu acho que vai rodar até melhor mano, eu vai ser mais fácil a gente divulgar a galera aceitar o projeto, entendeu?
+18:51 Gabriel: Cara. Eu também acho que quando tu falou eu já eu já achei uma boa ideia.
+18:57 Ora Vida: E aí no futuro uma coisa a gente vê que já tem galera a gente procura a galera para fazer os eventos aí chega um patrocinador alma vou pagar um evento de r$ 2.000 aí a inscrição é 20 reais e o cara vai ganhar a premiação.
+19:08 Gabriel: Depois a gente poderia implementar né? Uma parada de campeonatos para realmente ser dessa forma que ia ser.
+19:15 Ora Vida: Com certeza a gente pode implementar uma parte para investidores, né, tipo, qualquer pessoa que queira investir criar um campeonato, aí ela vai com dinheiro do próprio bolso dela. Bota sei lá, eu quero abrir uma sala de 500 aí o que eu ganhar de investimento do dos cara que fizer a inscrição é do meu bolso, entendeu?
+19:33 Gabriel: Sim um torneio.
+19:35 Ora Vida: É tem que ser de alguma forma assim, porque o que não pode acontecer mano, é a premiação sei que o dinheiro da galera que tá jogando tá entendendo?
+19:46 Gabriel: Entendi.
+19:46 Ora Vida: É isso que não pode mano, aí se a gente se a gente fizer de qualquer outra forma que não seja desse jeito é totalmente legal não.
+19:54 Gabriel: Só tem que entrar nesses critérios, né para não. Ser considerado um algo de aposta, né?
+20:04 Ora Vida: Aí não mais é isso, mano. Tu vai me passando. Qualquer coisa que tu precisar aí tu me avisa se também precisar daquela APK lá do Cláudio para verificar a imagem aí tu também.
+20:16 Gabriel: Eu tinha voltado uma e a gratuita para fazer isso.
+20:20 Ora Vida: Deu certo.
+20:21 Gabriel: Então a gente eu botei eu queria que vocês tivessem testado.
+20:26 Ora Vida: Qual foi a que tu colocou?
+20:29 Gabriel: Eu usei uma doyama que é muito f***.
+20:33 Ora Vida: Ah então pode deixar mano, tu tá dizendo que é muito f***, porque mano eu vou te dizer a minha experiência, eu fiz o chatbot para o Marcelo que ele tava bancando lá para aprender a chatbot. Aí a gente se bateu nessa piquei tinha duas opções, tinha uma do grogue. Eu não sei se tu já ouviu falar tipo.
+20:51 Gabriel: Usei o grock o Glock ele tem vários modelos lá dentro, aí eu usei uma do Lhama que ela é exatamente para isso que é visão computacional, né? É basicamente ela consegue ver enxergar uma imagem, né?
+21:03 Ora Vida: Ah não, sabia disso, mas enfim, eu usei. Do Marcelo mandou um áudio meio que em espanhol com português toda arranhado Mano, tu acredita que o chat entendeu o áudio e respondeu não?
+21:30 Gabriel: Inúmeros modelos mas se eu botar o Facebook ele vai mandar até um vídeo para
+21:31 Ora Vida: Macho O Cláudio é cruel mãe se liga, eu acho.
+21:33 Focus Tecnologia: Olá, estou transcrevendo esta chamada com minha extensão Tactiq AI. https://tactiq.io/r/transcribing
+21:35 Ora Vida: Mas chapei do Cláudio lá aquela de cinco dólares. Eu fui mandando o Cláudio fazer aqui eu fui. Só pintando a minha tela e manda não.
+21:55 Gabriel: ele.
+21:55 Focus Tecnologia: modelo
+21:56 Ora Vida: Enfim o modelo que tu disse dele gastar, né macho. Pior que eu não eu não chequei isso mano, mas assim eu tô acompanhando o gasto dele, entendeu? Ele tá gastando quase que nada deixa eu ver aqui se tu consegue, tá?
+22:09 Gabriel: Então deve ser o deve ser o
+22:11 Ora Vida: Deixa eu compartilhar minha tela aqui que aí tu desvenda aí o mistério mas quando eu usei o Cláudio eu Eita p****, macho sério mesmo, não tem condições. O Claudinho é ó.
+22:23 Gabriel: Mas é tudo a questão da ia. Ela tem você tá ligado?
+22:29 Ora Vida: Como é que eu sei aqui? Ó, porque essa daqui ó, eu botei cinco dólares um tempão ainda tenho quatro dólares e 40.
+22:37 Gabriel: Mas é no teu código viado.
+22:40 Ora Vida: Ai no meu código, né?
+22:43 Gabriel: Eu não sei se dá para ver por aí, mas é no teu código, se eu não me engano, tá?
+22:48 Ora Vida: Ah entendi, mas então se eu pegar meu código e jogar na Iai pedir para ele ver ele ele.
+22:54 Gabriel: Consegue sim
+22:56 Ora Vida: Ah então de boa faço isso, aí, depois foi bom até tu falar porque depois os créditos do cara vai embora e o cara não sabe quem é.
+23:05 Gabriel: Tá gastando quase nada.
+23:08 Ora Vida: É porque começou a mensagem entendeu de WhatsApp consultório é pouco, né? Agora como a gente vai trabalhar a imagem lá pelo pela esse órus Fit aí a gente não sabe como é que vai funcionar esse gasto, né tanto é por isso que
+23:21 Gabriel: Isso aí é armazenamento tem nada a ver com ipai aqui.
+23:22 Ora Vida: eu perguntei, mas tem como sei lá em 60 e 60 dias, não sei se o tempo é o ideal, mas apagar o histórico de cheque, né da galera para não ficar acumulando arquivo. Ah não, eu sei eu sei eu sei mas tipo tem como o cara fazer isso, né.
+23:45 Gabriel: Tem tem como a gente elaborar uma solução de memória cache de backup, né? Para não ficar acumulando lixo.
+23:53 Ora Vida: Porque eu acho que eu acho que vai precisar disso com certeza porque a medida que vai aumentando vai aumentar muito esse esse cachê de armazenamento digamos assim, né? E aí vai chegar uma hora que a gente vai ter que pagar e quanto menor melhor mãe que é mais lucro para todo mundo, entendeu?
+24:13 Gabriel: É o início que é bom planejar essas coisas, né? Quando tá
+24:15 Ora Vida: É pois é o cara planeja logo esse que aí tipo ficar pagando porque não precisa manter mais de sei lá 90 dias no histórico, né? Não precisa disso tudo enfim aí no mais. Acho que é isso, mano, qualquer dúvida que tu tiver aí para poder atualizar tu me avisa e me passa. E vamos para cima que o pessoal já tava me perguntando lá do grupo.
+24:44 Gabriel: Mas depois beleza, o Adriano tem que me mandar aí no final da transcrição, já conseguiu avançar aí?
+24:50 Ora Vida: Foi bem produtivo já?
+24:51 Focus Tecnologia: cuida
+24:57 Gabriel: A gente eu vou atualizando vocês, eu vou tentar fazer isso agora. Aí eu já faço a migração do banco e já tento fazer isso agora.
+25:11 Ora Vida: Pois a gente faz isso. A gente testa essa essa aí que é gratuita. Se não der certo, aí eu pago aqui a dapk do Cláudio mesmo, viu?
+25:20 Gabriel: beleza, mas pelo visto tá top, viu essa
+  

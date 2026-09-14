@@ -33,7 +33,8 @@ dist-ssr
 
 .vercel
 
-backend/
+backend/node_modules/
+backend/.env
 focus-financial-insight-main/
 .env
 .env.*
