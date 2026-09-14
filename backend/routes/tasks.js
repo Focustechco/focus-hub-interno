@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/db');
 const { body, param, validationResult } = require('express-validator');
-const whatsAppService = require('../services/whatsappService');
+let whatsAppService;
+try {
+    whatsAppService = require('../services/whatsappService');
+} catch (e) {
+    whatsAppService = { isReady: false, sendMessage: async () => false };
+}
 const pushService = require('../services/pushService');
 
 // Validation middleware helper
