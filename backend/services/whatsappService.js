@@ -15,11 +15,10 @@ class WhatsAppService {
         this.authFolder = path.join(__dirname, '..', 'auth_info');
 
         // Ensure auth folder exists
-        if (!fs.existsSync(this.authFolder)) {
-            fs.mkdirSync(this.authFolder, { recursive: true });
+        // Only auto-initialize in standalone server environment if enabled
+        if (!process.env.VERCEL && process.env.ENABLE_WHATSAPP === 'true') {
+            this.initialize();
         }
-
-        this.initialize();
     }
 
     async initialize() {
