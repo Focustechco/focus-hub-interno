@@ -19,34 +19,53 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 const { authMiddleware } = require('../backend/middleware/auth');
 
-// Public routes
-app.use('/api/auth', require('../backend/routes/auth'));
-app.use('/api/google', require('../backend/routes/google'));
-app.use('/api/admin', require('../backend/routes/admin'));
+const authRoutes = require('../backend/routes/auth');
+const tasksRoutes = require('../backend/routes/tasks');
+const checkinsRoutes = require('../backend/routes/checkins');
+const postsRoutes = require('../backend/routes/posts');
+const goalsRoutes = require('../backend/routes/goals');
+const usersRoutes = require('../backend/routes/users');
+const toolsRoutes = require('../backend/routes/tools');
+const reportsRoutes = require('../backend/routes/reports');
+const checklistRoutes = require('../backend/routes/dailyChecklist');
+const notificationsRoutes = require('../backend/routes/notifications');
+const pushRoutes = require('../backend/routes/push');
+const contentsRoutes = require('../backend/routes/contents');
+const driveRoutes = require('../backend/routes/drive');
+const communicationRoutes = require('../backend/routes/communication');
+const agendaRoutes = require('../backend/routes/agenda');
+const adminRoutes = require('../backend/routes/admin');
+const googleRoutes = require('../backend/routes/google');
 
-// Protected routes
-app.use('/api/tasks', authMiddleware, require('../backend/routes/tasks'));
-app.use('/api/checkins', authMiddleware, require('../backend/routes/checkins'));
-app.use('/api/posts', authMiddleware, require('../backend/routes/posts'));
-app.use('/api/goals', authMiddleware, require('../backend/routes/goals'));
-app.use('/api/users', authMiddleware, require('../backend/routes/users'));
-app.use('/api/tools', authMiddleware, require('../backend/routes/tools'));
-app.use('/api/reports', authMiddleware, require('../backend/routes/reports'));
-app.use('/api/daily-checklist', authMiddleware, require('../backend/routes/dailyChecklist'));
-app.use('/api/notifications', authMiddleware, require('../backend/routes/notifications'));
-app.use('/api/push', authMiddleware, require('../backend/routes/push'));
-app.use('/api/contents', authMiddleware, require('../backend/routes/contents'));
-app.use('/api/drive', authMiddleware, require('../backend/routes/drive'));
-app.use('/api/communication', authMiddleware, require('../backend/routes/communication'));
-app.use('/api/agenda', authMiddleware, require('../backend/routes/agenda'));
+// Mount routes for both /api/path and /path
+['/api', ''].forEach(prefix => {
+    app.use(`${prefix}/auth`, authRoutes);
+    app.use(`${prefix}/google`, googleRoutes);
+    app.use(`${prefix}/admin`, adminRoutes);
 
-app.get('/api/health', async (req, res) => {
-    try {
-        const result = await pool.query('SELECT NOW()');
-        res.json({ status: 'ok', database: 'connected', time: result.rows[0].now });
-    } catch (err) {
-        res.status(500).json({ status: 'error', message: err.message });
-    }
+    app.use(`${prefix}/tasks`, authMiddleware, tasksRoutes);
+    app.use(`${prefix}/checkins`, authMiddleware, checkinsRoutes);
+    app.use(`${prefix}/posts`, authMiddleware, postsRoutes);
+    app.use(`${prefix}/goals`, authMiddleware, goalsRoutes);
+    app.use(`${prefix}/users`, authMiddleware, usersRoutes);
+    app.use(`${prefix}/tools`, authMiddleware, toolsRoutes);
+    app.use(`${prefix}/reports`, authMiddleware, reportsRoutes);
+    app.use(`${prefix}/daily-checklist`, authMiddleware, checklistRoutes);
+    app.use(`${prefix}/notifications`, authMiddleware, notificationsRoutes);
+    app.use(`${prefix}/push`, authMiddleware, pushRoutes);
+    app.use(`${prefix}/contents`, authMiddleware, contentsRoutes);
+    app.use(`${prefix}/drive`, authMiddleware, driveRoutes);
+    app.use(`${prefix}/communication`, authMiddleware, communicationRoutes);
+    app.use(`${prefix}/agenda`, authMiddleware, agendaRoutes);
+
+    app.get(`${prefix}/health`, async (req, res) => {
+        try {
+            const result = await pool.query('SELECT NOW()');
+            res.json({ status: 'ok', database: 'connected', time: result.rows[0].now });
+        } catch (err) {
+            res.status(500).json({ status: 'error', message: err.message });
+        }
+    });
 });
 
 app.use((err, req, res, next) => {
@@ -54,6 +73,9 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message || 'Erro interno do servidor' });
 });
 
-export default app;
+export default function handler(req, res) {
+    return app(req, res);
+}
+
 
 
