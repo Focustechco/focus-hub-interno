@@ -73,14 +73,8 @@ app.use((err, req, res, next) => {
     res.status(500).json({ message: err.message || 'Erro interno do servidor' });
 });
 
-export default function handler(req, res) {
-    try {
-        return app(req, res);
-    } catch (err) {
-        console.error('Handler execution error:', err);
-        return res.status(500).json({ error: 'Internal Server Error', message: err.message, stack: err.stack });
-    }
-}
+export default app;
+
 
 
 
