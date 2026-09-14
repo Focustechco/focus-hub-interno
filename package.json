@@ -32,9 +32,13 @@
     "googleapis": "^173.0.0",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.9.7",
+    "openai": "^4.28.0",
     "pg": "^8.11.3",
+    "pino": "^9.0.0",
+    "qrcode": "^1.5.3",
     "socket.io": "^4.8.3",
     "web-push": "^3.6.7"
   },

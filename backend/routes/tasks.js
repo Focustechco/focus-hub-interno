@@ -340,7 +340,6 @@ router.put('/:id', async (req, res) => {
             location: updatedTaskRow.location,
             color: updatedTaskRow.color,
             repetition: updatedTaskRow.repetition,
-            goalId: updatedTaskRow.goal_id,
             goalWeight: updatedTaskRow.goal_weight,
             subtasks: subtasksResult.rows.map(st => ({
                 id: st.id,

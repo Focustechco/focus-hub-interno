@@ -1,28 +1,16 @@
-import { createRequire } from 'module'; const require = createRequire(import.meta.url);
-var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
-}) : x)(function(x) {
-  if (typeof require !== "undefined") return require.apply(this, arguments);
-  throw Error('Dynamic require of "' + x + '" is not supported');
-});
-
-// backend/serverless.js
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __require2 = /* @__PURE__ */ ((x) => typeof __require !== "undefined" ? __require : typeof Proxy !== "undefined" ? new Proxy(x, {
-  get: (a, b) => (typeof __require !== "undefined" ? __require : a)[b]
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
 }) : x)(function(x) {
-  if (typeof __require !== "undefined") return __require.apply(this, arguments);
+  if (typeof require !== "undefined") return require.apply(this, arguments);
   throw Error('Dynamic require of "' + x + '" is not supported');
 });
-var __commonJS = (cb, mod) => function __require22() {
+var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __copyProps = (to, from, except, desc) => {
@@ -41,12 +29,14 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
+
+// backend/config/db.js
 var require_db = __commonJS({
   "backend/config/db.js"(exports, module) {
     "use strict";
-    var { Pool, types } = __require2("pg");
-    var path = __require2("path");
-    __require2("dotenv").config({ path: path.join(__dirname, "../.env") });
+    var { Pool, types } = __require("pg");
+    var path = __require("path");
+    __require("dotenv").config({ path: path.join(__dirname, "../.env") });
     types.setTypeParser(1114, (stringValue) => stringValue);
     types.setTypeParser(1184, (stringValue) => stringValue);
     types.setTypeParser(1082, (stringValue) => stringValue);
@@ -69,10 +59,12 @@ var require_db = __commonJS({
     };
   }
 });
+
+// backend/middleware/auth.js
 var require_auth = __commonJS({
   "backend/middleware/auth.js"(exports, module) {
     "use strict";
-    var jwt = __require2("jsonwebtoken");
+    var jwt = __require("jsonwebtoken");
     var authMiddleware2 = (req, res, next) => {
       const authHeader = req.headers.authorization;
       const token = authHeader?.split(" ")[1];
@@ -115,15 +107,17 @@ var require_auth = __commonJS({
     module.exports = { authMiddleware: authMiddleware2, adminOnly, optionalAuth };
   }
 });
+
+// backend/routes/auth.js
 var require_auth2 = __commonJS({
   "backend/routes/auth.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
-    var bcrypt = __require2("bcryptjs");
-    var jwt = __require2("jsonwebtoken");
+    var bcrypt = __require("bcryptjs");
+    var jwt = __require("jsonwebtoken");
     var { pool: pool2 } = require_db();
-    var nodemailer = __require2("nodemailer");
+    var nodemailer = __require("nodemailer");
     var ADMIN_EMAIL = "agenciafocusmarketing.co@gmail.com";
     var APP_URL = process.env.APP_URL || "https://focus-hub-interno.vercel.app";
     var createTransporter = () => {
@@ -410,6 +404,8 @@ var require_auth2 = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/services/whatsappCommands.js
 var require_whatsappCommands = __commonJS({
   "backend/services/whatsappCommands.js"(exports, module) {
     "use strict";
@@ -691,6 +687,8 @@ At\xE9 amanh\xE3! \u{1F44B}`;
     module.exports = WhatsAppCommands;
   }
 });
+
+// backend/services/whatsappService.js
 var require_whatsappService = __commonJS({
   "backend/services/whatsappService.js"(exports, module) {
     "use strict";
@@ -700,16 +698,16 @@ var require_whatsappService = __commonJS({
     var pino;
     var qrcode;
     try {
-      const baileys = __require2("@whiskeysockets/baileys");
+      const baileys = __require("@whiskeysockets/baileys");
       makeWASocket = baileys.default || baileys.makeWASocket;
       DisconnectReason = baileys.DisconnectReason;
       useMultiFileAuthState = baileys.useMultiFileAuthState;
-      pino = __require2("pino");
-      qrcode = __require2("qrcode");
+      pino = __require("pino");
+      qrcode = __require("qrcode");
     } catch (e) {
     }
-    var path = __require2("path");
-    var fs = __require2("fs");
+    var path = __require("path");
+    var fs = __require("fs");
     var WhatsAppService = class {
       constructor() {
         this.socket = null;
@@ -829,10 +827,12 @@ var require_whatsappService = __commonJS({
     module.exports = whatsAppService;
   }
 });
+
+// backend/services/pushService.js
 var require_pushService = __commonJS({
   "backend/services/pushService.js"(exports, module) {
     "use strict";
-    var webpush = __require2("web-push");
+    var webpush = __require("web-push");
     var { pool: pool2 } = require_db();
     var VAPID_PUBLIC_KEY = "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkOs-bI3cJDQyKClZNA1QQ_jmFCrh0Fi0JIn0w5sHE";
     var VAPID_PRIVATE_KEY = "UUxI4o8r315eMbHe2MX9hNARkUm2jIiTuiaKRcaqksg";
@@ -930,13 +930,15 @@ var require_pushService = __commonJS({
     };
   }
 });
+
+// backend/routes/tasks.js
 var require_tasks = __commonJS({
   "backend/routes/tasks.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
-    var { body, param, validationResult } = __require2("express-validator");
+    var { body, param, validationResult } = __require("express-validator");
     var whatsAppService;
     try {
       whatsAppService = require_whatsappService();
@@ -1362,10 +1364,12 @@ Aten\xE7\xE3o para esta tarefa!`;
     module.exports = router;
   }
 });
+
+// backend/routes/checkins.js
 var require_checkins = __commonJS({
   "backend/routes/checkins.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var FORTALEZA_TIMEZONE = "America/Fortaleza";
@@ -1491,10 +1495,12 @@ var require_checkins = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/posts.js
 var require_posts = __commonJS({
   "backend/routes/posts.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     router.get("/", async (req, res) => {
@@ -1616,10 +1622,12 @@ var require_posts = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/goals.js
 var require_goals = __commonJS({
   "backend/routes/goals.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var calculateProgress = (current, target) => {
@@ -1759,10 +1767,12 @@ var require_goals = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/users.js
 var require_users = __commonJS({
   "backend/routes/users.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     router.get("/", async (req, res) => {
@@ -1891,10 +1901,12 @@ var require_users = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/tools.js
 var require_tools = __commonJS({
   "backend/routes/tools.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     router.get("/links", async (req, res) => {
@@ -2156,17 +2168,19 @@ var require_tools = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/reports.js
 var require_reports = __commonJS({
   "backend/routes/reports.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var { authMiddleware: authMiddleware2 } = require_auth();
-    var multer = __require2("multer");
-    var { GoogleGenAI } = __require2("@google/genai");
-    var path = __require2("path");
-    var fs = __require2("fs");
+    var multer = __require("multer");
+    var { GoogleGenAI } = __require("@google/genai");
+    var path = __require("path");
+    var fs = __require("fs");
     var upload = multer({ dest: "uploads/" });
     var ai = process.env.GEMINI_API_KEY ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }) : null;
     router.use(authMiddleware2);
@@ -2467,10 +2481,12 @@ ${fileContent.substring(0, 3e4)}
     module.exports = router;
   }
 });
+
+// backend/routes/dailyChecklist.js
 var require_dailyChecklist = __commonJS({
   "backend/routes/dailyChecklist.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var formatDate = (date) => {
@@ -2593,10 +2609,12 @@ var require_dailyChecklist = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/notifications.js
 var require_notifications = __commonJS({
   "backend/routes/notifications.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var pushService = require_pushService();
@@ -2716,10 +2734,12 @@ var require_notifications = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/push.js
 var require_push = __commonJS({
   "backend/routes/push.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var pushService = require_pushService();
     router.post("/subscribe", async (req, res) => {
@@ -2768,15 +2788,17 @@ var require_push = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/contents.js
 var require_contents = __commonJS({
   "backend/routes/contents.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
-    var multer = __require2("multer");
-    var path = __require2("path");
-    var fs = __require2("fs");
+    var multer = __require("multer");
+    var path = __require("path");
+    var fs = __require("fs");
     var storage = multer.diskStorage({
       destination: function(req, file, cb) {
         let folder = "documentos";
@@ -2933,15 +2955,17 @@ var require_contents = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/drive.js
 var require_drive = __commonJS({
   "backend/routes/drive.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
-    var { google } = __require2("googleapis");
+    var { google } = __require("googleapis");
     var { pool: pool2 } = require_db();
-    var multer = __require2("multer");
-    var { PassThrough } = __require2("stream");
+    var multer = __require("multer");
+    var { PassThrough } = __require("stream");
     var upload = multer({
       storage: multer.memoryStorage(),
       limits: {
@@ -3528,15 +3552,17 @@ var require_drive = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/communication.js
 var require_communication = __commonJS({
   "backend/routes/communication.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var { authMiddleware: authMiddleware2 } = require_auth();
-    var multer = __require2("multer");
-    var path = __require2("path");
+    var multer = __require("multer");
+    var path = __require("path");
     var storage = multer.diskStorage({
       destination: (req, file, cb) => {
         cb(null, path.join(__dirname, "../storage/avatars"));
@@ -3846,10 +3872,12 @@ var require_communication = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/agenda.js
 var require_agenda = __commonJS({
   "backend/routes/agenda.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     router.get("/events", async (req, res) => {
@@ -3941,14 +3969,16 @@ var require_agenda = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/admin.js
 var require_admin = __commonJS({
   "backend/routes/admin.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
     var { pool: pool2 } = require_db();
     var { authMiddleware: authMiddleware2, adminOnly } = require_auth();
-    var bcrypt = __require2("bcryptjs");
+    var bcrypt = __require("bcryptjs");
     router.use(authMiddleware2);
     router.use(adminOnly);
     router.get("/dashboard", async (req, res) => {
@@ -4299,8 +4329,8 @@ var require_admin = __commonJS({
           statuses.push({ id: "discord", name: "Discord", status: "error", details: e.message });
         }
         try {
-          const fs = __require2("fs");
-          const path = __require2("path");
+          const fs = __require("fs");
+          const path = __require("path");
           const hasSession = fs.existsSync(path.join(__dirname, "..", "whatsapp-auth"));
           statuses.push({
             id: "whatsapp",
@@ -4368,15 +4398,17 @@ var require_admin = __commonJS({
     module.exports = router;
   }
 });
+
+// backend/routes/google.js
 var require_google = __commonJS({
   "backend/routes/google.js"(exports, module) {
     "use strict";
-    var express2 = __require2("express");
+    var express2 = __require("express");
     var router = express2.Router();
-    var { google } = __require2("googleapis");
+    var { google } = __require("googleapis");
     var { pool: pool2 } = require_db();
     var { authMiddleware: authMiddleware2, adminOnly } = require_auth();
-    var cron = __require2("node-cron");
+    var cron = __require("node-cron");
     var getOAuth2Client = () => {
       return new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -4673,6 +4705,8 @@ var require_google = __commonJS({
     module.exports = router;
   }
 });
+
+// api/index.js
 var import_db = __toESM(require_db(), 1);
 var import_auth = __toESM(require_auth(), 1);
 var import_auth2 = __toESM(require_auth2(), 1);
@@ -4692,6 +4726,9 @@ var import_communication = __toESM(require_communication(), 1);
 var import_agenda = __toESM(require_agenda(), 1);
 var import_admin = __toESM(require_admin(), 1);
 var import_google = __toESM(require_google(), 1);
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
   process.env.JWT_SECRET = process.env.JWT_SECRET || "your_super_secret_jwt_key_at_least_32_chars_long_for_security_reasons";
 }
