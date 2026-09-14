@@ -1,6 +1,14 @@
-const { Client, GatewayIntentBits, Partials, WebhookClient } = require('discord.js');
-const { Pool } = require('pg');
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+let Client, GatewayIntentBits, Partials, WebhookClient;
+try {
+    const discord = require('discord.js');
+    Client = discord.Client;
+    GatewayIntentBits = discord.GatewayIntentBits;
+    Partials = discord.Partials;
+    WebhookClient = discord.WebhookClient;
+} catch (e) {
+    // discord.js not installed in serverless build
+}
+const { pool } = require('../config/db');
 
 class DiscordService {
     constructor() {
@@ -185,21 +193,22 @@ class DiscordService {
         }
 
         // Fallback: Usar o webhook fixo fornecido pelo usuário (se o bot não estiver rodando ou falhar)
-        const WebhookClient = require('discord.js').WebhookClient;
-        const fallbackWebhook = new WebhookClient({ url: 'https://discord.com/api/webhooks/1527141795329212506/pRFQIcpmq8fLeOrVduhdUaojRXu6WNfzCdYuFtdkZFuEL-SydTZ51ZLa2OYVK06KGYvf' });
-        
-        try {
-            const message = await fallbackWebhook.send({
-                content: content || undefined,
-                username: user.name,
-                avatarURL: user.avatarUrl || 'https://i.imgur.com/AfFp7pu.png',
-                files: attachments
-            });
-            return message;
-        } catch (err) {
-            console.error('[Discord] Fallback webhook send failed:', err);
-            throw new Error('Falha ao enviar mensagem pelo webhook');
+        if (WebhookClient) {
+            const fallbackWebhook = new WebhookClient({ url: 'https://discord.com/api/webhooks/1527141795329212506/pRFQIcpmq8fLeOrVduhdUaojRXu6WNfzCdYuFtdkZFuEL-SydTZ51ZLa2OYVK06KGYvf' });
+            try {
+                const message = await fallbackWebhook.send({
+                    content: content || undefined,
+                    username: user.name,
+                    avatarURL: user.avatarUrl || 'https://i.imgur.com/AfFp7pu.png',
+                    files: attachments
+                });
+                return message;
+            } catch (err) {
+                console.error('[Discord] Fallback webhook send failed:', err);
+                throw new Error('Falha ao enviar mensagem pelo webhook');
+            }
         }
+        return null;
     }
 
     async getUsers() {

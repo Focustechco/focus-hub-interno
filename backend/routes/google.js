@@ -231,28 +231,28 @@ router.delete('/disconnect', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
-// Auto-sync Google Calendar events every 5 minutes
-cron.schedule('*/5 * * * *', async () => {
-    try {
-        const result = await pool.query('SELECT * FROM google_corporate_integration LIMIT 1');
-        if (result.rows.length === 0) return;
-        
-        const integration = result.rows[0];
-        // Se houver um intervalo configurado e for diferente de 5, podemos ajustar ou manter este fixo
-        
-        const oAuth2Client = getOAuth2Client();
-        oAuth2Client.setCredentials({
-            access_token: integration.access_token,
-            refresh_token: integration.refresh_token,
-            expiry_date: integration.token_expires_at ? new Date(integration.token_expires_at).getTime() : null
-        });
-        
-        await syncCalendarEvents(integration.id, oAuth2Client);
-        console.log('[Cron] Google Calendar events synced successfully.');
-    } catch (err) {
-        console.error('[Cron] Failed to sync Google Calendar events:', err.message);
-    }
-});
+// Auto-sync Google Calendar events every 5 minutes (disabled on Vercel serverless)
+if (!process.env.VERCEL) {
+    cron.schedule('*/5 * * * *', async () => {
+        try {
+            const result = await pool.query('SELECT * FROM google_corporate_integration LIMIT 1');
+            if (result.rows.length === 0) return;
+            
+            const integration = result.rows[0];
+            const oAuth2Client = getOAuth2Client();
+            oAuth2Client.setCredentials({
+                access_token: integration.access_token,
+                refresh_token: integration.refresh_token,
+                expiry_date: integration.token_expires_at ? new Date(integration.token_expires_at).getTime() : null
+            });
+            
+            await syncCalendarEvents(integration.id, oAuth2Client);
+            console.log('[Cron] Google Calendar events synced successfully.');
+        } catch (err) {
+            console.error('[Cron] Failed to sync Google Calendar events:', err.message);
+        }
+    });
+}
 
 // Create new event
 router.post('/events', authMiddleware, async (req, res) => {

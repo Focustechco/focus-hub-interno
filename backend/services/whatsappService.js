@@ -1,6 +1,14 @@
-const { default: makeWASocket, DisconnectReason, useMultiFileAuthState } = require('@whiskeysockets/baileys');
-const pino = require('pino');
-const qrcode = require('qrcode');
+let makeWASocket, DisconnectReason, useMultiFileAuthState, pino, qrcode;
+try {
+    const baileys = require('@whiskeysockets/baileys');
+    makeWASocket = baileys.default || baileys.makeWASocket;
+    DisconnectReason = baileys.DisconnectReason;
+    useMultiFileAuthState = baileys.useMultiFileAuthState;
+    pino = require('pino');
+    qrcode = require('qrcode');
+} catch (e) {
+    // Optional Baileys/QR dependencies not installed in minimal/serverless environments
+}
 const path = require('path');
 const fs = require('fs');
 
@@ -16,7 +24,7 @@ class WhatsAppService {
 
         // Ensure auth folder exists
         // Only auto-initialize in standalone server environment if enabled
-        if (!process.env.VERCEL && process.env.ENABLE_WHATSAPP === 'true') {
+        if (!process.env.VERCEL && process.env.ENABLE_WHATSAPP === 'true' && makeWASocket) {
             this.initialize();
         }
     }
