@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/lib/safeStorage';
 import { userService } from '@/services/userService';
+import { clienteService } from '@/services/clienteService';
 
 /**
  * Helper to ensure a string is a valid UUID for PostgreSQL uuid columns.
@@ -1693,47 +1694,10 @@ export function useLocalStorageState<T extends { id: string }>(
             }
           }
         } else if (isClientsTable) {
-          const payloadClients = items.map((item: any) => {
-            const validId = toValidUuid(item.id);
-            item.id = validId;
-            return {
-              id: validId,
-              name: item.nomeFantasia || item.razaoSocial || item.name || 'Novo Cliente',
-              status: String(item.status || 'ativo').toLowerCase() === 'inativo' ? 'inativo' : 'ativo',
-              contact_email: item.contatos?.[0]?.email || item.email || item.contact_email || null,
-              contact_phone: item.contatos?.[0]?.celular || item.telefone || item.contact_phone || null,
-              updated_at: new Date().toISOString(),
-            };
-          });
-          const payloadClientes = items.map((item: any) => {
-            const validId = toValidUuid(item.id);
-            const end = item.endereco || {};
-            return {
-              id: validId,
-              codigo: item.codigo || `CLI-${validId.slice(0, 4).toUpperCase()}`,
-              razao_social: item.razaoSocial || item.nomeFantasia || item.name || 'Cliente',
-              nome_fantasia: item.nomeFantasia || item.razaoSocial || item.name || 'Cliente',
-              documento: item.documento || item.cnpj || item.cpf || '00.000.000/0001-00',
-              inscricao_estadual: item.inscricaoEstadual || item.inscricao_estadual || 'Isento',
-              tipo: item.tipo || 'Pessoa Jurídica',
-              status: String(item.status || 'Ativo') === 'Inativo' ? 'Inativo' : 'Ativo',
-              segmento: item.segmento || 'Geral',
-              cep: end.cep || item.cep || null,
-              logradouro: end.logradouro || item.logradouro || null,
-              numero: end.numero || item.numero || null,
-              bairro: end.bairro || item.bairro || null,
-              cidade: end.cidade || item.cidade || null,
-              estado: end.estado || item.estado || null,
-              updated_at: new Date().toISOString(),
-            };
-          });
-          const dedupedClients = deduplicateById(payloadClients);
-          const dedupedClientes = deduplicateById(payloadClientes);
-          if (dedupedClients.length > 0) {
-            await supabase.from('clients').upsert(dedupedClients, { onConflict: 'id' });
-          }
-          if (dedupedClientes.length > 0) {
-            await supabase.from('clientes').upsert(dedupedClientes, { onConflict: 'id' });
+          for (const item of items as any[]) {
+            if (item && item.id) {
+              await clienteService.saveCliente(item);
+            }
           }
         } else if (isCentrosCusto) {
           const payload = items.map((item: any) => {
@@ -2299,161 +2263,14 @@ export function useLocalStorageState<T extends { id: string }>(
         }
 
         if (isClientsTable) {
-          const { data: dbClientes, error: dbClientesErr } = await supabase
-            .from('clientes')
-            .select('*')
-            .neq('status', 'deleted')
-            .order('created_at', { ascending: false });
-
+          const allClis = await clienteService.getClientes();
           if (!isMountedRef.current) return;
-
-          const rawDeletedIds = safeGetItem('focus_app_deleted_client_ids');
-          const deletedSet = new Set<string>(rawDeletedIds ? JSON.parse(rawDeletedIds) : []);
-          const localMap = new Map<string, any>();
-          localCached.forEach((lc: any) => {
-            if (lc && lc.id) localMap.set(String(lc.id), lc);
-          });
-
-          if (!dbClientesErr && Array.isArray(dbClientes) && dbClientes.length > 0) {
-            const mapped = dbClientes
-              .filter((c: any) => {
-                if (deletedSet.has(String(c.id))) return false;
-                if (c.status === 'deleted' || c.status === 'deletado' || c.deleted === true) return false;
-                if (c.name && typeof c.name === 'string' && c.name.startsWith('__USER_PROFILE__')) return false;
-                return true;
-              })
-              .map((c: any) => {
-                const existing = localMap.get(String(c.id)) || {};
-                const end = c.endereco || existing.endereco || {};
-                let cidade = c.cidade || end.cidade || '';
-                let estado = c.estado || end.estado || '';
-                const cep = c.cep || end.cep || '';
-                const logradouro = c.logradouro || end.logradouro || '';
-                const numero = c.numero || end.numero || '';
-                const complemento = c.complemento || end.complemento || '';
-                const bairro = c.bairro || end.bairro || '';
-                const pais = c.pais || end.pais || 'Brasil';
-
-                if (cidade.toLowerCase() === 'são paulo' && estado.toUpperCase() === 'SP' && !logradouro && !cep && !bairro) {
-                  cidade = '';
-                  estado = '';
-                }
-
-                return {
-                  ...existing,
-                  ...c,
-                  id: String(c.id),
-                  codigo: c.codigo || existing.codigo || `CLI-${String(c.id).slice(0, 4).toUpperCase()}`,
-                  tipo: c.tipo || existing.tipo || 'Pessoa Jurídica',
-                  razaoSocial: c.razao_social || c.razaoSocial || existing.razaoSocial || c.name || 'Cliente',
-                  nomeFantasia: c.nome_fantasia || c.nomeFantasia || existing.nomeFantasia || c.razao_social || 'Cliente',
-                  documento: c.documento || c.cnpj || c.cpf || existing.documento || '00.000.000/0001-00',
-                  status: c.status === 'Inativo' ? 'Inativo' : (existing.status || 'Ativo'),
-                  segmento: c.segmento || existing.segmento || 'Geral',
-                  endereco: {
-                    cep,
-                    logradouro,
-                    numero,
-                    complemento,
-                    bairro,
-                    cidade,
-                    estado,
-                    pais,
-                  },
-                  contatos: (existing.contatos && existing.contatos.length > 0)
-                    ? existing.contatos
-                    : (Array.isArray(c.contatos) ? c.contatos : []),
-                  recorrencias: existing.recorrencias || [],
-                  dataCadastro: existing.dataCadastro || c.created_at || new Date().toISOString(),
-                  ultimaAtualizacao: existing.ultimaAtualizacao || c.updated_at || new Date().toISOString(),
-                };
-              }) as T[];
-
-            setData(mapped);
-            writeLocalCache(table, mapped);
+          if (Array.isArray(allClis)) {
+            setData(allClis as unknown as T[]);
+            writeLocalCache(table, allClis);
             setError(null);
-            return;
           }
-
-          // Fallback buscando em 'clients' caso 'clientes' ainda não possua registros
-          const { data: dbClients, error: dbErr } = await supabase
-            .from('clients')
-            .select('*')
-            .not('name', 'like', '__FOCUS_STATE__%')
-            .not('name', 'like', '__FOCUS_STATE_%')
-            .not('name', 'like', '__FOCUS_USERS_STATE__%')
-            .neq('status', 'deleted')
-            .neq('status', 'deletado')
-            .order('created_at', { ascending: false });
-
-          if (!isMountedRef.current) return;
-
-          if (!dbErr && Array.isArray(dbClients)) {
-            const mapped = dbClients
-              .filter((c: any) => {
-                if (deletedSet.has(String(c.id))) return false;
-                if (c.status === 'deleted' || c.status === 'deletado' || c.deleted === true) return false;
-                if (typeof c.name === 'string' && (c.name.startsWith('__DELETED__') || c.name.startsWith('__FOCUS_') || c.name.startsWith('__USER_PROFILE__'))) return false;
-                return true;
-              })
-              .map((c: any) => {
-                const existing = localMap.get(String(c.id)) || {};
-                const end = c.endereco || existing.endereco || {};
-                const cidade = c.cidade || end.cidade || '';
-                const estado = c.estado || end.estado || '';
-                const cep = c.cep || end.cep || '';
-                const logradouro = c.logradouro || end.logradouro || '';
-                const numero = c.numero || end.numero || '';
-                const complemento = c.complemento || end.complemento || '';
-                const bairro = c.bairro || end.bairro || '';
-                const pais = c.pais || end.pais || 'Brasil';
-
-                return {
-                  ...existing,
-                  ...c,
-                  id: String(c.id),
-                  codigo: existing.codigo || `CLI-${String(c.id).slice(0, 4).toUpperCase()}`,
-                  tipo: existing.tipo || 'Pessoa Jurídica',
-                  razaoSocial: existing.razaoSocial || c.name || 'Cliente sem nome',
-                  nomeFantasia: existing.nomeFantasia || c.name || 'Cliente sem nome',
-                  documento: existing.documento || '00.000.000/0001-00',
-                  status: (c.status === 'inativo' || c.status === 'Inativo') ? 'Inativo' : 'Ativo',
-                  segmento: existing.segmento || 'Geral',
-                  endereco: {
-                    cep,
-                    logradouro,
-                    numero,
-                    complemento,
-                    bairro,
-                    cidade,
-                    estado,
-                    pais,
-                  },
-                  contatos: (existing.contatos && existing.contatos.length > 0)
-                    ? existing.contatos
-                    : [
-                        {
-                          id: `ct-${c.id}`,
-                          nome: c.name || 'Contato Principal',
-                          cargo: 'Responsável',
-                          departamento: 'Geral',
-                          celular: c.contact_phone || '(11) 99999-9999',
-                          whatsapp: true,
-                          email: c.contact_email || 'contato@cliente.com',
-                          principal: true
-                        }
-                      ],
-                  recorrencias: existing.recorrencias || [],
-                  dataCadastro: existing.dataCadastro || c.created_at || new Date().toISOString(),
-                  ultimaAtualizacao: existing.ultimaAtualizacao || c.updated_at || new Date().toISOString(),
-                };
-              }) as T[];
-
-            setData(mapped);
-            writeLocalCache(table, mapped);
-            setError(null);
-            return;
-          }
+          return;
         }
 
         if (isCentrosCusto) {
