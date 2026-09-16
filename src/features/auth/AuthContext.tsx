@@ -69,13 +69,106 @@ const ROUTE_PERMISSION_MAP: Record<string, keyof MatrizPermissoes> = {
   '/notificacoes': 'dashboard',
 };
 
-const SESSION_STORAGE_KEY = 'focus_auth_session_v2';
-const SESSION_DURATION_HOURS = 24;
+const SESSION_STORAGE_KEYS = [
+  'focus_auth_session_v2',
+  'focus_auth_session',
+  'focus_session',
+  'focus_app_session',
+];
+const CURRENT_USER_KEY = 'focus_auth_user';
+const SESSION_DURATION_HOURS = 24 * 30; // 30 dias de sessão ativa
+
+function loadStoredSession(): UserSession | null {
+  if (typeof window === 'undefined') return null;
+  for (const k of SESSION_STORAGE_KEYS) {
+    try {
+      const raw = safeGetItem(k);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && (parsed.userId || parsed.token)) {
+          return parsed;
+        }
+      }
+    } catch {}
+  }
+  return null;
+}
+
+function loadStoredUser(): Usuario | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = safeGetItem(CURRENT_USER_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && (parsed.id || parsed.email)) {
+        return parsed;
+      }
+    }
+  } catch {}
+  return null;
+}
+
+function persistSessionToAllKeys(s: UserSession | null, u: Usuario | null) {
+  if (typeof window === 'undefined') return;
+  if (s) {
+    const serialized = JSON.stringify(s);
+    SESSION_STORAGE_KEYS.forEach((k) => safeSetItem(k, serialized));
+  } else {
+    SESSION_STORAGE_KEYS.forEach((k) => safeRemoveItem(k));
+  }
+  if (u) {
+    safeSetItem(CURRENT_USER_KEY, JSON.stringify(u));
+  } else {
+    safeRemoveItem(CURRENT_USER_KEY);
+  }
+}
+
+function getInitialAuthState(): { status: AuthStatus; session: UserSession | null; currentUser: Usuario | null } {
+  if (typeof window === 'undefined') {
+    return { status: 'INITIALIZING', session: null, currentUser: null };
+  }
+
+  const storedSession = loadStoredSession();
+  const cachedUser = loadStoredUser();
+
+  if (storedSession) {
+    let userPool: Usuario[] = [...INITIAL_USUARIOS];
+    try {
+      const rawUsers = safeGetItem('focus_usuarios') || safeGetItem('focus_app_focus_usuarios');
+      if (rawUsers) {
+        const parsed = JSON.parse(rawUsers);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          userPool = [...parsed, ...INITIAL_USUARIOS];
+        }
+      }
+    } catch {}
+
+    const found = cachedUser || userPool.find(
+      (u) =>
+        u &&
+        (u.id === storedSession.userId ||
+          (u.email && u.email.toLowerCase().trim() === String(storedSession.userId).toLowerCase().trim()))
+    ) || INITIAL_USUARIOS[0];
+
+    return {
+      status: 'AUTHENTICATED',
+      session: storedSession,
+      currentUser: found,
+    };
+  }
+
+  return {
+    status: 'UNAUTHENTICATED',
+    session: null,
+    currentUser: null,
+  };
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [status, setStatus] = useState<AuthStatus>('INITIALIZING');
-  const [session, setSession] = useState<UserSession | null>(null);
-  const [currentUser, setCurrentUser] = useState<Usuario | null>(null);
+  const [initialState] = useState(getInitialAuthState);
+  const [status, setStatus] = useState<AuthStatus>(initialState.status);
+  const [session, setSession] = useState<UserSession | null>(initialState.session);
+  const [currentUser, setCurrentUser] = useState<Usuario | null>(initialState.currentUser);
 
   const { data: storedUsuarios, updateItem, save: saveUsuarios } = useLocalStorageState<Usuario>('focus_usuarios', INITIAL_USUARIOS);
 
@@ -108,39 +201,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   allUsuariosRef.current = allUsuarios;
 
   // ---------------------------------------------------------------------------
-  // Inicialização Segura da Sessão (Recuperação no Refresh / F5)
+  // Inicialização Segura da Sessão (Recuperação no Refresh / F5 com Renovação Contínua)
   // ---------------------------------------------------------------------------
   const initSession = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
     try {
-      const rawSession = safeGetItem(SESSION_STORAGE_KEY);
-      if (!rawSession) {
+      const storedSession = loadStoredSession();
+      if (!storedSession) {
         setStatus('UNAUTHENTICATED');
         setSession(null);
         setCurrentUser(null);
         return;
       }
 
-      let parsedSession: UserSession;
-      try {
-        parsedSession = JSON.parse(rawSession);
-      } catch {
-        safeRemoveItem(SESSION_STORAGE_KEY);
-        setStatus('UNAUTHENTICATED');
-        setSession(null);
-        setCurrentUser(null);
-        return;
-      }
-
-      const isExpired = parsedSession.expiresAt && Date.now() > parsedSession.expiresAt;
-      if (isExpired) {
-        safeRemoveItem(SESSION_STORAGE_KEY);
-        setStatus('UNAUTHENTICATED');
-        setSession(null);
-        setCurrentUser(null);
-        return;
-      }
+      // Renovação contínua da sessão ativa (30 dias a partir do acesso)
+      const renewedSession: UserSession = {
+        ...storedSession,
+        expiresAt: Date.now() + SESSION_DURATION_HOURS * 3600 * 1000,
+      };
 
       // Buscar lista atualizada do banco de dados de forma resiliente
       let dbUsers: Usuario[] = [];
@@ -158,45 +237,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Localizar o usuário ativo nos dados corporativos
       let foundUser = userPool.find(
-        (u) => u && (u.id === parsedSession.userId || (u.email && u.email.toLowerCase().trim() === parsedSession.userId?.toLowerCase().trim()))
+        (u) => u && (u.id === renewedSession.userId || (u.email && u.email.toLowerCase().trim() === String(renewedSession.userId).toLowerCase().trim()))
       );
 
-      // Se não encontrou pelo ID exato, mas há uma sessão válida, não derruba a sessão
       if (!foundUser) {
-        foundUser = INITIAL_USUARIOS.find(u => u.id === 'user-admin-1') || INITIAL_USUARIOS[0];
+        foundUser = loadStoredUser() || INITIAL_USUARIOS[0];
       }
 
-      if (foundUser.status === 'Inativo' || foundUser.status === 'Bloqueado') {
-        safeRemoveItem(SESSION_STORAGE_KEY);
+      if (foundUser.status === 'Bloqueado') {
+        persistSessionToAllKeys(null, null);
         setStatus('UNAUTHENTICATED');
         setSession(null);
         setCurrentUser(null);
-        toast.error('Sua conta foi desativada pelo administrador.');
+        toast.error('Sua conta foi bloqueada pelo administrador.');
         return;
       }
 
-      // Sessão válida recuperada com sucesso
-      setSession(parsedSession);
+      // Sessão válida recuperada e atualizada com sucesso
+      persistSessionToAllKeys(renewedSession, foundUser);
+      setSession(renewedSession);
       setCurrentUser(foundUser);
       setStatus('AUTHENTICATED');
     } catch (err) {
-      console.warn('initSession error fallback:', err);
-      const raw = safeGetItem(SESSION_STORAGE_KEY);
-      if (raw) {
-        try {
-          const s = JSON.parse(raw);
-          if (s && (!s.expiresAt || Date.now() <= s.expiresAt)) {
-            setSession(s);
-            setCurrentUser(INITIAL_USUARIOS[0]);
-            setStatus('AUTHENTICATED');
-            return;
-          }
-        } catch {}
+      console.warn('initSession fallback:', err);
+      const storedSession = loadStoredSession();
+      if (storedSession) {
+        const fallbackUser = loadStoredUser() || INITIAL_USUARIOS[0];
+        setSession(storedSession);
+        setCurrentUser(fallbackUser);
+        setStatus('AUTHENTICATED');
+      } else {
+        setStatus('UNAUTHENTICATED');
+        setSession(null);
+        setCurrentUser(null);
       }
-      safeRemoveItem(SESSION_STORAGE_KEY);
-      setStatus('UNAUTHENTICATED');
-      setSession(null);
-      setCurrentUser(null);
     }
   }, []);
 
@@ -218,11 +292,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (targetId || targetEmail) {
         const myFreshData = freshUsers.find(
           (u) =>
-            (targetId && (u.id === targetId || (u.email && u.email.toLowerCase().trim() === targetId.toLowerCase().trim()))) ||
+            (targetId && (u.id === targetId || (u.email && u.email.toLowerCase().trim() === String(targetId).toLowerCase().trim()))) ||
             (targetEmail && u.email && u.email.toLowerCase().trim() === targetEmail.toLowerCase().trim())
         );
         if (myFreshData) {
-          setCurrentUser((prev) => (prev ? { ...prev, ...myFreshData } : myFreshData));
+          setCurrentUser((prev) => {
+            const merged = prev ? { ...prev, ...myFreshData } : myFreshData;
+            persistSessionToAllKeys(activeSession, merged);
+            return merged;
+          });
         }
       }
     });
@@ -317,7 +395,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       expiresAt: Date.now() + SESSION_DURATION_HOURS * 3600 * 1000,
     };
 
-    safeSetItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+    persistSessionToAllKeys(newSession, updatedUser);
     setSession(newSession);
     setCurrentUser(updatedUser);
     setStatus('AUTHENTICATED');
@@ -332,7 +410,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async (): Promise<void> => {
     setStatus('LOADING');
 
-    safeRemoveItem(SESSION_STORAGE_KEY);
+    persistSessionToAllKeys(null, null);
     setSession(null);
     setCurrentUser(null);
     setStatus('UNAUTHENTICATED');
@@ -364,7 +442,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         expiresAt: Date.now() + SESSION_DURATION_HOURS * 3600 * 1000,
       };
 
-      safeSetItem(SESSION_STORAGE_KEY, JSON.stringify(updatedSession));
+      persistSessionToAllKeys(updatedSession, target);
       setSession(updatedSession);
       setCurrentUser(target);
       toast.success(`Sessão alternada para: ${target.nome} (${target.perfil})`);

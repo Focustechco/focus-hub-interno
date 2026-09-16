@@ -54,7 +54,7 @@ function checkIsIOS(): boolean {
 export function TopBar() {
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
-  const { currentUser, isSuperAdmin } = useAuth();
+  const { currentUser, isSuperAdmin, logout } = useAuth();
   const { empresa } = useEmpresaConfig();
 
   const [openSearchModal, setOpenSearchModal] = useState(false);
@@ -344,12 +344,7 @@ export function TopBar() {
               </DropdownMenuItem>
 
               <DropdownMenuItem 
-                onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.localStorage.removeItem('focus_auth_session_v2');
-                    window.location.reload();
-                  }
-                }}
+                onClick={logout}
                 className="cursor-pointer gap-2 py-1.5 text-xs text-rose-600 dark:text-rose-400 focus:text-rose-600 rounded-md"
               >
                 <LogOut className="w-4 h-4" />

@@ -65,7 +65,7 @@ interface MobileHeaderProps {
 export function MobileHeader({ onOpenDrawer, onOpenMenu, onOpenSearch }: MobileHeaderProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const { isDark, toggleTheme } = useTheme();
   const { empresa } = useEmpresaConfig();
   const { naoLidasCount } = useNotificacoesStore();
@@ -245,12 +245,7 @@ export function MobileHeader({ onOpenDrawer, onOpenMenu, onOpenSearch }: MobileH
                 </DropdownMenuItem>
 
                 <DropdownMenuItem 
-                  onClick={() => {
-                    if (typeof window !== "undefined") {
-                      window.localStorage.removeItem("focus_auth_session_v2");
-                      window.location.reload();
-                    }
-                  }}
+                  onClick={logout}
                   className="cursor-pointer gap-2.5 py-2 text-xs text-rose-600 dark:text-rose-400 focus:text-rose-600 rounded-xl"
                 >
                   <LogOut className="w-4 h-4" />

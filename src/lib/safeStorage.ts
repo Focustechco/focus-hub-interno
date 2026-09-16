@@ -37,6 +37,15 @@ const PROTECTED_DATABASE_KEYS = new Set([
   'focus_app_focus_marketing_campanhas',
   'focus_cobrancas',
   'focus_app_focus_cobrancas',
+  'focus_auth_session_v2',
+  'focus_auth_session',
+  'focus_session',
+  'focus_app_session',
+  'focus_auth_user',
+  'focus_usuarios',
+  'focus_app_focus_usuarios',
+  'focus_app_usuarios',
+  'focus_app_deleted_users_state',
 ]);
 
 /**

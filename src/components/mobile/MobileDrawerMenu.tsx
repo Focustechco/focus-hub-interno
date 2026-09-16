@@ -89,7 +89,7 @@ const MODULE_SECTIONS = [
 export function MobileDrawerMenu({ open, onOpenChange }: MobileDrawerMenuProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { currentUser, canAccessRoute } = useAuth();
+  const { currentUser, canAccessRoute, logout } = useAuth();
   const { empresa } = useEmpresaConfig();
 
   const handleNavigate = (path: string) => {
@@ -187,12 +187,7 @@ export function MobileDrawerMenu({ open, onOpenChange }: MobileDrawerMenuProps) 
           </div>
 
           <button
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                window.localStorage.removeItem("focus_auth_session_v2");
-                window.location.reload();
-              }
-            }}
+            onClick={logout}
             className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
             title="Sair"
           >

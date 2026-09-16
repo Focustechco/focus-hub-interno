@@ -505,7 +505,7 @@ export const userService = {
    * Assinar alterações de usuários em tempo real via Supabase Realtime (Cross-device Sync Mobile / Desktop)
    */
   subscribeUsers(onUpdate: (users: Usuario[]) => void) {
-    if (typeof window !== 'undefined') return () => {};
+    if (typeof window === 'undefined') return () => {};
 
     let timeoutId: any = null;
     const handleLocalEvent = () => {
