@@ -64,6 +64,60 @@ function sanitizeAddress(endereco: any) {
   };
 }
 
+export function formatContactName(name?: string, email?: string, fallbackOrg?: string): string {
+  if (!name || typeof name !== 'string') {
+    if (email && email.includes('@')) {
+      const userPart = email.split('@')[0].replace(/[._-]/g, ' ');
+      return userPart
+        .split(' ')
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return fallbackOrg ? `Responsável (${fallbackOrg})` : 'Contato Principal';
+  }
+  const trimmed = name.trim();
+  if (
+    trimmed.startsWith('__') ||
+    trimmed.includes('__COLABORADOR_') ||
+    trimmed.includes('__USER_') ||
+    trimmed.includes('__PROFILE__') ||
+    trimmed.includes('__FOCUS_')
+  ) {
+    if (email && email.includes('@')) {
+      const userPart = email.split('@')[0].replace(/[._-]/g, ' ');
+      return userPart
+        .split(' ')
+        .filter(Boolean)
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+        .join(' ');
+    }
+    return fallbackOrg ? `Responsável (${fallbackOrg})` : 'Contato Principal';
+  }
+  return trimmed;
+}
+
+function sanitizeContacts(contatos: any[], fallbackOrg?: string): any[] {
+  if (!Array.isArray(contatos) || contatos.length === 0) return [];
+  return contatos
+    .filter((c) => c && typeof c === 'object')
+    .map((c, index) => {
+      const email = typeof c.email === 'string' ? c.email.trim() : '';
+      const nome = formatContactName(c.nome || c.name, email, fallbackOrg);
+      return {
+        id: c.id || `ct-${index + 1}`,
+        nome,
+        email: email.startsWith('__') ? '' : email,
+        cargo: c.cargo || 'Responsável',
+        departamento: c.departamento || 'Geral',
+        celular: c.celular || c.telefone || '',
+        telefone: c.telefone || undefined,
+        whatsapp: c.whatsapp ?? true,
+        principal: index === 0 ? true : Boolean(c.principal),
+      };
+    });
+}
+
 function getLocalClients(): Map<string, ClienteDTO> {
   const map = new Map<string, ClienteDTO>();
   if (typeof window === 'undefined') return map;
@@ -78,12 +132,18 @@ function getLocalClients(): Map<string, ClienteDTO> {
         if (Array.isArray(parsed)) {
           for (const item of parsed) {
             if (item && item.id && !deletedIds.has(String(item.id))) {
+              if (typeof item.id === 'string' && item.id.startsWith('__')) continue;
+              if (typeof item.name === 'string' && item.name.startsWith('__')) continue;
+              if (typeof item.razaoSocial === 'string' && item.razaoSocial.startsWith('__')) continue;
+              if (typeof item.nomeFantasia === 'string' && item.nomeFantasia.startsWith('__')) continue;
+
+              const orgName = item.nomeFantasia || item.razaoSocial || item.name || '';
               const sanitizedItem = {
                 ...item,
-                endereco: sanitizeAddress(item.endereco)
+                endereco: sanitizeAddress(item.endereco),
+                contatos: sanitizeContacts(item.contatos, orgName),
               };
               const current = map.get(String(item.id));
-              // Manter o mais completo (com endereço e contatos preenchidos)
               if (!current || (sanitizedItem.endereco?.cidade && !current.endereco?.cidade) || (sanitizedItem.endereco?.logradouro && !current.endereco?.logradouro) || (sanitizedItem.contatos?.length && !current.contatos?.length)) {
                 map.set(String(item.id), sanitizedItem);
               }
@@ -99,7 +159,14 @@ function getLocalClients(): Map<string, ClienteDTO> {
 
 function persistClientsToAllStores(clientes: ClienteDTO[]) {
   if (typeof window === 'undefined') return;
-  const serialized = JSON.stringify(clientes);
+  const filtered = clientes.filter(c => {
+    if (!c || !c.id) return false;
+    if (typeof c.id === 'string' && c.id.startsWith('__')) return false;
+    if (typeof c.razaoSocial === 'string' && c.razaoSocial.startsWith('__')) return false;
+    if (typeof c.nomeFantasia === 'string' && c.nomeFantasia.startsWith('__')) return false;
+    return true;
+  });
+  const serialized = JSON.stringify(filtered);
   for (const key of LOCAL_STORAGE_KEYS) {
     safeSetItem(key, serialized);
   }
@@ -126,6 +193,8 @@ export const clienteService = {
         const { data: clientesData, error: clientesErr } = await supabase
           .from('clientes')
           .select('*')
+          .not('razao_social', 'like', '__%')
+          .not('nome_fantasia', 'like', '__%')
           .neq('status', 'deleted')
           .neq('status', 'deletado')
           .order('created_at', { ascending: false });
@@ -143,10 +212,10 @@ export const clienteService = {
         const { data: clientsData, error: clientsErr } = await supabase
           .from('clients')
           .select('*')
-          .not('name', 'like', '__FOCUS_STATE__%')
-          .not('name', 'like', '__DELETED__%')
-          .not('name', 'like', '__USER_PROFILE__%')
-          .neq('status', 'user_profile')
+          .not('name', 'like', '__%')
+          .not('status', 'like', '%profile%')
+          .not('status', 'like', '%colaborador%')
+          .not('status', 'like', '%usuario%')
           .neq('status', 'deleted')
           .neq('status', 'deletado')
           .order('created_at', { ascending: false });
@@ -170,7 +239,10 @@ export const clienteService = {
         dbItems.forEach(item => {
           if (!item || !item.id || deletedIds.has(String(item.id))) return;
           if (item.status === 'deleted' || item.status === 'deletado' || item.deleted === true) return;
-          if (typeof item.name === 'string' && (item.name.startsWith('__DELETED__') || item.name.startsWith('__USER_PROFILE__') || item.name.startsWith('__FOCUS_'))) return;
+          if (typeof item.name === 'string' && item.name.startsWith('__')) return;
+          if (typeof item.razao_social === 'string' && item.razao_social.startsWith('__')) return;
+          if (typeof item.nome_fantasia === 'string' && item.nome_fantasia.startsWith('__')) return;
+          if (typeof item.status === 'string' && (item.status.includes('profile') || item.status.includes('colaborador'))) return;
 
           const id = String(item.id);
           const current = localMap.get(id);
@@ -188,6 +260,10 @@ export const clienteService = {
 
           const sanitizedEndereco = sanitizeAddress(rawEndereco);
 
+          const orgNome = item.nome_fantasia || item.nomeFantasia || item.razao_social || item.razaoSocial || item.name || current?.nomeFantasia || current?.razaoSocial || 'Cliente';
+          const defaultContactEmail = item.contact_email || item.email || '';
+          const defaultContactName = formatContactName(item.contact_name || (item.name && !item.name.startsWith('__') ? item.name : undefined), defaultContactEmail, orgNome);
+
           const candidate: ClienteDTO = {
             id,
             codigo: item.codigo || current?.codigo || `CLI-${id.slice(0, 4).toUpperCase()}`,
@@ -204,16 +280,18 @@ export const clienteService = {
             site: item.site || current?.site || '',
             observacoes: item.observacoes || current?.observacoes || '',
             endereco: sanitizedEndereco,
-            contatos: current?.contatos && current.contatos.length > 0 ? current.contatos : [
-              {
-                id: `ct-${id}`,
-                nome: item.contact_name || item.name || 'Contato Principal',
-                email: item.contact_email || item.email || 'contato@cliente.com',
-                cargo: 'Responsável',
-                celular: item.contact_phone || item.telefone || '(11) 99999-9999',
-                principal: true,
-              }
-            ],
+            contatos: current?.contatos && current.contatos.length > 0 
+              ? sanitizeContacts(current.contatos, orgNome)
+              : [
+                {
+                  id: `ct-${id}`,
+                  nome: defaultContactName,
+                  email: defaultContactEmail,
+                  cargo: 'Responsável',
+                  celular: item.contact_phone || item.telefone || '(11) 99999-9999',
+                  principal: true,
+                }
+              ],
             dataCadastro: item.created_at || item.dataCadastro || current?.dataCadastro || new Date().toISOString(),
             ultimaAtualizacao: item.updated_at || item.ultimaAtualizacao || current?.ultimaAtualizacao || new Date().toISOString(),
           };
@@ -244,7 +322,7 @@ export const clienteService = {
               nomeFantasia: (validCandidate.nomeFantasia && validCandidate.nomeFantasia !== 'Cliente') ? validCandidate.nomeFantasia : existing.nomeFantasia,
               documento: isRealDoc ? validCandidate.documento : existing.documento,
               endereco: (validCandidate.endereco?.cidade || validCandidate.endereco?.logradouro) ? validCandidate.endereco : existing.endereco,
-              contatos: (validCandidate.contatos?.length && validCandidate.contatos[0]?.email !== 'contato@cliente.com') ? validCandidate.contatos : existing.contatos,
+              contatos: (validCandidate.contatos?.length && validCandidate.contatos[0]?.email !== 'contato@cliente.com') ? sanitizeContacts(validCandidate.contatos, validCandidate.nomeFantasia) : existing.contatos,
             };
             idMap.set(existingId, merged);
           } else {

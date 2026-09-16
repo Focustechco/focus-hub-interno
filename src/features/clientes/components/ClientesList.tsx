@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Link } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import { MobileClientesView } from './MobileClientesView';
+import { formatContactName } from '@/services/clienteService';
 
 export function ClientesList() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -185,7 +186,7 @@ export function ClientesList() {
                 <span className="text-muted-foreground block text-[11px]">Interlocutor Principal:</span>
                 <div className="flex items-center gap-1.5 text-foreground font-medium truncate">
                   <User className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">{contatoPrincipal.nome} {contatoPrincipal.cargo ? `(${contatoPrincipal.cargo})` : ''}</span>
+                  <span className="truncate">{formatContactName(contatoPrincipal.nome, contatoPrincipal.email, cliente.nomeFantasia || cliente.razaoSocial)} {contatoPrincipal.cargo ? `(${contatoPrincipal.cargo})` : ''}</span>
                 </div>
                 {contatoPrincipal.email && (
                   <div className="flex items-center gap-1.5 text-muted-foreground text-[11px] truncate">
@@ -335,7 +336,7 @@ export function ClientesList() {
         <TableCell>
           {contatoPrincipal ? (
             <div className="flex flex-col">
-              <span className="text-xs font-medium text-foreground">{contatoPrincipal.nome}</span>
+              <span className="text-xs font-medium text-foreground">{formatContactName(contatoPrincipal.nome, contatoPrincipal.email, cliente.nomeFantasia || cliente.razaoSocial)}</span>
               <span className="text-[11px] text-muted-foreground">{contatoPrincipal.email || contatoPrincipal.celular || '-'}</span>
             </div>
           ) : (

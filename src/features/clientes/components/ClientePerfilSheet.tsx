@@ -23,6 +23,7 @@ import { DmsPreviewModal } from '@/features/documentos/components/DmsPreviewModa
 import { Link } from '@tanstack/react-router';
 import { formatDateBrasilia, formatDateTimeBrasilia } from '@/lib/dateUtils';
 import { toast } from 'sonner';
+import { formatContactName } from '@/services/clienteService';
 
 interface ClientePerfilSheetProps {
   cliente: Cliente | null;
@@ -484,7 +485,7 @@ export function ClientePerfilSheet({ cliente, open, onOpenChange, onEdit }: Clie
                         </div>
                         <div>
                           <div className="font-semibold text-sm text-foreground flex items-center gap-1.5">
-                            {contato.nome || 'Contato'}
+                            {formatContactName(contato.nome, contato.email, nomeOficial)}
                             {contato.principal && (
                               <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
                                 Contato Principal

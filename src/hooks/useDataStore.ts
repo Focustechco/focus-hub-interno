@@ -85,9 +85,12 @@ function isValidItem(table: string, item: any): boolean {
     return false;
   }
 
-  // Profile rows de usuário pertencem ao userService e não devem aparecer em outras tabelas
-  if (!table.includes('usuario') && !table.includes('user') && item.name && typeof item.name === 'string' && item.name.startsWith('__USER_PROFILE__')) {
-    return false;
+  // Profile rows de usuário e colaborador pertencem aos seus respectivos serviços e não devem aparecer como clientes ou entidades gerais
+  if (!table.includes('usuario') && !table.includes('user')) {
+    if (item.name && typeof item.name === 'string' && item.name.startsWith('__')) return false;
+    if (item.razaoSocial && typeof item.razaoSocial === 'string' && item.razaoSocial.startsWith('__')) return false;
+    if (item.nomeFantasia && typeof item.nomeFantasia === 'string' && item.nomeFantasia.startsWith('__')) return false;
+    if (item.status && typeof item.status === 'string' && (item.status.includes('profile') || item.status.includes('colaborador'))) return false;
   }
 
   if (table.includes('plano_contas') || table.includes('categorias')) {
