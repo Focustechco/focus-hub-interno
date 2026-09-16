@@ -82,7 +82,6 @@ export function useClientesQuery() {
       queryClient.invalidateQueries({ queryKey: ['contas-receber'] });
       queryClient.invalidateQueries({ queryKey: ['recorrencias'] });
       queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast.success('Cliente salvo com sucesso!');
     },
     onError: (err: Error) => {
       toast.error(`Erro ao salvar cliente: ${err.message}`);

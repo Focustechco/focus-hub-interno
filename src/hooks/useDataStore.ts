@@ -2617,8 +2617,9 @@ export function useLocalStorageState<T extends { id: string }>(
         }
       }
       if (isClientsTable) {
-        try { await supabase.from('clients').delete().eq('id', id); } catch {}
-        try { await supabase.from('clientes').delete().eq('id', id); } catch {}
+        try {
+          await clienteService.deleteCliente(id);
+        } catch {}
       }
 
       if (typeof window !== 'undefined') {

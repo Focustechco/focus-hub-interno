@@ -58,30 +58,7 @@ export const colaboradorService = {
         console.warn('[colaboradorService] Nota sobre tabela relacional colaborador_fotos:', errFoto);
       }
 
-      // 3. Buscar espelho de perfis em clients como fallback
-      try {
-        const { data: profileRows } = await supabase
-          .from('clients')
-          .select('name, contact_phone, contact_email')
-          .ilike('name', '__COLABORADOR_PROFILE__%');
 
-        if (Array.isArray(profileRows)) {
-          profileRows.forEach((pRow: any) => {
-            if (pRow.contact_phone) {
-              try {
-                const meta = JSON.parse(pRow.contact_phone);
-                if (meta.foto) {
-                  const targetId = pRow.name.replace('__COLABORADOR_PROFILE__', '').toLowerCase();
-                  if (!fotosMap[targetId]) fotosMap[targetId] = meta.foto;
-                  if (pRow.contact_email && !fotosMap[pRow.contact_email.toLowerCase()]) {
-                    fotosMap[pRow.contact_email.toLowerCase()] = meta.foto;
-                  }
-                }
-              } catch {}
-            }
-          });
-        }
-      } catch {}
 
       if (colabs && colabs.length > 0) {
         const mapped = colabs.map((item: any) => {
@@ -240,26 +217,7 @@ export const colaboradorService = {
       }
     }
 
-    // 3. Espelhar profile row em clients para garantir sincronização entre abas e mobile
-    try {
-      const profileRowId = toValidUuid(`c01a0000-0000-4000-8000-${validId.slice(-12)}`);
-      await supabase.from('clients').upsert({
-        id: profileRowId,
-        name: `__COLABORADOR_PROFILE__${validId}`,
-        status: 'inativo',
-        contact_email: validated.emailCorporativo || null,
-        contact_phone: JSON.stringify({
-          foto: photoContent,
-          nomeCompleto: validated.nomeCompleto,
-          matricula: validated.matricula,
-          cargo: validated.cargo,
-          departamento: validated.departamento,
-          status: validated.status,
-          metodoPagamento: validated.metodoPagamento,
-        }),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
-    } catch {}
+
 
     // 4. Atualizar caches locais
     const resultObj: ColaboradorDTO = { ...validated, id: validId, foto: photoContent || undefined };
@@ -293,11 +251,7 @@ export const colaboradorService = {
       console.warn('[colaboradorService.deleteColaborador] Erro ao deletar no Supabase:', err?.message);
     }
 
-    // 3. Deletar espelho em clients
-    try {
-      const profileRowId = toValidUuid(`c01a0000-0000-4000-8000-${id.slice(-12)}`);
-      await supabase.from('clients').delete().eq('id', profileRowId);
-    } catch {}
+
 
     // 4. Limpar caches locais
     if (typeof window !== 'undefined') {

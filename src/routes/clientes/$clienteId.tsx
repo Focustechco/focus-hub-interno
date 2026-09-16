@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useLocalStorageState } from "@/hooks/useDataStore";
-import { Cliente } from "@/features/clientes/types";
+import { useClientesQuery } from "@/features/clientes/hooks/useClientesQuery";
+import { ClienteDTO } from "@/schemas/clienteSchema";
 import { TituloReceber } from "@/features/contas-receber/types";
 import { RecorrenciaFinanceira } from "@/features/recorrencias/types";
 import { Contrato } from "@/features/contratos/types";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/clientes/$clienteId")({
 
 function PerfilClientePage() {
   const { clienteId } = Route.useParams();
-  const { data: clientes = [] } = useLocalStorageState<Cliente>('focus_clientes');
+  const { clientes = [] } = useClientesQuery();
   const { data: titulos = [] } = useLocalStorageState<TituloReceber>('focus_contas_receber');
   const { data: recorrencias = [] } = useLocalStorageState<RecorrenciaFinanceira>('focus_recorrencias');
   const { data: contratos = [] } = useLocalStorageState<Contrato>('focus_contratos');

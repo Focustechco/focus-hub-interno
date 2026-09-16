@@ -278,17 +278,8 @@ export const userService = {
         matricula: user.matricula || '',
         updatedAt: new Date().toISOString(),
       });
-
-      await supabase.from('clients').upsert({
-        id: profileRowId,
-        name: `__USER_PROFILE__${user.nome || cleanEmail}`,
-        status: 'inativo',
-        contact_email: cleanEmail,
-        contact_phone: metadataPayload,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
     } catch (err: any) {
-      console.warn('[userService.saveUser] Aviso ao espelhar profile row em clients:', err?.message);
+      console.warn('[userService.saveUser] Aviso ao salvar perfil:', err?.message);
     }
 
     // 4. Se o usuário existir na tabela colaboradores, atualizar status e cargo
@@ -363,18 +354,7 @@ export const userService = {
       console.warn('[userService.deleteUser] Erro ao deletar de users:', err);
     }
 
-    // 4. Excluir perfil espelho na tabela 'clients'
-    try {
-      if (targetEmail) {
-        await supabase.from('clients').delete().ilike('contact_email', targetEmail);
-        await supabase.from('clients').delete().like('name', `__USER_PROFILE__%${targetEmail}%`);
-      }
-      if (targetId) {
-        await supabase.from('clients').delete().eq('id', targetId);
-      }
-    } catch (err) {
-      console.warn('[userService.deleteUser] Erro ao deletar profile row de clients:', err);
-    }
+
 
     // 5. Se houver colaborador associado, marcar como Inativo
     try {
