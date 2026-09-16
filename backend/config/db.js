@@ -12,11 +12,15 @@ types.setTypeParser(1114, (stringValue) => stringValue); // TIMESTAMP WITHOUT TI
 types.setTypeParser(1184, (stringValue) => stringValue); // TIMESTAMP WITH TIME ZONE  
 types.setTypeParser(1082, (stringValue) => stringValue); // DATE
 
-const dbUrl = process.env.DATABASE_URL || 'postgresql://postgres.vxqernhfgulaewtmfagh:Focus%21%40%214235@aws-1-us-west-2.pooler.supabase.com:6543/postgres';
+const SUPABASE_DB_URL = 'postgresql://postgres.vxqernhfgulaewtmfagh:Focus%21%40%214235@aws-1-us-west-2.pooler.supabase.com:6543/postgres';
+const dbUrl = (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('supabase.com'))
+    ? process.env.DATABASE_URL
+    : SUPABASE_DB_URL;
 
 const pool = new Pool({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
 });
 
 pool.on('error', (err) => {

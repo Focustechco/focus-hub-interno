@@ -63,10 +63,31 @@ app.use((req, res, next) => {
     app.get(`${prefix}/health`, async (req, res) => {
         try {
             const result = await pool.query('SELECT NOW()');
-        res.json({ status: 'ok', database: 'connected', time: result.rows[0].now });
+            res.json({ status: 'ok', database: 'connected', time: result.rows[0].now });
         } catch (err) {
             res.status(500).json({ status: 'error', message: err.message });
         }
+    });
+
+    app.get(`${prefix}/debug-info`, async (req, res) => {
+        let dbStatus = 'untested';
+        let dbError = null;
+        try {
+            const r = await pool.query('SELECT COUNT(*) as user_count FROM users');
+            dbStatus = 'connected: ' + r.rows[0].user_count + ' users';
+        } catch (e) {
+            dbStatus = 'failed';
+            dbError = e.message;
+        }
+        res.json({
+            ok: true,
+            node: process.version,
+            url: req.url,
+            originalUrl: req.originalUrl,
+            headers: req.headers,
+            dbStatus,
+            dbError
+        });
     });
 });
 

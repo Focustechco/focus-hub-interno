@@ -41,10 +41,12 @@ var require_db = __commonJS({
     types.setTypeParser(1114, (stringValue) => stringValue);
     types.setTypeParser(1184, (stringValue) => stringValue);
     types.setTypeParser(1082, (stringValue) => stringValue);
-    var dbUrl = process.env.DATABASE_URL || "postgresql://postgres.vxqernhfgulaewtmfagh:Focus%21%40%214235@aws-1-us-west-2.pooler.supabase.com:6543/postgres";
+    var SUPABASE_DB_URL = "postgresql://postgres.vxqernhfgulaewtmfagh:Focus%21%40%214235@aws-1-us-west-2.pooler.supabase.com:6543/postgres";
+    var dbUrl = process.env.DATABASE_URL && process.env.DATABASE_URL.includes("supabase.com") ? process.env.DATABASE_URL : SUPABASE_DB_URL;
     var pool2 = new Pool({
       connectionString: dbUrl,
-      ssl: { rejectUnauthorized: false }
+      ssl: { rejectUnauthorized: false },
+      connectionTimeoutMillis: 1e4
     });
     pool2.on("error", (err) => {
       console.error("Unexpected PostgreSQL pool error:", err);
@@ -4763,6 +4765,26 @@ app.use((req, res, next) => {
     } catch (err) {
       res.status(500).json({ status: "error", message: err.message });
     }
+  });
+  app.get(`${prefix}/debug-info`, async (req, res) => {
+    let dbStatus = "untested";
+    let dbError = null;
+    try {
+      const r = await import_db.pool.query("SELECT COUNT(*) as user_count FROM users");
+      dbStatus = "connected: " + r.rows[0].user_count + " users";
+    } catch (e) {
+      dbStatus = "failed";
+      dbError = e.message;
+    }
+    res.json({
+      ok: true,
+      node: process.version,
+      url: req.url,
+      originalUrl: req.originalUrl,
+      headers: req.headers,
+      dbStatus,
+      dbError
+    });
   });
 });
 app.use((err, req, res, next) => {
