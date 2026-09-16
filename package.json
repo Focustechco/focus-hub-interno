@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:api": "esbuild backend/serverless.js --bundle --platform=node --target=node18 --format=esm --minify --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=api/index.js",
+    "build:api": "esbuild backend/serverless.js --bundle --platform=node --target=node18 --format=esm --minify --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url); import { fileURLToPath } from 'url'; import { dirname } from 'path'; const __filename = fileURLToPath(import.meta.url); const __dirname = dirname(__filename);\" --outfile=api/index.js",
     "build": "npm run build:api && vite build",
     "preview": "vite preview"
   },

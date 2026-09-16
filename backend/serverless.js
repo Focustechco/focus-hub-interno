@@ -33,9 +33,9 @@ app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 
 // Normalize request URL for Vercel serverless rewrites
 app.use((req, res, next) => {
-    const actualPath = req.headers['x-matched-path'] || req.originalUrl || req.url;
-    if (req.url === '/api/index.js' || req.url.startsWith('/api/index.js')) {
-        req.url = actualPath;
+    const matchedPath = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
+    if (matchedPath && matchedPath !== '/api' && matchedPath !== '/api/index') {
+        req.url = matchedPath;
     }
     next();
 });
@@ -101,8 +101,15 @@ app.use((req, res) => {
         error: 'Not Found',
         method: req.method,
         url: req.url,
-        matchedPath: req.headers['x-matched-path']
+        matchedPath: req.headers['x-matched-path'] || req.headers['x-vercel-matched-path']
     });
 });
 
-export default app;
+export default function handler(req, res) {
+    const matched = req.headers['x-matched-path'] || req.headers['x-vercel-matched-path'];
+    if (matched && matched !== '/api' && matched !== '/api/index') {
+        req.url = matched;
+    }
+    return app(req, res);
+}
+
