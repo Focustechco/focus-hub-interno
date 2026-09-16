@@ -84,4 +84,18 @@ app.use((req, res) => {
     });
 });
 
-export default app;
+export default function handler(req, res) {
+    try {
+        if (req.url && !req.url.startsWith('/')) {
+            req.url = '/' + req.url;
+        }
+        const actual = req.headers['x-matched-path'] || req.originalUrl || req.url;
+        if (req.url === '/api/index.js' || req.url.startsWith('/api/index.js') || req.url.includes('[...path]')) {
+            req.url = actual;
+        }
+        return app(req, res);
+    } catch (err) {
+        console.error('Unhandled Serverless Error:', err);
+        return res.status(500).json({ error: 'Internal Error', message: err.message, stack: err.stack });
+    }
+}
