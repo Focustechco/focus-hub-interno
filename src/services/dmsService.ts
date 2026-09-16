@@ -47,6 +47,25 @@ export const dmsService = {
     triggerSyncEvent();
   },
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toValidUuid(idStr?: string | null): string {
+  if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
+  if (uuidRegex.test(idStr)) return idStr;
+  let hash1 = 5381;
+  let hash2 = 52711;
+  for (let i = 0; i < idStr.length; i++) {
+    const char = idStr.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+  }
+  const hex1 = Math.abs(hash1).toString(16).padStart(8, '0');
+  const hex2 = Math.abs(hash2).toString(16).padStart(8, '0');
+  const hex3 = Math.abs(hash1 ^ hash2).toString(16).padStart(8, '0');
+  const hex4 = Math.abs(hash1 + hash2).toString(16).padStart(8, '0');
+  const fullHex = (hex1 + hex2 + hex3 + hex4).slice(0, 32);
+  return `${fullHex.slice(0, 8)}-${fullHex.slice(8, 12)}-4${fullHex.slice(13, 16)}-a${fullHex.slice(17, 20)}-${fullHex.slice(20, 32)}`;
+}
+
   async savePasta(pasta: PastaDMS): Promise<void> {
     const list = this.getPastas();
     const filtered = list.filter((p) => p.id !== pasta.id);
@@ -54,19 +73,27 @@ export const dmsService = {
     await this.savePastas(updated);
 
     try {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const validId = uuidRegex.test(pasta.id) ? pasta.id : undefined;
-      const validParentId = pasta.parentId && uuidRegex.test(pasta.parentId) ? pasta.parentId : null;
+      const validId = toValidUuid(pasta.id);
+      const validParentId = pasta.parentId && pasta.parentId !== pasta.id ? toValidUuid(pasta.parentId) : null;
 
-      if (validId) {
+      const { error } = await supabase.from('dms_pastas').upsert({
+        id: validId,
+        nome: pasta.nome || 'Pasta',
+        pasta_pai_id: validParentId,
+        caminho_completo: pasta.caminhoCompleto || `/${pasta.nome}`,
+        modulo_vinculado: pasta.moduloVinculado || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+
+      if (error) {
         await supabase.from('dms_pastas').upsert({
           id: validId,
-          nome: pasta.nome,
-          pasta_pai_id: validParentId,
-          caminho_completo: pasta.caminhoCompleto,
-          modulo_vinculado: pasta.moduloVinculado,
+          nome: pasta.nome || 'Pasta',
+          pasta_pai_id: null,
+          caminho_completo: pasta.caminhoCompleto || `/${pasta.nome}`,
+          modulo_vinculado: pasta.moduloVinculado || null,
           updated_at: new Date().toISOString(),
-        });
+        }, { onConflict: 'id' });
       }
     } catch {}
   },

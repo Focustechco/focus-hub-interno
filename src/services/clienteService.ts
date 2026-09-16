@@ -172,6 +172,25 @@ function persistClientsToAllStores(clientes: ClienteDTO[]) {
   }
 }
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function toValidUuid(idStr?: string | null): string {
+  if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
+  if (uuidRegex.test(idStr)) return idStr;
+  let hash1 = 5381;
+  let hash2 = 52711;
+  for (let i = 0; i < idStr.length; i++) {
+    const char = idStr.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+  }
+  const hex1 = Math.abs(hash1).toString(16).padStart(8, '0');
+  const hex2 = Math.abs(hash2).toString(16).padStart(8, '0');
+  const hex3 = Math.abs(hash1 ^ hash2).toString(16).padStart(8, '0');
+  const hex4 = Math.abs(hash1 + hash2).toString(16).padStart(8, '0');
+  const fullHex = (hex1 + hex2 + hex3 + hex4).slice(0, 32);
+  return `${fullHex.slice(0, 8)}-${fullHex.slice(8, 12)}-4${fullHex.slice(13, 16)}-a${fullHex.slice(17, 20)}-${fullHex.slice(20, 32)}`;
+}
+
 /**
  * Service de dados para o módulo de Clientes.
  * Responsável pela persistência local-first confiável e sincronização com Supabase.
@@ -352,7 +371,7 @@ export const clienteService = {
    * Salvar ou atualizar um cliente com persistência garantida
    */
   async saveCliente(cliente: ClienteDTO): Promise<ClienteDTO> {
-    const id = cliente.id || crypto.randomUUID();
+    const id = toValidUuid(cliente.id);
     const finalStatus = (cliente.status === 'Inativo' || cliente.status === 'inativo') ? 'Inativo' : 'Ativo';
 
     const validatedWithId: ClienteDTO = {

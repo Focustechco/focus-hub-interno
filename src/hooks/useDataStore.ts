@@ -433,10 +433,11 @@ function toSnakeCasePayload(table: string, item: any): any {
 
   if (table.includes('dms_pasta') || table === 'dms_pastas' || table === 'focus_dms_pastas') {
     const parentIdVal = item.parentId || item.parent_id || item.pasta_pai_id;
+    const safeParentId = (parentIdVal && parentIdVal !== item.id && parentIdVal !== 'pasta-raiz') ? toValidUuid(parentIdVal) : null;
     return {
       id: validId,
       nome: item.nome || 'Pasta',
-      pasta_pai_id: parentIdVal ? toValidUuid(parentIdVal) : null,
+      pasta_pai_id: safeParentId,
       caminho_completo: item.caminhoCompleto || item.caminho_completo || `/${item.nome}`,
       modulo_vinculado: item.moduloVinculado || item.modulo_vinculado || null,
       updated_at: new Date().toISOString(),
@@ -1894,16 +1895,21 @@ export function useLocalStorageState<T extends { id: string }>(
           const deduped = deduplicateById(payload);
           if (deduped.length > 0) {
             const { error: upsertErr } = await supabase.from(primaryDbTable).upsert(deduped, { onConflict: 'id' });
-            if (upsertErr && primaryDbTable === 'notificacoes') {
-              const minimalPayload = deduped.map((n: any) => ({
-                id: n.id,
-                titulo: n.titulo,
-                mensagem: n.mensagem || n.descricao || '',
-                tipo: n.tipo || 'info',
-                lida: Boolean(n.lida),
-                link_redirecionamento: n.link_redirecionamento || n.target_url || '/',
-              }));
-              await supabase.from('notificacoes').upsert(minimalPayload, { onConflict: 'id' });
+            if (upsertErr) {
+              if (primaryDbTable === 'dms_pastas') {
+                const safePastasPayload = deduped.map((p: any) => ({ ...p, pasta_pai_id: null }));
+                await supabase.from('dms_pastas').upsert(safePastasPayload, { onConflict: 'id' });
+              } else if (primaryDbTable === 'notificacoes') {
+                const minimalPayload = deduped.map((n: any) => ({
+                  id: n.id,
+                  titulo: n.titulo,
+                  mensagem: n.mensagem || n.descricao || '',
+                  tipo: n.tipo || 'info',
+                  lida: Boolean(n.lida),
+                  link_redirecionamento: n.link_redirecionamento || n.target_url || '/',
+                }));
+                await supabase.from('notificacoes').upsert(minimalPayload, { onConflict: 'id' });
+              }
             }
           }
         }

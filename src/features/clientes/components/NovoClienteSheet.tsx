@@ -471,7 +471,7 @@ export function NovoClienteSheet({
 
     setIsUploadingDoc(true);
 
-    const targetId = clienteToEdit?.id || currentClienteId || `cli-${Date.now()}`;
+    const targetId = clienteToEdit?.id || currentClienteId || crypto.randomUUID();
     const targetNome = clienteNomeOficial || 'Cliente';
 
     Array.from(files).forEach((file) => {
@@ -541,7 +541,7 @@ export function NovoClienteSheet({
 
     const valTotal = parseFloat(contratoValorTotal) || 0;
     const valMensal = parseFloat(contratoMensalidade) || 0;
-    const targetCliId = currentClienteId || `cli-${Date.now()}`;
+    const targetCliId = currentClienteId || crypto.randomUUID();
     const targetCliNome = clienteNomeOficial || 'Cliente';
 
     const novoContrato: Contrato = {
