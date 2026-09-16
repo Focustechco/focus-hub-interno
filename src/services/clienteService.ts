@@ -231,10 +231,6 @@ export const clienteService = {
       // Se a consulta ao banco teve sucesso, mesclar Banco de Dados com Local Store
       if (dbFetchSucceeded) {
         const idMap = new Map<string, ClienteDTO>();
-        const docMap = new Map<string, string>(); // cleanDoc -> id
-        const nameMap = new Map<string, string>(); // normName -> id
-
-        const normalizeStr = (s: any) => String(s || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '');
 
         dbItems.forEach(item => {
           if (!item || !item.id || deletedIds.has(String(item.id))) return;
@@ -300,18 +296,11 @@ export const clienteService = {
           const validCandidate = parsed.success ? parsed.data : candidate;
 
           const cleanDoc = (validCandidate.documento || '').replace(/\D/g, '');
-          const isRealDoc = cleanDoc.length >= 11 && cleanDoc !== '00000000000000' && cleanDoc !== '00000000000';
-          const normName = normalizeStr(validCandidate.nomeFantasia || validCandidate.razaoSocial);
+          const isRealDoc = cleanDoc.length >= 11 && cleanDoc !== '00000000000000';
 
-          // Identificar se já existe por ID, por documento ou por nome normalizado
-          const existingId = idMap.has(id) 
-            ? id 
-            : (isRealDoc && docMap.has(cleanDoc) ? docMap.get(cleanDoc) : (normName.length > 3 && nameMap.has(normName) ? nameMap.get(normName) : null));
-
-          if (existingId && idMap.has(existingId)) {
-            const existing = idMap.get(existingId)!;
+          if (idMap.has(id)) {
+            const existing = idMap.get(id)!;
             const finalStatus = (existing.status === 'Inativo' || validCandidate.status === 'Inativo') ? 'Inativo' : 'Ativo';
-            // Fazer merge priorizando os campos mais ricos (da tabela clientes)
             const merged: ClienteDTO = {
               ...existing,
               ...validCandidate,
@@ -324,29 +313,19 @@ export const clienteService = {
               endereco: (validCandidate.endereco?.cidade || validCandidate.endereco?.logradouro) ? validCandidate.endereco : existing.endereco,
               contatos: (validCandidate.contatos?.length && validCandidate.contatos[0]?.email !== 'contato@cliente.com') ? sanitizeContacts(validCandidate.contatos, validCandidate.nomeFantasia) : existing.contatos,
             };
-            idMap.set(existingId, merged);
+            idMap.set(id, merged);
           } else {
             idMap.set(id, validCandidate);
-            if (isRealDoc) docMap.set(cleanDoc, id);
-            if (normName.length > 3) nameMap.set(normName, id);
           }
         });
 
-        // 3. Mesclar clientes locais que ainda não foram sincronizados com o banco
+        // 3. Mesclar clientes locais que ainda não foram sincronizados com o banco pelo ID
         for (const [locId, locClient] of localMap.entries()) {
           if (!locClient || !locClient.id || deletedIds.has(locId)) continue;
-          const cleanDoc = (locClient.documento || '').replace(/\D/g, '');
-          const isRealDoc = cleanDoc.length >= 11 && cleanDoc !== '00000000000000' && cleanDoc !== '00000000000';
-          const normName = normalizeStr(locClient.nomeFantasia || locClient.razaoSocial);
-
-          const matchId = idMap.has(locId)
-            ? locId
-            : (isRealDoc && docMap.has(cleanDoc) ? docMap.get(cleanDoc) : (normName.length > 3 && nameMap.has(normName) ? nameMap.get(normName) : null));
-
-          if (matchId && idMap.has(matchId)) {
-            const existing = idMap.get(matchId)!;
+          if (idMap.has(locId)) {
+            const existing = idMap.get(locId)!;
             const statusToKeep = (locClient.status === 'Inativo' || existing.status === 'Inativo') ? 'Inativo' : 'Ativo';
-            idMap.set(matchId, {
+            idMap.set(locId, {
               ...existing,
               status: statusToKeep,
               endereco: (locClient.endereco?.cidade || locClient.endereco?.logradouro) ? locClient.endereco : existing.endereco,
@@ -354,8 +333,6 @@ export const clienteService = {
             });
           } else {
             idMap.set(locId, locClient);
-            if (isRealDoc) docMap.set(cleanDoc, locId);
-            if (normName.length > 3) nameMap.set(normName, locId);
           }
         }
 
