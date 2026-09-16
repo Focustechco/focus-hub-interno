@@ -425,15 +425,15 @@ function writeLocalCache<T>(table: string, items: T[]) {
 }
 
 function toSnakeCasePayload(table: string, item: any): any {
-  const isDms = table.includes('dms') || table.includes('pasta') || table.includes('document');
-  const validId = isDms ? String(item.id) : toValidUuid(item.id);
+  const validId = toValidUuid(item.id);
   const base: any = { id: validId, updated_at: new Date().toISOString() };
 
   if (table.includes('dms_pasta') || table === 'dms_pastas' || table === 'focus_dms_pastas') {
+    const parentIdVal = item.parentId || item.parent_id || item.pasta_pai_id;
     return {
       id: validId,
       nome: item.nome || 'Pasta',
-      pasta_pai_id: toNullableValidUuid(item.parentId || item.parent_id || item.pasta_pai_id),
+      pasta_pai_id: parentIdVal ? toValidUuid(parentIdVal) : null,
       caminho_completo: item.caminhoCompleto || item.caminho_completo || `/${item.nome}`,
       modulo_vinculado: item.moduloVinculado || item.modulo_vinculado || null,
       updated_at: new Date().toISOString(),

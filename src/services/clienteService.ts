@@ -159,7 +159,7 @@ export const clienteService = {
         console.warn('[clienteService.getClientes] Warning fetching clients:', err);
       }
 
-      // Se a consulta ao banco teve sucesso, o Banco de Dados é a Fonte da Verdade
+      // Se a consulta ao banco teve sucesso, mesclar Banco de Dados com Local Store
       if (dbFetchSucceeded) {
         const idMap = new Map<string, ClienteDTO>();
         const docMap = new Map<string, string>(); // cleanDoc -> id
@@ -198,7 +198,7 @@ export const clienteService = {
             inscricaoEstadual: item.inscricao_estadual || item.inscricaoEstadual || current?.inscricaoEstadual || 'Isento',
             inscricaoMunicipal: item.inscricao_municipal || item.inscricaoMunicipal || current?.inscricaoMunicipal || '',
             dataFundacaoNascimento: item.data_fundacao || item.dataFundacaoNascimento || current?.dataFundacaoNascimento || '',
-            status: (item.status === 'inativo' || item.status === 'Inativo') ? 'Inativo' : 'Ativo',
+            status: (item.status === 'inativo' || item.status === 'Inativo') ? 'Inativo' : (current?.status === 'Inativo' ? 'Inativo' : 'Ativo'),
             segmento: item.segmento || current?.segmento || 'Geral',
             porteEmpresa: item.porte || item.porteEmpresa || current?.porteEmpresa || 'Médio',
             site: item.site || current?.site || '',
@@ -232,14 +232,16 @@ export const clienteService = {
 
           if (existingId && idMap.has(existingId)) {
             const existing = idMap.get(existingId)!;
+            const finalStatus = (existing.status === 'Inativo' || validCandidate.status === 'Inativo') ? 'Inativo' : 'Ativo';
             // Fazer merge priorizando os campos mais ricos (da tabela clientes)
             const merged: ClienteDTO = {
               ...existing,
               ...validCandidate,
               id: existing.id,
+              status: finalStatus,
               codigo: existing.codigo || validCandidate.codigo,
-              razaoSocial: existing.razaoSocial !== 'Cliente' ? existing.razaoSocial : validCandidate.razaoSocial,
-              nomeFantasia: existing.nomeFantasia !== 'Cliente' ? existing.nomeFantasia : validCandidate.nomeFantasia,
+              razaoSocial: (validCandidate.razaoSocial && validCandidate.razaoSocial !== 'Cliente') ? validCandidate.razaoSocial : existing.razaoSocial,
+              nomeFantasia: (validCandidate.nomeFantasia && validCandidate.nomeFantasia !== 'Cliente') ? validCandidate.nomeFantasia : existing.nomeFantasia,
               documento: isRealDoc ? validCandidate.documento : existing.documento,
               endereco: (validCandidate.endereco?.cidade || validCandidate.endereco?.logradouro) ? validCandidate.endereco : existing.endereco,
               contatos: (validCandidate.contatos?.length && validCandidate.contatos[0]?.email !== 'contato@cliente.com') ? validCandidate.contatos : existing.contatos,
@@ -252,8 +254,34 @@ export const clienteService = {
           }
         });
 
+        // 3. Mesclar clientes locais que ainda não foram sincronizados com o banco
+        for (const [locId, locClient] of localMap.entries()) {
+          if (!locClient || !locClient.id || deletedIds.has(locId)) continue;
+          const cleanDoc = (locClient.documento || '').replace(/\D/g, '');
+          const isRealDoc = cleanDoc.length >= 11 && cleanDoc !== '00000000000000' && cleanDoc !== '00000000000';
+          const normName = normalizeStr(locClient.nomeFantasia || locClient.razaoSocial);
+
+          const matchId = idMap.has(locId)
+            ? locId
+            : (isRealDoc && docMap.has(cleanDoc) ? docMap.get(cleanDoc) : (normName.length > 3 && nameMap.has(normName) ? nameMap.get(normName) : null));
+
+          if (matchId && idMap.has(matchId)) {
+            const existing = idMap.get(matchId)!;
+            const statusToKeep = (locClient.status === 'Inativo' || existing.status === 'Inativo') ? 'Inativo' : 'Ativo';
+            idMap.set(matchId, {
+              ...existing,
+              status: statusToKeep,
+              endereco: (locClient.endereco?.cidade || locClient.endereco?.logradouro) ? locClient.endereco : existing.endereco,
+              contatos: (locClient.contatos?.length && locClient.contatos[0]?.email !== 'contato@cliente.com') ? locClient.contatos : existing.contatos,
+            });
+          } else {
+            idMap.set(locId, locClient);
+            if (isRealDoc) docMap.set(cleanDoc, locId);
+            if (normName.length > 3) nameMap.set(normName, locId);
+          }
+        }
+
         const syncedList = Array.from(idMap.values());
-        // Atualizar todas as chaves locais com a lista real do banco de dados (removendo duplicados e clientes apagados)
         persistClientsToAllStores(syncedList);
         return syncedList;
       }
@@ -270,6 +298,7 @@ export const clienteService = {
    */
   async saveCliente(cliente: ClienteDTO): Promise<ClienteDTO> {
     const id = cliente.id || crypto.randomUUID();
+    const finalStatus = (cliente.status === 'Inativo' || cliente.status === 'inativo') ? 'Inativo' : 'Ativo';
 
     const validatedWithId: ClienteDTO = {
       id,
@@ -281,7 +310,7 @@ export const clienteService = {
       inscricaoEstadual: cliente.inscricaoEstadual || 'Isento',
       inscricaoMunicipal: cliente.inscricaoMunicipal || '',
       dataFundacaoNascimento: cliente.dataFundacaoNascimento || '',
-      status: cliente.status || 'Ativo',
+      status: finalStatus,
       segmento: cliente.segmento || 'Geral',
       porteEmpresa: cliente.porteEmpresa || 'Médio',
       site: cliente.site || '',
@@ -313,7 +342,7 @@ export const clienteService = {
       await supabase.from('clients').upsert({
         id,
         name: validatedWithId.nomeFantasia || validatedWithId.razaoSocial,
-        status: validatedWithId.status.toLowerCase() === 'inativo' ? 'inativo' : 'ativo',
+        status: finalStatus === 'Inativo' ? 'inativo' : 'ativo',
         contact_email: validatedWithId.contatos?.[0]?.email || null,
         contact_phone: validatedWithId.contatos?.[0]?.celular || null,
         updated_at: new Date().toISOString(),
@@ -327,7 +356,7 @@ export const clienteService = {
         documento: validatedWithId.documento || '00.000.000/0001-00',
         inscricao_estadual: validatedWithId.inscricaoEstadual || 'Isento',
         tipo: validatedWithId.tipo || 'Pessoa Jurídica',
-        status: validatedWithId.status === 'Inativo' ? 'Inativo' : 'Ativo',
+        status: finalStatus,
         segmento: validatedWithId.segmento || 'Geral',
         cep: validatedWithId.endereco?.cep || null,
         logradouro: validatedWithId.endereco?.logradouro || null,
