@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:api": "esbuild backend/serverless.js --bundle --platform=node --target=node18 --format=esm --minify --banner:js=\"import { createRequire } from 'module'; const require = createRequire(import.meta.url);\" --outfile=api/index.js",
+    "build": "npm run build:api && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -48,6 +49,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.0.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "esbuild": "^0.25.0"
   }
 }
