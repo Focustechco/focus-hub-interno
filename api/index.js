@@ -447,10 +447,10 @@ var require_whatsappCommands = __commonJS({
         const parts = body.split(" ");
         const command = parts[0].toLowerCase();
         const args = parts.slice(1);
-        const handler2 = this.commands[command];
-        if (handler2) {
+        const handler = this.commands[command];
+        if (handler) {
           try {
-            return await handler2(user, args);
+            return await handler(user, args);
           } catch (error) {
             console.error(`[WhatsApp] Error executing command ${command}:`, error);
             return "\u274C Ocorreu um erro ao processar o comando.";
@@ -4777,21 +4777,7 @@ app.use((req, res) => {
     matchedPath: req.headers["x-matched-path"]
   });
 });
-function handler(req, res) {
-  try {
-    if (req.url && !req.url.startsWith("/")) {
-      req.url = "/" + req.url;
-    }
-    const actual = req.headers["x-matched-path"] || req.originalUrl || req.url;
-    if (req.url === "/api/index.js" || req.url.startsWith("/api/index.js") || req.url.includes("[...path]")) {
-      req.url = actual;
-    }
-    return app(req, res);
-  } catch (err) {
-    console.error("Unhandled Serverless Error:", err);
-    return res.status(500).json({ error: "Internal Error", message: err.message, stack: err.stack });
-  }
-}
+var serverless_default = app;
 export {
-  handler as default
+  serverless_default as default
 };
