@@ -46,13 +46,8 @@ var require_db = __commonJS({
       connectionString: dbUrl,
       ssl: { rejectUnauthorized: false }
     });
-    pool2.on("connect", (client) => {
-      client.query("SET timezone TO 'America/Fortaleza'", (err) => {
-        if (err) {
-          console.error("Error setting timezone:", err);
-        }
-      });
-      console.log("Connected to the PostgreSQL database");
+    pool2.on("error", (err) => {
+      console.error("Unexpected PostgreSQL pool error:", err);
     });
     module.exports = {
       query: (text, params) => pool2.query(text, params),

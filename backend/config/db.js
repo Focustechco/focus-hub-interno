@@ -19,13 +19,8 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false },
 });
 
-pool.on('connect', (client) => {
-    client.query("SET timezone TO 'America/Fortaleza'", (err) => {
-        if (err) {
-            console.error('Error setting timezone:', err);
-        }
-    });
-    console.log('Connected to the PostgreSQL database');
+pool.on('error', (err) => {
+    console.error('Unexpected PostgreSQL pool error:', err);
 });
 
 module.exports = {
