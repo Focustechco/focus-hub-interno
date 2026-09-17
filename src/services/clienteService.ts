@@ -632,8 +632,6 @@ export const clienteService = {
 
     // 4. Excluir contatos relacionais e tabelas vinculadas no Supabase
     try { await supabase.from('cliente_contatos').delete().eq('cliente_id', id); } catch {}
-    try { await supabase.from('recorrencias').delete().eq('client_id', id); } catch {}
-    try { await supabase.from('recorrencias').delete().eq('cliente_id', id); } catch {}
     try { await supabase.from('contas_receber').delete().eq('cliente_id', id); } catch {}
     try { await supabase.from('contas_pagar').delete().eq('fornecedor_id', id); } catch {}
     try { await supabase.from('contratos').delete().eq('cliente_id', id); } catch {}
