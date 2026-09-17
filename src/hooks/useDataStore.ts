@@ -7,16 +7,18 @@ import { clienteService } from '@/services/clienteService';
 /**
  * Helper to ensure a string is a valid UUID for PostgreSQL uuid columns.
  */
-function toValidUuid(idStr?: string): string {
-  if (!idStr) return crypto.randomUUID();
+function toValidUuid(idStr?: string | null): string {
+  if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
+  const trimmed = idStr.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return crypto.randomUUID();
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (uuidRegex.test(idStr)) return idStr;
+  if (uuidRegex.test(trimmed)) return trimmed;
 
   // Mapeamento determinístico para prefixos customizados (evita gerar novos UUIDs a cada sync)
   let hash1 = 5381;
   let hash2 = 52711;
-  for (let i = 0; i < idStr.length; i++) {
-    const char = idStr.charCodeAt(i);
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed.charCodeAt(i);
     hash1 = ((hash1 << 5) + hash1) ^ char;
     hash2 = ((hash2 << 5) + hash2) ^ char;
   }
@@ -30,8 +32,33 @@ function toValidUuid(idStr?: string): string {
 
 function toNullableValidUuid(idStr?: string | null): string | null {
   if (!idStr || typeof idStr !== 'string') return null;
+  const trimmed = idStr.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(idStr) ? idStr : null;
+  return uuidRegex.test(trimmed) ? trimmed : null;
+}
+
+function toSafeParentPastaId(parentIdVal?: any, currentId?: any): string | null {
+  if (!parentIdVal || typeof parentIdVal !== 'string') return null;
+  const trimmed = parentIdVal.trim().toLowerCase();
+  if (
+    !trimmed ||
+    trimmed === 'null' ||
+    trimmed === 'undefined' ||
+    trimmed === 'none' ||
+    trimmed === 'root' ||
+    trimmed === 'raiz' ||
+    trimmed === 'pasta-raiz' ||
+    trimmed === '0' ||
+    trimmed === 'false'
+  ) {
+    return null;
+  }
+  const parentUuid = toValidUuid(parentIdVal);
+  if (currentId && (parentUuid === toValidUuid(currentId) || trimmed === String(currentId).toLowerCase().trim())) {
+    return null;
+  }
+  return parentUuid;
 }
 
 function deduplicateById<T extends { id: string }>(items: T[]): T[] {
@@ -433,14 +460,14 @@ function toSnakeCasePayload(table: string, item: any): any {
   const base: any = { id: validId, updated_at: new Date().toISOString() };
 
   if (table.includes('dms_pasta') || table === 'dms_pastas' || table === 'focus_dms_pastas') {
-    const parentIdVal = item.parentId || item.parent_id || item.pasta_pai_id;
-    const safeParentId = (parentIdVal && parentIdVal !== item.id && parentIdVal !== 'pasta-raiz') ? toValidUuid(parentIdVal) : null;
+    const parentIdVal = item.parentId ?? item.parent_id ?? item.pasta_pai_id;
+    const safeParentId = toSafeParentPastaId(parentIdVal, item.id);
     return {
       id: validId,
-      nome: item.nome || 'Pasta',
+      nome: String(item.nome || 'Pasta'),
       pasta_pai_id: safeParentId,
-      caminho_completo: item.caminhoCompleto || item.caminho_completo || `/${item.nome}`,
-      modulo_vinculado: item.moduloVinculado || item.modulo_vinculado || null,
+      caminho_completo: String(item.caminhoCompleto || item.caminho_completo || `/${item.nome || 'Pasta'}`),
+      modulo_vinculado: (item.moduloVinculado || item.modulo_vinculado) ? String(item.moduloVinculado || item.modulo_vinculado) : null,
       updated_at: new Date().toISOString(),
     };
   }
@@ -1861,17 +1888,46 @@ export function useLocalStorageState<T extends { id: string }>(
             }
           }
         } else if (primaryDbTable === 'dms_pastas') {
-          const payload = items.map((item: any) => toSnakeCasePayload('dms_pastas', item));
+          const payload = (items || [])
+            .filter((item: any) => item && typeof item === 'object')
+            .map((item: any) => toSnakeCasePayload('dms_pastas', item));
           const deduped = deduplicateById(payload);
           if (deduped.length > 0) {
             // 1. Inserir todas as pastas com pasta_pai_id = null primeiro para garantir que todos os IDs existam
-            const rootPastasPayload = deduped.map((p: any) => ({ ...p, pasta_pai_id: null }));
-            await supabase.from('dms_pastas').upsert(rootPastasPayload, { onConflict: 'id' });
+            const rootPastasPayload = deduped.map((p: any) => ({
+              id: p.id,
+              nome: String(p.nome || 'Pasta'),
+              pasta_pai_id: null,
+              caminho_completo: String(p.caminho_completo || `/${p.nome || 'Pasta'}`),
+              modulo_vinculado: p.modulo_vinculado ? String(p.modulo_vinculado) : null,
+              updated_at: new Date().toISOString(),
+            }));
 
-            // 2. Atualizar hierarquia de pastas filhas agora que todos os pais existem
-            const childPastas = deduped.filter((p: any) => p.pasta_pai_id);
+            try {
+              await supabase.from('dms_pastas').upsert(rootPastasPayload, { onConflict: 'id' });
+            } catch (errRoot: any) {
+              console.warn('[dms_pastas] Root upsert notice:', errRoot?.message);
+            }
+
+            // 2. Atualizar hierarquia de pastas filhas APENAS para os pais que comprovadamente existem
+            const existingIdSet = new Set(deduped.map((p: any) => p.id));
+            const childPastas = deduped
+              .filter((p: any) => p.pasta_pai_id && existingIdSet.has(p.pasta_pai_id))
+              .map((p: any) => ({
+                id: p.id,
+                nome: String(p.nome || 'Pasta'),
+                pasta_pai_id: p.pasta_pai_id,
+                caminho_completo: String(p.caminho_completo || `/${p.nome || 'Pasta'}`),
+                modulo_vinculado: p.modulo_vinculado ? String(p.modulo_vinculado) : null,
+                updated_at: new Date().toISOString(),
+              }));
+
             if (childPastas.length > 0) {
-              await supabase.from('dms_pastas').upsert(childPastas, { onConflict: 'id' });
+              try {
+                await supabase.from('dms_pastas').upsert(childPastas, { onConflict: 'id' });
+              } catch (errChild: any) {
+                console.warn('[dms_pastas] Child hierarchy upsert notice:', errChild?.message);
+              }
             }
           }
         } else if (primaryDbTable) {

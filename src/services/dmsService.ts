@@ -50,11 +50,13 @@ export const dmsService = {
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function toValidUuid(idStr?: string | null): string {
   if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
-  if (uuidRegex.test(idStr)) return idStr;
+  const trimmed = idStr.trim();
+  if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return crypto.randomUUID();
+  if (uuidRegex.test(trimmed)) return trimmed;
   let hash1 = 5381;
   let hash2 = 52711;
-  for (let i = 0; i < idStr.length; i++) {
-    const char = idStr.charCodeAt(i);
+  for (let i = 0; i < trimmed.length; i++) {
+    const char = trimmed.charCodeAt(i);
     hash1 = ((hash1 << 5) + hash1) ^ char;
     hash2 = ((hash2 << 5) + hash2) ^ char;
   }
@@ -66,6 +68,29 @@ function toValidUuid(idStr?: string | null): string {
   return `${fullHex.slice(0, 8)}-${fullHex.slice(8, 12)}-4${fullHex.slice(13, 16)}-a${fullHex.slice(17, 20)}-${fullHex.slice(20, 32)}`;
 }
 
+function toSafeParentPastaId(parentIdVal?: any, currentId?: any): string | null {
+  if (!parentIdVal || typeof parentIdVal !== 'string') return null;
+  const trimmed = parentIdVal.trim().toLowerCase();
+  if (
+    !trimmed ||
+    trimmed === 'null' ||
+    trimmed === 'undefined' ||
+    trimmed === 'none' ||
+    trimmed === 'root' ||
+    trimmed === 'raiz' ||
+    trimmed === 'pasta-raiz' ||
+    trimmed === '0' ||
+    trimmed === 'false'
+  ) {
+    return null;
+  }
+  const parentUuid = toValidUuid(parentIdVal);
+  if (currentId && (parentUuid === toValidUuid(currentId) || trimmed === String(currentId).toLowerCase().trim())) {
+    return null;
+  }
+  return parentUuid;
+}
+
   async savePasta(pasta: PastaDMS): Promise<void> {
     const list = this.getPastas();
     const filtered = list.filter((p) => p.id !== pasta.id);
@@ -74,15 +99,15 @@ function toValidUuid(idStr?: string | null): string {
 
     try {
       const validId = toValidUuid(pasta.id);
-      const validParentId = pasta.parentId && pasta.parentId !== pasta.id && pasta.parentId !== 'pasta-raiz' ? toValidUuid(pasta.parentId) : null;
+      const validParentId = toSafeParentPastaId(pasta.parentId, pasta.id);
 
       // 1. Inserir pasta garantindo que o registro exista
       await supabase.from('dms_pastas').upsert({
         id: validId,
-        nome: pasta.nome || 'Pasta',
+        nome: String(pasta.nome || 'Pasta'),
         pasta_pai_id: null,
-        caminho_completo: pasta.caminhoCompleto || `/${pasta.nome}`,
-        modulo_vinculado: pasta.moduloVinculado || null,
+        caminho_completo: String(pasta.caminhoCompleto || `/${pasta.nome || 'Pasta'}`),
+        modulo_vinculado: pasta.moduloVinculado ? String(pasta.moduloVinculado) : null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 
@@ -93,7 +118,9 @@ function toValidUuid(idStr?: string | null): string {
           updated_at: new Date().toISOString(),
         }).eq('id', validId);
       }
-    } catch {}
+    } catch (err: any) {
+      console.warn('[dmsService.savePasta] Upsert notice:', err?.message);
+    }
   },
 
   async deletePasta(id: string): Promise<void> {
