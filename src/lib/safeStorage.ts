@@ -46,6 +46,10 @@ const PROTECTED_DATABASE_KEYS = new Set([
   'focus_app_focus_usuarios',
   'focus_app_usuarios',
   'focus_app_deleted_users_state',
+  'token',
+  'user',
+  'currentUser',
+  'activeScreen',
 ]);
 
 /**

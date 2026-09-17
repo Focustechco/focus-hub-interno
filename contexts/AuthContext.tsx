@@ -16,24 +16,59 @@ interface AuthContextData {
 export const AuthContext = createContext<AuthContextData>({} as AuthContextData);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(() => {
+        try {
+            const rawUser = localStorage.getItem('user') || localStorage.getItem('currentUser');
+            const token = localStorage.getItem('token');
+            if (rawUser && token) {
+                return JSON.parse(rawUser);
+            }
+        } catch (e) {
+            console.warn('[AuthProvider] Failed to parse initial stored user:', e);
+        }
+        return null;
+    });
+
+    const [loading, setLoading] = useState<boolean>(() => {
+        // If we already have a cached user and token, don't block the UI with full-screen loading
+        if (typeof window === 'undefined') return true;
+        const hasToken = !!localStorage.getItem('token');
+        const hasUser = !!(localStorage.getItem('user') || localStorage.getItem('currentUser'));
+        return hasToken && !hasUser;
+    });
+
     const [error, setError] = useState<string | null>(null);
 
     const checkAuth = useCallback(async () => {
         const token = localStorage.getItem('token');
         if (!token) {
+            setUser(null);
             setLoading(false);
             return;
         }
 
         try {
             const response = await api.get('/auth/me');
-            setUser(response.data);
-        } catch (err) {
-            console.error('Auth check failed:', err);
-            localStorage.removeItem('token');
-            setUser(null);
+            if (response?.data) {
+                setUser(response.data);
+                localStorage.setItem('user', JSON.stringify(response.data));
+                localStorage.setItem('currentUser', JSON.stringify(response.data));
+            }
+        } catch (err: any) {
+            console.warn('[Auth] Verification failed during checkAuth:', err);
+            
+            // Only force logout if the server explicitly returned 401 Unauthorized (expired/invalid JWT)
+            if (err.response?.status === 401) {
+                console.warn('[Auth] Server returned 401 Unauthorized - clearing expired session');
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('currentUser');
+                setUser(null);
+            } else {
+                // For network glitches, offline mode, server cold starts, 500s or timeouts:
+                // PRESERVE the cached user session so F5 / reload does NOT log out the user!
+                console.log('[Auth] Keeping cached user session despite network/server issue');
+            }
         } finally {
             setLoading(false);
         }
@@ -48,9 +83,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setError(null);
         try {
             const response = await api.post('/auth/login', { email, password });
-            const { token, user } = response.data;
-            localStorage.setItem('token', token);
-            setUser(user);
+            const { token, user: loggedUser } = response.data;
+            if (token) {
+                localStorage.setItem('token', token);
+            }
+            if (loggedUser) {
+                localStorage.setItem('user', JSON.stringify(loggedUser));
+                localStorage.setItem('currentUser', JSON.stringify(loggedUser));
+                setUser(loggedUser);
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || 'Login failed');
             throw err;
@@ -61,6 +102,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const logout = () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('currentUser');
         setUser(null);
     };
 
@@ -79,10 +122,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // Auto-login if registration is immediate (legacy behavior)
-            const { token, user } = response.data;
-            if (token && user) {
+            const { token, user: registeredUser } = response.data;
+            if (token && registeredUser) {
                 localStorage.setItem('token', token);
-                setUser(user);
+                localStorage.setItem('user', JSON.stringify(registeredUser));
+                localStorage.setItem('currentUser', JSON.stringify(registeredUser));
+                setUser(registeredUser);
             }
 
             setLoading(false);
@@ -99,6 +144,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const updateUser = (updatedUser: User) => {
         if (user && user.id === updatedUser.id) {
             setUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
         }
     };
 
