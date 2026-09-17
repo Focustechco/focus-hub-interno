@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { useLocalStorageState } from "@/hooks/useDataStore";
 import { PastaDMS, DocumentoDMS, AuditLogDocumento, FormatoArquivo, ModuloOrigemDMS } from "../types";
-import { INITIAL_PASTAS, INITIAL_DOCUMENTOS } from "../data/initialData";
+import { INITIAL_PASTAS, INITIAL_DOCUMENTOS, ROOT_PASTAS_IDS } from "../data/initialData";
 import { dmsService } from "@/services/dmsService";
 import { dmsBlobStore } from "@/lib/indexedDbStorage";
 
@@ -38,13 +38,13 @@ export function useDocumentosStore() {
     // 1.2 Auto-sincronizar subpastas de Clientes Cadastrados
     (clientes || []).forEach((c: any) => {
       if (c && c.id) {
-        const folderId = `p-cli-${c.id}`;
+        const folderId = `00000000-0000-4000-b001-${String(c.id).slice(-12).padStart(12, '0')}`;
         const nomeCliente = c.nomeFantasia || c.razaoSocial || c.nome || 'Cliente';
         const caminhoCompleto = `/Clientes/${nomeCliente}`;
         const pastaCliente: PastaDMS = {
           id: folderId,
           nome: nomeCliente,
-          parentId: 'p-cli',
+          parentId: ROOT_PASTAS_IDS.CLIENTES,
           caminhoCompleto,
           moduloVinculado: 'Clientes',
           entidadeId: c.id,
@@ -59,13 +59,13 @@ export function useDocumentosStore() {
     // 1.3 Auto-sincronizar subpastas de Fornecedores Cadastrados
     (fornecedores || []).forEach((f: any) => {
       if (f && f.id) {
-        const folderId = `p-forn-${f.id}`;
+        const folderId = `00000000-0000-4000-b002-${String(f.id).slice(-12).padStart(12, '0')}`;
         const nomeForn = f.nomeFantasia || f.razaoSocial || f.nome || 'Fornecedor';
         const caminhoCompleto = `/Fornecedores/${nomeForn}`;
         const pastaForn: PastaDMS = {
           id: folderId,
           nome: nomeForn,
-          parentId: 'p-forn',
+          parentId: ROOT_PASTAS_IDS.FORNECEDORES,
           caminhoCompleto,
           moduloVinculado: 'Fornecedores',
           entidadeId: f.id,
@@ -80,13 +80,13 @@ export function useDocumentosStore() {
     // 1.4 Auto-sincronizar subpastas de Projetos Cadastrados
     (projetos || []).forEach((prj: any) => {
       if (prj && prj.id) {
-        const folderId = `p-prj-${prj.id}`;
+        const folderId = `00000000-0000-4000-b003-${String(prj.id).slice(-12).padStart(12, '0')}`;
         const nomePrj = prj.codigo ? `${prj.codigo} - ${prj.nome || 'Projeto'}` : prj.nome || 'Projeto';
         const caminhoCompleto = `/Projetos/${nomePrj}`;
         const pastaPrj: PastaDMS = {
           id: folderId,
           nome: nomePrj,
-          parentId: 'p-prj',
+          parentId: ROOT_PASTAS_IDS.PROJETOS,
           caminhoCompleto,
           moduloVinculado: 'Projetos',
           entidadeId: prj.id,
@@ -101,13 +101,13 @@ export function useDocumentosStore() {
     // 1.5 Auto-sincronizar subpastas de RH (Colaboradores / Funcionários)
     (colaboradores || []).forEach((colab: any) => {
       if (colab && colab.id) {
-        const folderId = `p-rh-colab-${colab.id}`;
+        const folderId = `00000000-0000-4000-b004-${String(colab.id).slice(-12).padStart(12, '0')}`;
         const nomeColab = colab.nome || colab.nomeCompleto || colab.nomeExibicao || 'Colaborador';
         const caminhoCompleto = `/RH/Colaboradores/${nomeColab}`;
         const pastaColab: PastaDMS = {
           id: folderId,
           nome: nomeColab,
-          parentId: 'p-rh-colab',
+          parentId: ROOT_PASTAS_IDS.RH_COLAB,
           caminhoCompleto,
           moduloVinculado: 'RH',
           entidadeId: colab.id,
@@ -122,13 +122,13 @@ export function useDocumentosStore() {
     // 1.6 Auto-sincronizar subpastas de Produtos Focus
     (produtos || []).forEach((prod: any) => {
       if (prod && prod.id) {
-        const folderId = `p-prod-${prod.id}`;
+        const folderId = `00000000-0000-4000-b005-${String(prod.id).slice(-12).padStart(12, '0')}`;
         const nomeProd = prod.nome || 'Produto Focus';
         const caminhoCompleto = `/Produtos Focus/${nomeProd}`;
         const pastaProd: PastaDMS = {
           id: folderId,
           nome: nomeProd,
-          parentId: 'p-prod',
+          parentId: ROOT_PASTAS_IDS.PRODUTOS,
           caminhoCompleto,
           moduloVinculado: 'Produtos Focus',
           entidadeId: prod.id,
@@ -142,23 +142,23 @@ export function useDocumentosStore() {
 
     // Mapeamento de subpastas conhecidas que nunca devem ficar soltas na raiz
     const KNOWN_SUBFOLDERS_PARENT_MAP: Record<string, { parentId: string; caminhoCompleto: string }> = {
-      'extratos bancários': { parentId: 'p-fin', caminhoCompleto: '/Financeiro/Extratos Bancários' },
-      'extratos': { parentId: 'p-fin', caminhoCompleto: '/Financeiro/Extratos Bancários' },
-      'comprovantes': { parentId: 'p-fin', caminhoCompleto: '/Financeiro/Comprovantes' },
-      'comprovantes bancários': { parentId: 'p-fin', caminhoCompleto: '/Financeiro/Comprovantes' },
-      'assinaturas digitais': { parentId: 'p-ctr', caminhoCompleto: '/Contratos/Assinaturas Digitais' },
-      'colaboradores': { parentId: 'p-rh', caminhoCompleto: '/RH/Colaboradores' },
-      'serviços (nfs-e)': { parentId: 'p-fisc', caminhoCompleto: '/Fiscal/Serviços (NFS-e)' },
-      'mercadorias (nf-e)': { parentId: 'p-fisc', caminhoCompleto: '/Fiscal/Mercadorias (NF-e)' },
-      'propostas comerciais': { parentId: 'p-com', caminhoCompleto: '/Comercial/Propostas Comerciais' },
-      'ordens de serviço': { parentId: 'p-com', caminhoCompleto: '/Comercial/Ordens de Serviço' },
-      'ordens de serviço (os)': { parentId: 'p-com', caminhoCompleto: '/Comercial/Ordens de Serviço' },
-      'campanhas': { parentId: 'p-mkt', caminhoCompleto: '/Marketing/Campanhas' },
-      'dre gerencial': { parentId: 'p-rel', caminhoCompleto: '/Relatórios/DRE Gerencial' },
-      'fluxo de caixa': { parentId: 'p-rel', caminhoCompleto: '/Relatórios/Fluxo de Caixa' },
-      'faturamento e vendas': { parentId: 'p-rel', caminhoCompleto: '/Relatórios/Faturamento e Vendas' },
-      'auditoria e compliance': { parentId: 'p-rel', caminhoCompleto: '/Relatórios/Auditoria e Compliance' },
-      'recursos humanos': { parentId: 'p-rel', caminhoCompleto: '/Relatórios/Recursos Humanos' },
+      'extratos bancários': { parentId: ROOT_PASTAS_IDS.FINANCEIRO, caminhoCompleto: '/Financeiro/Extratos Bancários' },
+      'extratos': { parentId: ROOT_PASTAS_IDS.FINANCEIRO, caminhoCompleto: '/Financeiro/Extratos Bancários' },
+      'comprovantes': { parentId: ROOT_PASTAS_IDS.FINANCEIRO, caminhoCompleto: '/Financeiro/Comprovantes' },
+      'comprovantes bancários': { parentId: ROOT_PASTAS_IDS.FINANCEIRO, caminhoCompleto: '/Financeiro/Comprovantes' },
+      'assinaturas digitais': { parentId: ROOT_PASTAS_IDS.CONTRATOS, caminhoCompleto: '/Contratos/Assinaturas Digitais' },
+      'colaboradores': { parentId: ROOT_PASTAS_IDS.RH, caminhoCompleto: '/RH/Colaboradores' },
+      'serviços (nfs-e)': { parentId: ROOT_PASTAS_IDS.FISCAL, caminhoCompleto: '/Fiscal/Serviços (NFS-e)' },
+      'mercadorias (nf-e)': { parentId: ROOT_PASTAS_IDS.FISCAL, caminhoCompleto: '/Fiscal/Mercadorias (NF-e)' },
+      'propostas comerciais': { parentId: ROOT_PASTAS_IDS.COMERCIAL, caminhoCompleto: '/Comercial/Propostas Comerciais' },
+      'ordens de serviço': { parentId: ROOT_PASTAS_IDS.COMERCIAL, caminhoCompleto: '/Comercial/Ordens de Serviço' },
+      'ordens de serviço (os)': { parentId: ROOT_PASTAS_IDS.COMERCIAL, caminhoCompleto: '/Comercial/Ordens de Serviço' },
+      'campanhas': { parentId: ROOT_PASTAS_IDS.MARKETING, caminhoCompleto: '/Marketing/Campanhas' },
+      'dre gerencial': { parentId: ROOT_PASTAS_IDS.RELATORIOS, caminhoCompleto: '/Relatórios/DRE Gerencial' },
+      'fluxo de caixa': { parentId: ROOT_PASTAS_IDS.RELATORIOS, caminhoCompleto: '/Relatórios/Fluxo de Caixa' },
+      'faturamento e vendas': { parentId: ROOT_PASTAS_IDS.RELATORIOS, caminhoCompleto: '/Relatórios/Faturamento e Vendas' },
+      'auditoria e compliance': { parentId: ROOT_PASTAS_IDS.RELATORIOS, caminhoCompleto: '/Relatórios/Auditoria e Compliance' },
+      'recursos humanos': { parentId: ROOT_PASTAS_IDS.RELATORIOS, caminhoCompleto: '/Relatórios/Recursos Humanos' },
     };
 
     // 1.7 Pastas criadas pelo usuário (somente se não forem duplicatas de caminhos oficiais)
