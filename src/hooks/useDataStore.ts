@@ -1860,16 +1860,27 @@ export function useLocalStorageState<T extends { id: string }>(
               await supabase.from('extratos_bancarios').upsert(fallbackPayload, { onConflict: 'id' });
             }
           }
+        } else if (primaryDbTable === 'dms_pastas') {
+          const payload = items.map((item: any) => toSnakeCasePayload('dms_pastas', item));
+          const deduped = deduplicateById(payload);
+          if (deduped.length > 0) {
+            // 1. Inserir todas as pastas com pasta_pai_id = null primeiro para garantir que todos os IDs existam
+            const rootPastasPayload = deduped.map((p: any) => ({ ...p, pasta_pai_id: null }));
+            await supabase.from('dms_pastas').upsert(rootPastasPayload, { onConflict: 'id' });
+
+            // 2. Atualizar hierarquia de pastas filhas agora que todos os pais existem
+            const childPastas = deduped.filter((p: any) => p.pasta_pai_id);
+            if (childPastas.length > 0) {
+              await supabase.from('dms_pastas').upsert(childPastas, { onConflict: 'id' });
+            }
+          }
         } else if (primaryDbTable) {
           const payload = items.map((item: any) => toSnakeCasePayload(primaryDbTable, item));
           const deduped = deduplicateById(payload);
           if (deduped.length > 0) {
             const { error: upsertErr } = await supabase.from(primaryDbTable).upsert(deduped, { onConflict: 'id' });
             if (upsertErr) {
-              if (primaryDbTable === 'dms_pastas') {
-                const safePastasPayload = deduped.map((p: any) => ({ ...p, pasta_pai_id: null }));
-                await supabase.from('dms_pastas').upsert(safePastasPayload, { onConflict: 'id' });
-              } else if (primaryDbTable === 'notificacoes') {
+              if (primaryDbTable === 'notificacoes') {
                 const minimalPayload = deduped.map((n: any) => ({
                   id: n.id,
                   titulo: n.titulo,

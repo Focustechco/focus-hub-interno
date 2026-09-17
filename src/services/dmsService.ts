@@ -74,26 +74,24 @@ function toValidUuid(idStr?: string | null): string {
 
     try {
       const validId = toValidUuid(pasta.id);
-      const validParentId = pasta.parentId && pasta.parentId !== pasta.id ? toValidUuid(pasta.parentId) : null;
+      const validParentId = pasta.parentId && pasta.parentId !== pasta.id && pasta.parentId !== 'pasta-raiz' ? toValidUuid(pasta.parentId) : null;
 
-      const { error } = await supabase.from('dms_pastas').upsert({
+      // 1. Inserir pasta garantindo que o registro exista
+      await supabase.from('dms_pastas').upsert({
         id: validId,
         nome: pasta.nome || 'Pasta',
-        pasta_pai_id: validParentId,
+        pasta_pai_id: null,
         caminho_completo: pasta.caminhoCompleto || `/${pasta.nome}`,
         modulo_vinculado: pasta.moduloVinculado || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
 
-      if (error) {
-        await supabase.from('dms_pastas').upsert({
-          id: validId,
-          nome: pasta.nome || 'Pasta',
-          pasta_pai_id: null,
-          caminho_completo: pasta.caminhoCompleto || `/${pasta.nome}`,
-          modulo_vinculado: pasta.moduloVinculado || null,
+      // 2. Se houver pasta pai válida, atualizar o vínculo hierárquico
+      if (validParentId) {
+        await supabase.from('dms_pastas').update({
+          pasta_pai_id: validParentId,
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'id' });
+        }).eq('id', validId);
       }
     } catch {}
   },

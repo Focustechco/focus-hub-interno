@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Search, Filter, Plus, Phone, MessageCircle, MoreVertical,
-  Building2, User, ChevronRight
+  Building2, User, ChevronRight, RotateCw, RefreshCw
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -15,17 +15,30 @@ import { ClientePerfilSheet } from './ClientePerfilSheet';
 import { toast } from 'sonner';
 
 export function MobileClientesView() {
-  const { clientes, isLoading, saveCliente, deleteCliente } = useClientesQuery();
+  const { clientes, isLoading, refetch, saveCliente, deleteCliente } = useClientesQuery();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<'ativos' | 'todos' | 'inativos' | 'pj' | 'pf'>('ativos');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [selectedEstado, setSelectedEstado] = useState<string>('todos');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sheet states
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [clientePerfil, setClientePerfil] = useState<Cliente | null>(null);
   const [perfilOpen, setPerfilOpen] = useState(false);
   const [clienteParaEditar, setClienteParaEditar] = useState<Cliente | null>(null);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+      toast.success('Clientes sincronizados com o servidor!');
+    } catch {
+      toast.error('Erro ao sincronizar clientes.');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const filteredClientes = useMemo(() => {
     const list = clientes.filter((c) => {
@@ -42,7 +55,8 @@ export function MobileClientesView() {
       if (activeFilter === 'pj' && c.tipo === 'Pessoa Física') return false;
       if (activeFilter === 'pf' && c.tipo !== 'Pessoa Física') return false;
 
-      if (selectedEstado !== 'todos' && c.endereco?.uf !== selectedEstado) return false;
+      const estadoUf = (c.endereco?.estado || c.endereco?.uf || '').trim().toUpperCase();
+      if (selectedEstado !== 'todos' && estadoUf !== selectedEstado.toUpperCase()) return false;
 
       return true;
     });
@@ -66,7 +80,7 @@ export function MobileClientesView() {
 
   const handleToggleStatus = async (cliente: Cliente, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const newStatus = cliente.status === 'Inativo' ? 'Ativo' : 'Inativo';
+    const newStatus = (cliente.status === 'Inativo' || cliente.status === 'inativo') ? 'Ativo' : 'Inativo';
     try {
       await saveCliente({
         ...cliente,
@@ -102,6 +116,17 @@ export function MobileClientesView() {
               className="h-9 pl-9 pr-3 text-xs rounded-xl bg-muted/40 border-muted-foreground/20 focus-visible:ring-1 focus-visible:ring-[#FF6A00]"
             />
           </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleManualRefresh}
+            className="h-9 w-9 rounded-xl shrink-0 border-muted-foreground/20 text-muted-foreground hover:text-foreground"
+            aria-label="Sincronizar"
+            title="Sincronizar em Tempo Real"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-orange-500' : ''}`} />
+          </Button>
 
           <Sheet open={filterSheetOpen} onOpenChange={setFilterSheetOpen}>
             <SheetTrigger asChild>

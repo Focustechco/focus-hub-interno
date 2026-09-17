@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export function useClientesQuery() {
   const queryClient = useQueryClient();
 
-  // Query para buscar lista de clientes com cache inteligente e sem loops
+  // Query para buscar lista de clientes com cache inteligente e sincronização em background
   const {
     data: clientes = [],
     isLoading,
@@ -22,8 +22,8 @@ export function useClientesQuery() {
   } = useQuery<ClienteDTO[]>({
     queryKey: ['clientes'],
     queryFn: () => clienteService.getClientes(),
-    staleTime: 1000 * 60 * 2, // 2 minutos de cache
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 15, // 15 segundos para frescor contínuo no Mobile
+    refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
 
@@ -34,7 +34,7 @@ export function useClientesQuery() {
       if (timeoutId) clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ['clientes'] });
-      }, 500);
+      }, 300);
     };
 
     const channelName = `rt_clientes_sync_${Math.random().toString(36).slice(2, 7)}`;
@@ -47,13 +47,30 @@ export function useClientesQuery() {
       )
       .on(
         'postgres_changes',
+        { event: '*', schema: 'public', table: 'cliente_contatos' },
+        debouncedInvalidate
+      )
+      .on(
+        'postgres_changes',
         { event: '*', schema: 'public', table: 'clients' },
         debouncedInvalidate
       )
       .subscribe();
 
+    const handleFocusOrVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        debouncedInvalidate();
+      }
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('focus_clients_updated', debouncedInvalidate);
+      window.addEventListener('focus_storage_update', debouncedInvalidate);
+      window.addEventListener('storage', debouncedInvalidate);
+      window.addEventListener('focus', handleFocusOrVisibility);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleFocusOrVisibility);
+      }
     }
 
     return () => {
@@ -63,6 +80,12 @@ export function useClientesQuery() {
       } catch {}
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus_clients_updated', debouncedInvalidate);
+        window.removeEventListener('focus_storage_update', debouncedInvalidate);
+        window.removeEventListener('storage', debouncedInvalidate);
+        window.removeEventListener('focus', handleFocusOrVisibility);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleFocusOrVisibility);
       }
     };
   }, [queryClient]);
