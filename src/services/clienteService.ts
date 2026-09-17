@@ -10,6 +10,9 @@ const LOCAL_STORAGE_KEYS = [
 ];
 const DELETED_IDS_KEY = 'focus_app_deleted_client_ids';
 
+// Cache em memória compartilhado durante o ciclo de vida da aplicação
+const globalClientsMap = new Map<string, ClienteDTO>();
+
 function triggerClientSync() {
   if (typeof window !== 'undefined') {
     try {
@@ -121,10 +124,18 @@ function sanitizeContacts(contatos: any[], fallbackOrg?: string): any[] {
 
 function getLocalClients(): Map<string, ClienteDTO> {
   const map = new Map<string, ClienteDTO>();
-  if (typeof window === 'undefined') return map;
-
   const deletedIds = getDeletedClientIds();
 
+  // 1. Carregar do cache em memória global
+  for (const [id, item] of globalClientsMap.entries()) {
+    if (item && item.id && !deletedIds.has(id)) {
+      map.set(id, item);
+    }
+  }
+
+  if (typeof window === 'undefined') return map;
+
+  // 2. Carregar de todas as chaves de storage
   for (const key of LOCAL_STORAGE_KEYS) {
     try {
       const raw = safeGetItem(key);
@@ -149,8 +160,10 @@ function getLocalClients(): Map<string, ClienteDTO> {
               const current = map.get(String(item.id));
               if (!current || (sanitizedItem.ultimaAtualizacao && current.ultimaAtualizacao && sanitizedItem.ultimaAtualizacao > current.ultimaAtualizacao)) {
                 map.set(String(item.id), sanitizedItem);
+                globalClientsMap.set(String(item.id), sanitizedItem);
               } else if (!current) {
                 map.set(String(item.id), sanitizedItem);
+                globalClientsMap.set(String(item.id), sanitizedItem);
               }
             }
           }
@@ -172,6 +185,10 @@ function persistClientsToAllStores(clientes: ClienteDTO[]) {
     if (typeof c.status === 'string' && (c.status.includes('profile') || c.status.includes('colaborador'))) return false;
     return true;
   });
+
+  // Atualizar cache em memória
+  filtered.forEach(c => globalClientsMap.set(String(c.id), c));
+
   const serialized = JSON.stringify(filtered);
   for (const key of LOCAL_STORAGE_KEYS) {
     safeSetItem(key, serialized);
@@ -211,99 +228,140 @@ export const clienteService = {
       const deletedIds = getDeletedClientIds();
       const localMap = getLocalClients();
       const idMap = new Map<string, ClienteDTO>();
-      let dbFetchSucceeded = false;
 
-      // 1. Buscar na tabela principal 'clientes' (que possui dados cadastrais completos)
+      // 1. Buscar simultaneamente em 'clientes' e na tabela relacional 'cliente_contatos'
+      let dbClientes: any[] = [];
+      const dbContatosMap = new Map<string, any[]>();
+
       try {
-        const { data: clientesData, error: clientesErr } = await supabase
-          .from('clientes')
-          .select('*')
-          .not('razao_social', 'like', '__%')
-          .not('nome_fantasia', 'like', '__%')
-          .neq('status', 'deleted')
-          .neq('status', 'deletado')
-          .order('created_at', { ascending: false });
+        const [clientesRes, contatosRes] = await Promise.all([
+          supabase
+            .from('clientes')
+            .select('*')
+            .not('razao_social', 'like', '__%')
+            .not('nome_fantasia', 'like', '__%')
+            .neq('status', 'deleted')
+            .neq('status', 'deletado')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('cliente_contatos')
+            .select('*')
+        ]);
 
-        if (!clientesErr && Array.isArray(clientesData)) {
-          dbFetchSucceeded = true;
-          for (const item of clientesData) {
-            if (!item || !item.id || deletedIds.has(String(item.id))) continue;
-            if (item.status === 'deleted' || item.status === 'deletado' || item.deleted === true) continue;
-            if (typeof item.razao_social === 'string' && item.razao_social.startsWith('__')) continue;
-            if (typeof item.nome_fantasia === 'string' && item.nome_fantasia.startsWith('__')) continue;
-            if (typeof item.status === 'string' && (item.status.includes('profile') || item.status.includes('colaborador'))) continue;
+        if (!clientesRes.error && Array.isArray(clientesRes.data)) {
+          dbClientes = clientesRes.data;
+        }
 
-            const id = String(item.id);
-            const localClient = localMap.get(id);
-
-            // Determinar status exato (sem travar em Inativo)
-            const itemStatusStr = String(item.status || '').toLowerCase().trim();
-            const dbStatus: 'Ativo' | 'Inativo' = (itemStatusStr === 'inativo') ? 'Inativo' : 'Ativo';
-            
-            // Se houver alteração local mais recente que a do banco, respeitar o status local
-            let finalStatus: 'Ativo' | 'Inativo' = dbStatus;
-            if (localClient?.ultimaAtualizacao && item.updated_at) {
-              const localTime = new Date(localClient.ultimaAtualizacao).getTime();
-              const dbTime = new Date(item.updated_at).getTime();
-              if (localTime > dbTime + 2000) {
-                finalStatus = localClient.status;
-              }
+        if (!contatosRes.error && Array.isArray(contatosRes.data)) {
+          for (const ct of contatosRes.data) {
+            if (ct && ct.cliente_id) {
+              const list = dbContatosMap.get(String(ct.cliente_id)) || [];
+              list.push(ct);
+              dbContatosMap.set(String(ct.cliente_id), list);
             }
-
-            const rawEndereco = {
-              cep: item.cep || localClient?.endereco?.cep || '',
-              logradouro: item.logradouro || localClient?.endereco?.logradouro || '',
-              numero: item.numero || localClient?.endereco?.numero || '',
-              complemento: item.complemento || localClient?.endereco?.complemento || '',
-              bairro: item.bairro || localClient?.endereco?.bairro || '',
-              cidade: item.cidade || localClient?.endereco?.cidade || '',
-              estado: item.estado || localClient?.endereco?.estado || '',
-              pais: item.pais || localClient?.endereco?.pais || 'Brasil',
-            };
-
-            const orgNome = item.nome_fantasia || item.razao_social || localClient?.nomeFantasia || localClient?.razaoSocial || 'Cliente';
-            const defaultContactEmail = item.contact_email || item.email || localClient?.contatos?.[0]?.email || '';
-            const defaultContactName = formatContactName(item.contact_name || localClient?.contatos?.[0]?.nome, defaultContactEmail, orgNome);
-
-            const candidate: ClienteDTO = {
-              id,
-              codigo: item.codigo || localClient?.codigo || `CLI-${id.slice(0, 4).toUpperCase()}`,
-              tipo: (item.tipo === 'Pessoa Física' || item.tipo === 'PF') ? 'Pessoa Física' : 'Pessoa Jurídica',
-              razaoSocial: item.razao_social || localClient?.razaoSocial || 'Cliente',
-              nomeFantasia: item.nome_fantasia || localClient?.nomeFantasia || item.razao_social || 'Cliente',
-              documento: item.documento || localClient?.documento || '00.000.000/0001-00',
-              inscricaoEstadual: item.inscricao_estadual || localClient?.inscricaoEstadual || 'Isento',
-              inscricaoMunicipal: item.inscricao_municipal || localClient?.inscricaoMunicipal || '',
-              dataFundacaoNascimento: item.data_fundacao || localClient?.dataFundacaoNascimento || '',
-              status: finalStatus,
-              segmento: item.segmento || localClient?.segmento || 'Geral',
-              porteEmpresa: item.porte || localClient?.porteEmpresa || 'Médio',
-              site: item.site || localClient?.site || '',
-              observacoes: item.observacoes || localClient?.observacoes || '',
-              endereco: sanitizeAddress(rawEndereco),
-              contatos: localClient?.contatos && localClient.contatos.length > 0
-                ? sanitizeContacts(localClient.contatos, orgNome)
-                : [
-                    {
-                      id: `ct-${id}`,
-                      nome: defaultContactName,
-                      email: defaultContactEmail,
-                      cargo: 'Responsável',
-                      celular: item.contact_phone || item.telefone || '(11) 99999-9999',
-                      principal: true,
-                    }
-                  ],
-              documentos: localClient?.documentos || item.documentos || [],
-              dataCadastro: item.created_at || localClient?.dataCadastro || new Date().toISOString(),
-              ultimaAtualizacao: item.updated_at || localClient?.ultimaAtualizacao || new Date().toISOString(),
-            };
-
-            const parsed = clienteSchema.safeParse(candidate);
-            idMap.set(id, parsed.success ? parsed.data : candidate);
           }
         }
       } catch (err) {
-        console.warn('[clienteService.getClientes] Warning fetching clientes from Supabase:', err);
+        console.warn('[clienteService.getClientes] Warning fetching clientes/contatos from Supabase:', err);
+      }
+
+      // Processar clientes retornados de 'clientes'
+      for (const item of dbClientes) {
+        if (!item || !item.id || deletedIds.has(String(item.id))) continue;
+        if (item.status === 'deleted' || item.status === 'deletado' || item.deleted === true) continue;
+        if (typeof item.razao_social === 'string' && item.razao_social.startsWith('__')) continue;
+        if (typeof item.nome_fantasia === 'string' && item.nome_fantasia.startsWith('__')) continue;
+        if (typeof item.status === 'string' && (item.status.includes('profile') || item.status.includes('colaborador'))) continue;
+
+        const id = String(item.id);
+        const localClient = localMap.get(id);
+
+        // Status
+        const itemStatusStr = String(item.status || '').toLowerCase().trim();
+        const dbStatus: 'Ativo' | 'Inativo' = (itemStatusStr === 'inativo') ? 'Inativo' : 'Ativo';
+        
+        let finalStatus: 'Ativo' | 'Inativo' = dbStatus;
+        if (localClient?.ultimaAtualizacao && item.updated_at) {
+          const localTime = new Date(localClient.ultimaAtualizacao).getTime();
+          const dbTime = new Date(item.updated_at).getTime();
+          if (localTime > dbTime + 2000) {
+            finalStatus = localClient.status;
+          }
+        }
+
+        const rawEndereco = {
+          cep: item.cep || localClient?.endereco?.cep || '',
+          logradouro: item.logradouro || localClient?.endereco?.logradouro || '',
+          numero: item.numero || localClient?.endereco?.numero || '',
+          complemento: item.complemento || localClient?.endereco?.complemento || '',
+          bairro: item.bairro || localClient?.endereco?.bairro || '',
+          cidade: item.cidade || localClient?.endereco?.cidade || '',
+          estado: item.estado || localClient?.endereco?.estado || '',
+          pais: item.pais || localClient?.endereco?.pais || 'Brasil',
+        };
+
+        const orgNome = item.nome_fantasia || item.razao_social || localClient?.nomeFantasia || localClient?.razaoSocial || 'Cliente';
+        
+        // Contatos da tabela relacional cliente_contatos
+        const relContatos = dbContatosMap.get(id);
+        let contatosFinais: any[] = [];
+
+        if (Array.isArray(relContatos) && relContatos.length > 0) {
+          contatosFinais = relContatos.map((c, idx) => ({
+            id: String(c.id || `ct-${idx + 1}`),
+            nome: formatContactName(c.nome, c.email, orgNome),
+            email: c.email || '',
+            cargo: c.cargo || 'Responsável',
+            departamento: c.departamento || 'Geral',
+            celular: c.celular || '',
+            telefone: undefined,
+            whatsapp: c.whatsapp ?? true,
+            principal: idx === 0 ? true : Boolean(c.principal),
+          }));
+        } else if (localClient?.contatos && localClient.contatos.length > 0) {
+          contatosFinais = sanitizeContacts(localClient.contatos, orgNome);
+        } else {
+          const defaultContactEmail = item.contact_email || item.email || '';
+          const defaultContactName = formatContactName(item.contact_name, defaultContactEmail, orgNome);
+          contatosFinais = [
+            {
+              id: `ct-${id}`,
+              nome: defaultContactName,
+              email: defaultContactEmail,
+              cargo: 'Responsável',
+              celular: item.contact_phone || item.telefone || '(11) 99999-9999',
+              whatsapp: true,
+              principal: true,
+            }
+          ];
+        }
+
+        const candidate: ClienteDTO = {
+          id,
+          codigo: item.codigo || localClient?.codigo || `CLI-${id.slice(0, 4).toUpperCase()}`,
+          tipo: (item.tipo === 'Pessoa Física' || item.tipo === 'PF') ? 'Pessoa Física' : 'Pessoa Jurídica',
+          razaoSocial: item.razao_social || localClient?.razaoSocial || 'Cliente',
+          nomeFantasia: item.nome_fantasia || localClient?.nomeFantasia || item.razao_social || 'Cliente',
+          documento: item.documento || localClient?.documento || '00.000.000/0001-00',
+          inscricaoEstadual: item.inscricao_estadual || localClient?.inscricaoEstadual || 'Isento',
+          inscricaoMunicipal: item.inscricao_municipal || localClient?.inscricaoMunicipal || '',
+          dataFundacaoNascimento: item.data_fundacao || localClient?.dataFundacaoNascimento || '',
+          status: finalStatus,
+          segmento: item.segmento || localClient?.segmento || 'Geral',
+          porteEmpresa: item.porte || localClient?.porteEmpresa || 'Médio',
+          site: item.site || localClient?.site || '',
+          observacoes: item.observacoes || localClient?.observacoes || '',
+          endereco: sanitizeAddress(rawEndereco),
+          contatos: contatosFinais,
+          documentos: localClient?.documentos || item.documentos || [],
+          dataCadastro: item.created_at || localClient?.dataCadastro || new Date().toISOString(),
+          ultimaAtualizacao: item.updated_at || localClient?.ultimaAtualizacao || new Date().toISOString(),
+        };
+
+        const parsed = clienteSchema.safeParse(candidate);
+        const resolvedClient = parsed.success ? parsed.data : candidate;
+        idMap.set(id, resolvedClient);
+        globalClientsMap.set(id, resolvedClient);
       }
 
       // 2. Buscar na tabela relacional 'clients' para clientes legados não migrados
@@ -361,6 +419,7 @@ export const clienteService = {
                         email: defaultContactEmail,
                         cargo: 'Responsável',
                         celular: item.contact_phone || '(11) 99999-9999',
+                        whatsapp: true,
                         principal: true,
                       }
                     ],
@@ -370,7 +429,9 @@ export const clienteService = {
               };
 
               const parsed = clienteSchema.safeParse(candidate);
-              idMap.set(id, parsed.success ? parsed.data : candidate);
+              const resolvedClient = parsed.success ? parsed.data : candidate;
+              idMap.set(id, resolvedClient);
+              globalClientsMap.set(id, resolvedClient);
             }
           }
         }
@@ -383,6 +444,7 @@ export const clienteService = {
         if (!locClient || !locClient.id || deletedIds.has(locId)) continue;
         if (!idMap.has(locId)) {
           idMap.set(locId, locClient);
+          globalClientsMap.set(locId, locClient);
         }
       }
 
@@ -424,7 +486,8 @@ export const clienteService = {
       ultimaAtualizacao: new Date().toISOString(),
     };
 
-    // 1. Salvar no LocalStorage para resposta e persistência instantânea em todas as chaves
+    // 1. Atualizar cache em memória e todas as chaves do LocalStorage preservando todos os clientes existentes
+    globalClientsMap.set(id, validatedWithId);
     const localMap = getLocalClients();
     localMap.set(id, validatedWithId);
     const updatedList = Array.from(localMap.values());
@@ -455,7 +518,7 @@ export const clienteService = {
       console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clientes no Supabase:', e);
     }
 
-    // 3. Persistir na tabela relacional 'clients' (para integridade de chaves estrangeiras)
+    // 3. Persistir na tabela relacional 'clients' (para compatibilidade com FKs de projetos, contas_receber)
     try {
       await supabase.from('clients').upsert({
         id,
@@ -469,6 +532,27 @@ export const clienteService = {
       console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clients no Supabase:', e);
     }
 
+    // 4. Persistir contatos na tabela relacional 'cliente_contatos'
+    if (Array.isArray(validatedWithId.contatos) && validatedWithId.contatos.length > 0) {
+      try {
+        const contatosPayload = validatedWithId.contatos.map((ct: any, idx: number) => ({
+          id: toValidUuid(ct.id || `ct-${id}-${idx}`),
+          cliente_id: id,
+          nome: formatContactName(ct.nome || ct.name, ct.email, validatedWithId.nomeFantasia || validatedWithId.razaoSocial),
+          email: ct.email && !ct.email.startsWith('__') ? ct.email : null,
+          cargo: ct.cargo || 'Responsável',
+          departamento: ct.departamento || 'Geral',
+          celular: ct.celular || ct.telefone || null,
+          whatsapp: ct.whatsapp ?? true,
+          principal: idx === 0 ? true : Boolean(ct.principal),
+          updated_at: new Date().toISOString(),
+        }));
+        await supabase.from('cliente_contatos').upsert(contatosPayload, { onConflict: 'id' });
+      } catch (err) {
+        console.warn('[clienteService.saveCliente] Erro ao sincronizar cliente_contatos:', err);
+      }
+    }
+
     return validatedWithId;
   },
 
@@ -478,6 +562,7 @@ export const clienteService = {
   async deleteCliente(id: string): Promise<void> {
     markClientAsDeletedLocally(id);
 
+    globalClientsMap.delete(id);
     const localMap = getLocalClients();
     const deletedClient = localMap.get(id);
     const clientNames = new Set<string>();
@@ -545,7 +630,8 @@ export const clienteService = {
       });
     } catch {}
 
-    // 4. Excluir do Supabase em cascata
+    // 4. Excluir contatos relacionais e tabelas vinculadas no Supabase
+    try { await supabase.from('cliente_contatos').delete().eq('cliente_id', id); } catch {}
     try { await supabase.from('recorrencias').delete().eq('client_id', id); } catch {}
     try { await supabase.from('recorrencias').delete().eq('cliente_id', id); } catch {}
     try { await supabase.from('contas_receber').delete().eq('cliente_id', id); } catch {}

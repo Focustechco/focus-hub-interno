@@ -662,7 +662,8 @@ export function NovoClienteSheet({
           whatsapp: contatoWhatsapp,
           email: cleanEmail,
           principal: true
-        }
+        },
+        ...(clienteToEdit?.contatos ? clienteToEdit.contatos.filter((c: any) => c.id !== contatoPrincipal?.id && !c.principal) : [])
       ]
     };
 

@@ -1693,6 +1693,12 @@ export function useLocalStorageState<T extends { id: string }>(
               }
             }
           }
+        } else if (isUsersTable) {
+          for (const item of items as any[]) {
+            if (item && (item.id || item.email)) {
+              await userService.saveUser(item);
+            }
+          }
         } else if (isClientsTable) {
           for (const item of items as any[]) {
             if (item && item.id) {
