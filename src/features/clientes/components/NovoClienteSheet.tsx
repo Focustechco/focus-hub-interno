@@ -116,6 +116,7 @@ function computeQuantidadeFromDates(dataInicioStr: string, dataFimStr: string, f
 export interface NovoClienteSheetProps {
   children?: React.ReactNode;
   clienteToEdit?: Cliente | null;
+  clienteParaEditar?: Cliente | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -123,6 +124,7 @@ export interface NovoClienteSheetProps {
 export function NovoClienteSheet({ 
   children, 
   clienteToEdit,
+  clienteParaEditar,
   open: controlledOpen,
   onOpenChange: setControlledOpen
 }: NovoClienteSheetProps) {
@@ -131,34 +133,36 @@ export function NovoClienteSheet({
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = isControlled ? (setControlledOpen || (() => {})) : setInternalOpen;
   
+  const activeCliente = clienteToEdit || clienteParaEditar;
+
   // Dados Gerais
-  const [tipoPessoa, setTipoPessoa] = useState(clienteToEdit?.tipo === 'Pessoa Física' ? 'pf' : 'pj');
-  const [documento, setDocumento] = useState(clienteToEdit?.documento || '');
-  const [razaoSocial, setRazaoSocial] = useState(clienteToEdit?.razaoSocial || '');
-  const [nomeFantasia, setNomeFantasia] = useState(clienteToEdit?.nomeFantasia || '');
-  const [ie, setIe] = useState(clienteToEdit?.inscricaoEstadual || '');
-  const [im, setIm] = useState(clienteToEdit?.inscricaoMunicipal || '');
-  const [dataFundacao, setDataFundacao] = useState(clienteToEdit?.dataFundacaoNascimento || '');
-  const [segmento, setSegmento] = useState(clienteToEdit?.segmento || 'Tecnologia');
-  const [porte, setPorte] = useState(clienteToEdit?.porteEmpresa || 'Médio');
-  const [site, setSite] = useState(clienteToEdit?.site || '');
-  const [observacoes, setObservacoes] = useState(clienteToEdit?.observacoes || '');
-  const [statusCliente, setStatusCliente] = useState(clienteToEdit?.status || 'Ativo');
+  const [tipoPessoa, setTipoPessoa] = useState(activeCliente?.tipo === 'Pessoa Física' ? 'pf' : 'pj');
+  const [documento, setDocumento] = useState(activeCliente?.documento || '');
+  const [razaoSocial, setRazaoSocial] = useState(activeCliente?.razaoSocial || '');
+  const [nomeFantasia, setNomeFantasia] = useState(activeCliente?.nomeFantasia || '');
+  const [ie, setIe] = useState(activeCliente?.inscricaoEstadual || '');
+  const [im, setIm] = useState(activeCliente?.inscricaoMunicipal || '');
+  const [dataFundacao, setDataFundacao] = useState(activeCliente?.dataFundacaoNascimento || '');
+  const [segmento, setSegmento] = useState(activeCliente?.segmento || 'Tecnologia');
+  const [porte, setPorte] = useState(activeCliente?.porteEmpresa || 'Médio');
+  const [site, setSite] = useState(activeCliente?.site || '');
+  const [observacoes, setObservacoes] = useState(activeCliente?.observacoes || '');
+  const [statusCliente, setStatusCliente] = useState(activeCliente?.status || 'Ativo');
   
   // Endereço Completo
-  const [cep, setCep] = useState(clienteToEdit?.endereco?.cep || '');
-  const [logradouro, setLogradouro] = useState(clienteToEdit?.endereco?.logradouro || '');
-  const [numero, setNumero] = useState(clienteToEdit?.endereco?.numero || '');
-  const [complemento, setComplemento] = useState(clienteToEdit?.endereco?.complemento || '');
-  const [bairro, setBairro] = useState(clienteToEdit?.endereco?.bairro || '');
-  const [cidade, setCidade] = useState(clienteToEdit?.endereco?.cidade || '');
-  const [estado, setEstado] = useState(clienteToEdit?.endereco?.estado || '');
-  const [pais, setPais] = useState(clienteToEdit?.endereco?.pais || 'Brasil');
+  const [cep, setCep] = useState(activeCliente?.endereco?.cep || '');
+  const [logradouro, setLogradouro] = useState(activeCliente?.endereco?.logradouro || '');
+  const [numero, setNumero] = useState(activeCliente?.endereco?.numero || '');
+  const [complemento, setComplemento] = useState(activeCliente?.endereco?.complemento || '');
+  const [bairro, setBairro] = useState(activeCliente?.endereco?.bairro || '');
+  const [cidade, setCidade] = useState(activeCliente?.endereco?.cidade || '');
+  const [estado, setEstado] = useState(activeCliente?.endereco?.estado || '');
+  const [pais, setPais] = useState(activeCliente?.endereco?.pais || 'Brasil');
   const [isBuscandoCep, setIsBuscandoCep] = useState(false);
   const [isConsultandoCnpj, setIsConsultandoCnpj] = useState(false);
 
   // Contatos
-  const contatoPrincipal = clienteToEdit?.contatos?.find(c => c.principal) || clienteToEdit?.contatos?.[0];
+  const contatoPrincipal = activeCliente?.contatos?.find(c => c.principal) || activeCliente?.contatos?.[0];
   const [contatoNome, setContatoNome] = useState(contatoPrincipal?.nome || '');
   const [contatoCargo, setContatoCargo] = useState(contatoPrincipal?.cargo || 'Responsável Comercial');
   const [contatoDepartamento, setContatoDepartamento] = useState(contatoPrincipal?.departamento || 'Diretoria');
@@ -202,108 +206,103 @@ export function NovoClienteSheet({
   const { data: contratos = [], addItem: addContrato } = useLocalStorageState<Contrato>('focus_contratos');
 
   const clienteNomeOficial = nomeFantasia || razaoSocial || 'Cliente';
-  const currentClienteId = clienteToEdit?.id || '';
-  const hasInitializedRef = React.useRef(false);
+  const currentClienteId = activeCliente?.id || '';
 
-  // Carregar dados e documentos existentes estritamente ao abrir o modal (evita sobrescrever campos enquanto o usuário digita)
+  // Carregar dados e documentos existentes estritamente ao abrir o modal
   useEffect(() => {
     if (open) {
-      if (!hasInitializedRef.current) {
-        hasInitializedRef.current = true;
-        setTipoPessoa(clienteToEdit?.tipo === 'Pessoa Física' ? 'pf' : 'pj');
-        setDocumento(clienteToEdit?.documento || '');
-        setRazaoSocial(clienteToEdit?.razaoSocial || '');
-        setNomeFantasia(clienteToEdit?.nomeFantasia || '');
-        setIe(clienteToEdit?.inscricaoEstadual || '');
-        setIm(clienteToEdit?.inscricaoMunicipal || '');
-        setDataFundacao(clienteToEdit?.dataFundacaoNascimento || '');
-        setSegmento(clienteToEdit?.segmento || 'Tecnologia');
-        setPorte(clienteToEdit?.porteEmpresa || 'Médio');
-        setSite(clienteToEdit?.site || '');
-        setObservacoes(clienteToEdit?.observacoes || '');
-        setStatusCliente(clienteToEdit?.status || 'Ativo');
+      const target = clienteToEdit || clienteParaEditar;
+      setTipoPessoa(target?.tipo === 'Pessoa Física' ? 'pf' : 'pj');
+      setDocumento(target?.documento || '');
+      setRazaoSocial(target?.razaoSocial || '');
+      setNomeFantasia(target?.nomeFantasia || '');
+      setIe(target?.inscricaoEstadual || '');
+      setIm(target?.inscricaoMunicipal || '');
+      setDataFundacao(target?.dataFundacaoNascimento || '');
+      setSegmento(target?.segmento || 'Tecnologia');
+      setPorte(target?.porteEmpresa || 'Médio');
+      setSite(target?.site || '');
+      setObservacoes(target?.observacoes || '');
+      setStatusCliente(target?.status || 'Ativo');
 
-        // Endereço
-        setCep(clienteToEdit?.endereco?.cep || '');
-        setLogradouro(clienteToEdit?.endereco?.logradouro || '');
-        setNumero(clienteToEdit?.endereco?.numero || '');
-        setComplemento(clienteToEdit?.endereco?.complemento || '');
-        setBairro(clienteToEdit?.endereco?.bairro || '');
-        setCidade(clienteToEdit?.endereco?.cidade || '');
-        setEstado(clienteToEdit?.endereco?.estado || '');
-        setPais(clienteToEdit?.endereco?.pais || 'Brasil');
+      // Endereço
+      setCep(target?.endereco?.cep || '');
+      setLogradouro(target?.endereco?.logradouro || '');
+      setNumero(target?.endereco?.numero || '');
+      setComplemento(target?.endereco?.complemento || '');
+      setBairro(target?.endereco?.bairro || '');
+      setCidade(target?.endereco?.cidade || '');
+      setEstado(target?.endereco?.estado || (target?.endereco as any)?.uf || '');
+      setPais(target?.endereco?.pais || 'Brasil');
+      
+      // Contatos
+      const principal = target?.contatos?.find(c => c.principal) || target?.contatos?.[0];
+      setContatoNome(principal?.nome || '');
+      setContatoCargo(principal?.cargo || 'Responsável Comercial');
+      setContatoDepartamento(principal?.departamento || 'Diretoria');
+      setContatoEmail(principal?.email || '');
+      setContatoCelular(principal?.celular || '');
+      setContatoTelefone(principal?.telefone || '');
+      setContatoWhatsapp(principal?.whatsapp ?? true);
+
+      // Carregar documentos estritamente vinculados a este cliente (Isolamento por ID)
+      if (target?.id) {
+        const docsFromClient: DocumentoAnexoLocal[] = (target as any)?.documentos || [];
+        const todosDocs = dmsService.getDocumentos() || [];
         
-        // Contatos
-        const principal = clienteToEdit?.contatos?.find(c => c.principal) || clienteToEdit?.contatos?.[0];
-        setContatoNome(principal?.nome || '');
-        setContatoCargo(principal?.cargo || 'Responsável Comercial');
-        setContatoDepartamento(principal?.departamento || 'Diretoria');
-        setContatoEmail(principal?.email || '');
-        setContatoCelular(principal?.celular || '');
-        setContatoTelefone(principal?.telefone || '');
-        setContatoWhatsapp(principal?.whatsapp ?? true);
+        const docsDMS: DocumentoAnexoLocal[] = todosDocs.filter(
+          d => d && (
+               d.clienteId === target.id || 
+               (Array.isArray(d.tags) && d.tags.includes(target.id))
+          )
+        ).map(d => ({
+          id: d.id,
+          nome: d.nome,
+          tamanho: d.tamanho,
+          tamanhoBytes: d.tamanhoBytes,
+          dataUpload: d.dataUpload,
+          urlConteudo: d.urlConteudo,
+          categoria: d.categoria
+        }));
 
-        // Carregar documentos estritamente vinculados a este cliente (Isolamento por ID)
-        if (clienteToEdit?.id) {
-          const docsFromClient: DocumentoAnexoLocal[] = (clienteToEdit as any)?.documentos || [];
-          const todosDocs = dmsService.getDocumentos() || [];
-          
-          const docsDMS: DocumentoAnexoLocal[] = todosDocs.filter(
-            d => d && (
-                 d.clienteId === clienteToEdit.id || 
-                 (Array.isArray(d.tags) && d.tags.includes(clienteToEdit.id))
-            )
-          ).map(d => ({
-            id: d.id,
-            nome: d.nome,
-            tamanho: d.tamanho,
-            tamanhoBytes: d.tamanhoBytes,
-            dataUpload: d.dataUpload,
-            urlConteudo: d.urlConteudo,
-            categoria: d.categoria
-          }));
+        const mapDocs = new Map<string, DocumentoAnexoLocal>();
+        docsFromClient.forEach((d: DocumentoAnexoLocal) => {
+          if (d && d.id) mapDocs.set(d.id, d);
+        });
+        docsDMS.forEach((d: DocumentoAnexoLocal) => {
+          if (d && d.id && !mapDocs.has(d.id)) mapDocs.set(d.id, d);
+        });
 
-          const mapDocs = new Map<string, DocumentoAnexoLocal>();
-          docsFromClient.forEach((d: DocumentoAnexoLocal) => {
-            if (d && d.id) mapDocs.set(d.id, d);
-          });
-          docsDMS.forEach((d: DocumentoAnexoLocal) => {
-            if (d && d.id && !mapDocs.has(d.id)) mapDocs.set(d.id, d);
-          });
-
-          setDocumentosAnexados(Array.from(mapDocs.values()));
-        } else {
-          // Novo cliente começa sempre limpo, sem documentos de outros clientes
-          setDocumentosAnexados([]);
-        }
-
-        // Carregar recorrência existente se houver
-        if (clienteToEdit?.id) {
-          const recExistente = recorrencias.find(r => r.clientId === clienteToEdit.id);
-          if (recExistente) {
-            setRecorrenciaHabilitada(true);
-            setRecorrenciaId(recExistente.id);
-            setRecorrenciaDescricao(recExistente.descricao || '');
-            setRecorrenciaValor(String(recExistente.valor || ''));
-            setRecorrenciaFrequencia(recExistente.frequencia || 'Mensal');
-            setRecorrenciaDataInicio(recExistente.dataInicio || '');
-            const calculatedDataFinal = recExistente.dataFim || recExistente.dataFinal || computeDataFinal(recExistente.dataInicio || '', String(recExistente.quantidade || ''), recExistente.frequencia || 'Mensal');
-            setRecorrenciaDataFinal(calculatedDataFinal);
-            setRecorrenciaDiaVencimento(String(recExistente.diaVencimento || '10'));
-            setRecorrenciaQuantidade(recExistente.quantidade ? String(recExistente.quantidade) : '');
-            setRecorrenciaStatus(recExistente.status || 'Ativa');
-            setRecorrenciaObservacoes(recExistente.observacoes || '');
-          } else {
-            resetRecorrenciaFields(clienteToEdit?.nomeFantasia || clienteToEdit?.razaoSocial || '');
-          }
-        } else {
-          resetRecorrenciaFields('');
-        }
+        setDocumentosAnexados(Array.from(mapDocs.values()));
+      } else {
+        // Novo cliente começa sempre limpo, sem documentos de outros clientes
+        setDocumentosAnexados([]);
       }
-    } else {
-      hasInitializedRef.current = false;
+
+      // Carregar recorrência existente se houver
+      if (target?.id) {
+        const recExistente = recorrencias.find(r => r.clientId === target.id);
+        if (recExistente) {
+          setRecorrenciaHabilitada(true);
+          setRecorrenciaId(recExistente.id);
+          setRecorrenciaDescricao(recExistente.descricao || '');
+          setRecorrenciaValor(String(recExistente.valor || ''));
+          setRecorrenciaFrequencia(recExistente.frequencia || 'Mensal');
+          setRecorrenciaDataInicio(recExistente.dataInicio || '');
+          const calculatedDataFinal = recExistente.dataFim || recExistente.dataFinal || computeDataFinal(recExistente.dataInicio || '', String(recExistente.quantidade || ''), recExistente.frequencia || 'Mensal');
+          setRecorrenciaDataFinal(calculatedDataFinal);
+          setRecorrenciaDiaVencimento(String(recExistente.diaVencimento || '10'));
+          setRecorrenciaQuantidade(recExistente.quantidade ? String(recExistente.quantidade) : '');
+          setRecorrenciaStatus(recExistente.status || 'Ativa');
+          setRecorrenciaObservacoes(recExistente.observacoes || '');
+        } else {
+          resetRecorrenciaFields(target?.nomeFantasia || target?.razaoSocial || '');
+        }
+      } else {
+        resetRecorrenciaFields('');
+      }
     }
-  }, [open, clienteToEdit?.id]);
+  }, [open, clienteToEdit, clienteParaEditar]);
 
   const resetRecorrenciaFields = (nome: string) => {
     const hoje = getBrasiliaTodayIso();

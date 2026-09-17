@@ -9,19 +9,20 @@ export function Dashboard() {
   const { clientes } = useClientesQuery();
 
   const total = clientes.length;
-  const ativos = clientes.filter(c => c.status === 'Ativo').length;
-  const pj = clientes.filter(c => c.tipo === 'Pessoa Jurídica').length;
-  const pf = clientes.filter(c => c.tipo === 'Pessoa Física').length;
+  const ativos = clientes.filter(c => c.status === 'Ativo' || c.status === 'ativo').length;
+  const inativos = total - ativos;
+  const pj = clientes.filter(c => c.tipo === 'Pessoa Jurídica' || c.tipo === 'PJ').length;
+  const pf = clientes.filter(c => c.tipo === 'Pessoa Física' || c.tipo === 'PF').length;
 
   const dataTipo = [
     { name: 'Pessoa Jurídica', value: pj },
     { name: 'Pessoa Física', value: pf },
-  ].filter(d => d.value > 0); // Ocultar se não tiver dados
+  ].filter(d => d.value > 0);
 
   const dataStatus = [
     { name: 'Ativos', value: ativos },
-    { name: 'Inativos', value: total - ativos },
-  ].filter(d => d.value > 0); // Ocultar se não tiver dados
+    { name: 'Inativos', value: inativos },
+  ].filter(d => d.value > 0);
 
   const COLORS = ['#3b82f6', '#10b981', '#f43f5e', '#f59e0b'];
 

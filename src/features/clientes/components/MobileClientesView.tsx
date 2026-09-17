@@ -267,6 +267,7 @@ export function MobileClientesView() {
             const contato = c.contatos?.find((ct) => ct.principal) || c.contatos?.[0];
             const telefone = c.telefone || contato?.telefone || contato?.celular;
             const cleanPhone = getCleanPhone(telefone);
+            const contatoNomeFormatado = formatContactName(contato?.nome, contato?.email, nomeExibicao);
 
             return (
               <div
@@ -276,81 +277,115 @@ export function MobileClientesView() {
                   setPerfilOpen(true);
                 }}
                 className={`bg-card rounded-2xl border p-3.5 shadow-xs transition-all active:scale-[0.99] cursor-pointer flex flex-col gap-2.5 ${
-                  isInactive ? 'opacity-70 border-dashed' : 'border-border/80'
+                  isInactive ? 'opacity-75 border-dashed border-slate-300 dark:border-slate-800' : 'border-border/80 hover:border-orange-500/30'
                 }`}
               >
                 {/* Header Card */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
                         isInactive
                           ? 'bg-slate-100 dark:bg-zinc-800 text-slate-400'
+                          : isPF
+                          ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600'
                           : 'bg-[#FFF4EA] dark:bg-orange-950/40 text-[#FF6A00]'
                       }`}
                     >
-                      {isPF ? <User className="w-4 h-4 text-[#FF6A00]" /> : <Building2 className="w-4 h-4 text-[#FF6A00]" />}
+                      {isPF ? <User className="w-5 h-5 text-amber-600" /> : <Building2 className="w-5 h-5 text-[#FF6A00]" />}
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-xs text-foreground truncate leading-snug">
+                      <div className="font-bold text-xs text-foreground truncate leading-snug">
                         {nomeExibicao}
                       </div>
-                      {subNome && (
-                        <div className="text-[10px] text-muted-foreground truncate">{subNome}</div>
-                      )}
-                      <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
-                        {c.documento || c.codigo || 'Sem doc'}
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {isPF ? (c.segmento || 'Pessoa Física / Individual') : (c.segmento ? `${c.segmento} • PJ` : (subNome || 'Pessoa Jurídica'))}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground font-mono mt-0.5 flex items-center gap-2">
+                        <span>{c.documento || '-'}</span>
+                        {c.codigo && <span className="text-orange-600 dark:text-orange-400 font-semibold">• {c.codigo}</span>}
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge
-                      variant="outline"
-                      className={`text-[9px] px-1.5 py-0 rounded-md font-semibold ${
-                        isInactive
-                          ? 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-900 dark:text-slate-400'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
-                      }`}
-                    >
-                      {isInactive ? 'Inativo' : 'Ativo'}
-                    </Badge>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="flex items-center gap-1">
+                      <Badge
+                        variant="outline"
+                        onClick={(e) => handleToggleStatus(c, e)}
+                        className={`text-[9px] px-1.5 py-0 rounded-md font-semibold cursor-pointer ${
+                          isInactive
+                            ? 'bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-900 dark:text-slate-400'
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400'
+                        }`}
+                      >
+                        {isInactive ? 'Inativo' : 'Ativo'}
+                      </Badge>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground">
-                          <MoreVertical className="w-3.5 h-3.5" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="text-xs w-44">
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setClienteParaEditar(c);
-                            setNovoClienteOpen(true);
-                          }}
-                        >
-                          Editar Cadastro
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => handleToggleStatus(c, e)}>
-                          {isInactive ? 'Reativar Cliente' : 'Inativar Cliente'}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground">
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="text-xs w-44">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setClienteParaEditar(c);
+                              setNovoClienteOpen(true);
+                            }}
+                          >
+                            Editar Cadastro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleToggleStatus(c, e)}>
+                            {isInactive ? 'Reativar Cliente' : 'Inativar Cliente'}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Deseja excluir o cliente "${nomeExibicao}"?`)) {
+                                await deleteCliente(c.id);
+                              }
+                            }}
+                          >
+                            Excluir Cliente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <Badge variant="outline" className={`text-[8px] px-1 py-0 ${isPF ? 'border-amber-500/30 text-amber-600' : 'border-blue-500/30 text-blue-600'}`}>
+                      {isPF ? 'PF' : 'PJ'}
+                    </Badge>
                   </div>
                 </div>
 
-                {/* Info Footer & Quick Actions */}
-                <div className="flex items-center justify-between pt-2 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
-                  <div className="flex items-center gap-2 truncate">
-                    {c.endereco?.cidade && (
-                      <span className="truncate">
-                        {c.endereco.cidade}/{c.endereco.uf || 'BR'}
-                      </span>
+                {/* Contato Principal se houver */}
+                {contato && (
+                  <div className="bg-muted/30 rounded-xl p-2 text-[11px] space-y-1 border border-border/40">
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="font-medium text-foreground truncate">{contatoNomeFormatado} {contato.cargo ? `(${contato.cargo})` : ''}</span>
+                      {contato.departamento && <span className="text-[10px] text-muted-foreground shrink-0">{contato.departamento}</span>}
+                    </div>
+                    {contato.email && (
+                      <div className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                        <span>{contato.email}</span>
+                      </div>
                     )}
                   </div>
+                )}
 
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+                {/* Info Footer & Quick Actions */}
+                <div className="flex items-center justify-between pt-1 border-t border-dashed border-border/60 text-[11px] text-muted-foreground">
+                  <div className="flex items-center gap-1 truncate text-[10px]">
+                    <span className="truncate">
+                      {c.endereco?.cidade ? `${c.endereco.cidade}${c.endereco.estado ? ` - ${c.endereco.estado}` : ''}` : 'Localidade não informada'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     {cleanPhone && (
                       <>
                         <a
@@ -387,6 +422,7 @@ export function MobileClientesView() {
           setNovoClienteOpen(op);
           if (!op) setClienteParaEditar(null);
         }}
+        clienteToEdit={clienteParaEditar}
         clienteParaEditar={clienteParaEditar}
       />
 
