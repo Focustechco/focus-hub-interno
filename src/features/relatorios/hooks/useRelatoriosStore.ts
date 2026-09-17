@@ -73,7 +73,7 @@ function persistFavoritesLocally(favorites: string[]) {
 async function syncFavoritesToDatabase(favorites: string[]) {
   const sanitized = sanitizeFavorites(favorites);
 
-  // 1. Persistir na tabela 'clients' como estado relacional garantido
+  // Persistir na tabela 'clients' como estado relacional garantido
   try {
     const payload = {
       id: FAVORITES_STATE_ID,
@@ -87,36 +87,13 @@ async function syncFavoritesToDatabase(favorites: string[]) {
   } catch (err) {
     console.warn('[useRelatoriosStore] Aviso ao salvar favoritos em clients:', err);
   }
-
-  // 2. Persistir na tabela relacional 'relatorios_favoritos' se disponível
-  try {
-    const rows = sanitized.map((reportId, index) => ({
-      id: `fav-${reportId}`,
-      report_id: reportId,
-      ordem: index,
-      created_at: new Date().toISOString(),
-    }));
-    await supabase.from('relatorios_favoritos').upsert(rows, { onConflict: 'report_id' });
-  } catch {}
 }
 
 /**
  * Busca a lista ordenada de favoritos diretamente do Banco de Dados Relacional (Supabase)
  */
 async function fetchFavoritesFromDatabase(): Promise<string[] | null> {
-  // 1. Tentar tabela relacional 'relatorios_favoritos'
-  try {
-    const { data: relData, error: relErr } = await supabase
-      .from('relatorios_favoritos')
-      .select('*')
-      .order('ordem', { ascending: true });
-
-    if (!relErr && Array.isArray(relData) && relData.length > 0) {
-      return sanitizeFavorites(relData);
-    }
-  } catch {}
-
-  // 2. Buscar da tabela relacional 'clients'
+  // Buscar da tabela relacional 'clients'
   try {
     const { data: stateRows, error: stateErr } = await supabase
       .from('clients')

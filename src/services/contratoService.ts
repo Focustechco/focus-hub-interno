@@ -136,9 +136,12 @@ export const contratoService = {
    * Excluir contrato por ID
    */
   async deleteContrato(id: string): Promise<void> {
-    // 1. Remover do Supabase
+    // 1. Remover do Supabase se o ID for um UUID válido do PostgreSQL
     try {
-      await supabase.from('contratos').delete().eq('id', id);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      if (isUuid) {
+        await supabase.from('contratos').delete().eq('id', id);
+      }
     } catch (err: any) {
       console.warn('[contratoService.deleteContrato] Erro ao deletar no Supabase:', err?.message);
     }

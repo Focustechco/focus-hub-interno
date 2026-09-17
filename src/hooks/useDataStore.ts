@@ -5,12 +5,42 @@ import { userService } from '@/services/userService';
 import { clienteService } from '@/services/clienteService';
 
 /**
+const LEGACY_PASTA_MAP: Record<string, string> = {
+  'p-cli': '00000000-0000-4000-a000-000000000001',
+  'p-forn': '00000000-0000-4000-a000-000000000002',
+  'p-prj': '00000000-0000-4000-a000-000000000003',
+  'p-rh': '00000000-0000-4000-a000-000000000004',
+  'p-prod': '00000000-0000-4000-a000-000000000005',
+  'p-rel': '00000000-0000-4000-a000-000000000006',
+  'p-ctr': '00000000-0000-4000-a000-000000000007',
+  'p-ass': '00000000-0000-4000-a000-000000000008',
+  'p-fisc': '00000000-0000-4000-a000-000000000009',
+  'p-fin': '00000000-0000-4000-a000-000000000010',
+  'p-com': '00000000-0000-4000-a000-000000000011',
+  'p-mkt': '00000000-0000-4000-a000-000000000012',
+  'p-suporte': '00000000-0000-4000-a000-000000000013',
+  'p-cs': '00000000-0000-4000-a000-000000000014',
+  'p-dev': '00000000-0000-4000-a000-000000000015',
+  'p-itam': '00000000-0000-4000-a000-000000000016',
+  'p-centros': '00000000-0000-4000-a000-000000000017',
+  'p-plano': '00000000-0000-4000-a000-000000000018',
+  'p-bancos': '00000000-0000-4000-a000-000000000019',
+  'p-extratos': '00000000-0000-4000-a000-000000000020',
+  'p-cobrancas': '00000000-0000-4000-a000-000000000021',
+  'p-usuarios': '00000000-0000-4000-a000-000000000022',
+  'p-empresa': '00000000-0000-4000-a000-000000000023',
+  'p-integracoes': '00000000-0000-4000-a000-000000000024',
+  'p-seguranca': '00000000-0000-4000-a000-000000000025',
+};
+
+/**
  * Helper to ensure a string is a valid UUID for PostgreSQL uuid columns.
  */
 function toValidUuid(idStr?: string | null): string {
   if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
   const trimmed = idStr.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return crypto.randomUUID();
+  if (LEGACY_PASTA_MAP[trimmed]) return LEGACY_PASTA_MAP[trimmed];
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(trimmed)) return trimmed;
 
@@ -34,6 +64,7 @@ function toNullableValidUuid(idStr?: string | null): string | null {
   if (!idStr || typeof idStr !== 'string') return null;
   const trimmed = idStr.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return null;
+  if (LEGACY_PASTA_MAP[trimmed]) return LEGACY_PASTA_MAP[trimmed];
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   return uuidRegex.test(trimmed) ? trimmed : null;
 }
@@ -54,7 +85,7 @@ function toSafeParentPastaId(parentIdVal?: any, currentId?: any): string | null 
   ) {
     return null;
   }
-  const parentUuid = toValidUuid(parentIdVal);
+  const parentUuid = LEGACY_PASTA_MAP[trimmed] || toValidUuid(parentIdVal);
   if (currentId && (parentUuid === toValidUuid(currentId) || trimmed === String(currentId).toLowerCase().trim())) {
     return null;
   }
@@ -475,17 +506,59 @@ function toSnakeCasePayload(table: string, item: any): any {
   if (table.includes('dms_doc') || table === 'dms_documentos' || table === 'focus_dms_documentos') {
     return {
       id: validId,
-      nome_arquivo: item.nome || item.nomeArquivo || item.nome_arquivo || `Doc_${validId.slice(0, 6)}`,
+      pasta_id: toNullableValidUuid(item.pastaId || item.pasta_id),
+      nome_arquivo: item.nomeArquivo || item.nome_arquivo || item.nome || `Doc_${validId.slice(0, 6)}`,
       extensao: item.extensao || item.nome?.split('.').pop() || 'pdf',
       tamanho_bytes: Number(item.tamanhoBytes ?? item.tamanho_bytes ?? 0) || 0,
-      pasta_id: toNullableValidUuid(item.pastaId || item.pasta_id),
       url_storage: (item.urlConteudo && item.urlConteudo.startsWith('data:') && item.urlConteudo.length > 2000)
         ? 'data:blob-stored-locally'
         : (item.urlStorage || item.url_storage || item.urlConteudo || item.url_conteudo || 'https://placeholder.dms'),
       tipo_documento: item.categoria || item.tipoDocumento || item.tipo_documento || item.moduloOrigem || 'Geral',
+      entidade_tipo: item.entidadeTipo || item.entidade_tipo || item.moduloOrigem || item.modulo_origem || 'Geral',
+      entidade_id: toNullableValidUuid(item.entidadeId || item.entidade_id || item.clienteId || item.projetoId || item.contratoId || item.colaboradorId),
       tags: Array.isArray(item.tags) ? item.tags : [],
-      entidade_tipo: item.moduloOrigem || item.modulo_origem || 'Geral',
-      entidade_id: toNullableValidUuid(item.clienteId || item.projetoId || item.contratoId || item.colaboradorId),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  if (table.includes('dev_git_repos') || table === 'dev_git_repos' || table === 'focus_dev_git') {
+    return {
+      id: validId,
+      nome: item.nome || item.nomeRepositorio || item.nome_repositorio || 'Repositorio',
+      url: item.url || item.urlRepositorio || item.url_repositorio || 'https://github.com/empresa/repo',
+      provider: item.provider || item.provedor || 'github',
+      branch_padrao: item.branchPadrao || item.branch_padrao || item.branchPrincipal || item.branch_principal || 'main',
+      status: item.status || 'Ativo',
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  if (table.includes('dev_backlog') || table === 'dev_backlog' || table === 'focus_dev_backlog') {
+    return {
+      id: validId,
+      produto_id: toNullableValidUuid(item.produtoId || item.produto_id || item.projetoId || item.projeto_id),
+      titulo: item.titulo || item.nome || 'Item de Backlog',
+      tipo: item.tipo || 'feature',
+      prioridade: item.prioridade || 'media',
+      status: item.status || 'backlog',
+      estimativa_horas: Number(item.estimativaHoras ?? item.estimativa_horas ?? item.storyPoints ?? item.story_points ?? 0) || 0,
+      responsavel_nome: item.responsavelNome || item.responsavel_nome || item.responsavel || 'Equipe Dev',
+      descricao: item.descricao || '',
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  if (table.includes('dev_sprints') || table === 'dev_sprints' || table === 'focus_dev_sprints') {
+    return {
+      id: validId,
+      nome: item.nome || 'Sprint',
+      meta: item.meta || item.objetivo || '',
+      data_inicio: item.dataInicio ? String(item.dataInicio).split('T')[0] : (item.data_inicio ? String(item.data_inicio).split('T')[0] : new Date().toISOString().split('T')[0]),
+      data_fim: item.dataFim ? String(item.dataFim).split('T')[0] : (item.data_fim ? String(item.data_fim).split('T')[0] : new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]),
+      status: item.status || 'planejada',
+      velocity: Number(item.velocity ?? 0) || 0,
+      pontos_planejados: Number(item.pontosPlanejados ?? item.pontos_planejados ?? item.totalPontosEstimados ?? item.total_pontos_estimados ?? 0) || 0,
+      pontos_entregues: Number(item.pontosEntregues ?? item.pontos_entregues ?? item.totalPontosEntregues ?? item.total_pontos_entregues ?? 0) || 0,
       updated_at: new Date().toISOString(),
     };
   }
@@ -891,6 +964,50 @@ function fromSnakeCaseRow(table: string, row: any): any {
       projetoId: row.projeto_id || row.projetoId,
       contratoId: row.contrato_id || row.contratoId,
       colaboradorId: row.colaborador_id || row.colaboradorId,
+    };
+  }
+
+  if (table.includes('dev_git_repos') || table === 'dev_git_repos' || table === 'focus_dev_git') {
+    return {
+      ...row,
+      id: String(row.id),
+      nomeRepositorio: row.nome || row.nome_repositorio || row.nomeRepositorio || 'Repositorio',
+      urlRepositorio: row.url || row.url_repositorio || row.urlRepositorio || 'https://github.com',
+      provedor: row.provider || row.provedor || 'github',
+      branchPrincipal: row.branch_padrao || row.branch_principal || row.branchPrincipal || 'main',
+      status: row.status || 'Ativo',
+    };
+  }
+
+  if (table.includes('dev_backlog') || table === 'dev_backlog' || table === 'focus_dev_backlog') {
+    return {
+      ...row,
+      id: String(row.id),
+      produtoId: row.produto_id || row.produtoId,
+      titulo: row.titulo || row.nome || 'Item de Backlog',
+      tipo: row.tipo || 'feature',
+      prioridade: row.prioridade || 'media',
+      status: row.status || 'backlog',
+      storyPoints: Number(row.estimativa_horas ?? row.storyPoints ?? 0),
+      responsavel: row.responsavel_nome || row.responsavel || 'Equipe Dev',
+      descricao: row.descricao || '',
+      codigo: `DEV-${String(row.id).slice(0, 4).toUpperCase()}`,
+      criadoEm: row.created_at || new Date().toISOString(),
+      atualizadoEm: row.updated_at || new Date().toISOString(),
+    };
+  }
+
+  if (table.includes('dev_sprints') || table === 'dev_sprints' || table === 'focus_dev_sprints') {
+    return {
+      ...row,
+      id: String(row.id),
+      nome: row.nome || 'Sprint',
+      objetivo: row.meta || row.objetivo || '',
+      dataInicio: row.data_inicio || row.dataInicio || new Date().toISOString().split('T')[0],
+      dataFim: row.data_fim || row.dataFim || new Date().toISOString().split('T')[0],
+      status: row.status || 'planejada',
+      totalPontosEstimados: Number(row.pontos_planejados ?? row.totalPontosEstimados ?? 0),
+      totalPontosEntregues: Number(row.pontos_entregues ?? row.totalPontosEntregues ?? 0),
     };
   }
 

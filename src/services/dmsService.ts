@@ -47,11 +47,40 @@ export const dmsService = {
     triggerSyncEvent();
   },
 
+const LEGACY_PASTA_MAP: Record<string, string> = {
+  'p-cli': '00000000-0000-4000-a000-000000000001',
+  'p-forn': '00000000-0000-4000-a000-000000000002',
+  'p-prj': '00000000-0000-4000-a000-000000000003',
+  'p-rh': '00000000-0000-4000-a000-000000000004',
+  'p-prod': '00000000-0000-4000-a000-000000000005',
+  'p-rel': '00000000-0000-4000-a000-000000000006',
+  'p-ctr': '00000000-0000-4000-a000-000000000007',
+  'p-ass': '00000000-0000-4000-a000-000000000008',
+  'p-fisc': '00000000-0000-4000-a000-000000000009',
+  'p-fin': '00000000-0000-4000-a000-000000000010',
+  'p-com': '00000000-0000-4000-a000-000000000011',
+  'p-mkt': '00000000-0000-4000-a000-000000000012',
+  'p-suporte': '00000000-0000-4000-a000-000000000013',
+  'p-cs': '00000000-0000-4000-a000-000000000014',
+  'p-dev': '00000000-0000-4000-a000-000000000015',
+  'p-itam': '00000000-0000-4000-a000-000000000016',
+  'p-centros': '00000000-0000-4000-a000-000000000017',
+  'p-plano': '00000000-0000-4000-a000-000000000018',
+  'p-bancos': '00000000-0000-4000-a000-000000000019',
+  'p-extratos': '00000000-0000-4000-a000-000000000020',
+  'p-cobrancas': '00000000-0000-4000-a000-000000000021',
+  'p-usuarios': '00000000-0000-4000-a000-000000000022',
+  'p-empresa': '00000000-0000-4000-a000-000000000023',
+  'p-integracoes': '00000000-0000-4000-a000-000000000024',
+  'p-seguranca': '00000000-0000-4000-a000-000000000025',
+};
+
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function toValidUuid(idStr?: string | null): string {
   if (!idStr || typeof idStr !== 'string') return crypto.randomUUID();
   const trimmed = idStr.trim();
   if (!trimmed || trimmed === 'null' || trimmed === 'undefined') return crypto.randomUUID();
+  if (LEGACY_PASTA_MAP[trimmed]) return LEGACY_PASTA_MAP[trimmed];
   if (uuidRegex.test(trimmed)) return trimmed;
   let hash1 = 5381;
   let hash2 = 52711;
