@@ -450,7 +450,18 @@ function readLocalCache<T>(table: string, fallback: T[]): T[] {
               continue;
             }
 
-            const valid = parsed.filter((it) => isValidItem(table, it));
+            const valid = parsed.filter((it) => isValidItem(table, it)).map((it) => {
+              if (table.includes('dms_pasta') || table === 'dms_pastas' || table === 'focus_dms_pastas') {
+                const newId = toValidUuid(it.id);
+                const newParent = toSafeParentPastaId(it.parentId ?? it.parent_id ?? it.pasta_pai_id, it.id);
+                return {
+                  ...it,
+                  id: newId,
+                  parentId: newParent,
+                };
+              }
+              return it;
+            });
             valid.forEach((it) => {
               if (it && it.id && !aggregatedItems.has(String(it.id))) {
                 aggregatedItems.set(String(it.id), it);
@@ -2010,26 +2021,40 @@ export function useLocalStorageState<T extends { id: string }>(
             .map((item: any) => toSnakeCasePayload('dms_pastas', item));
           const deduped = deduplicateById(payload);
           if (deduped.length > 0) {
-            // 1. Inserir todas as pastas com pasta_pai_id = null primeiro para garantir que todos os IDs existam
-            const rootPastasPayload = deduped.map((p: any) => ({
-              id: p.id,
-              nome: String(p.nome || 'Pasta'),
-              pasta_pai_id: null,
-              caminho_completo: String(p.caminho_completo || `/${p.nome || 'Pasta'}`),
-              modulo_vinculado: p.modulo_vinculado ? String(p.modulo_vinculado) : null,
-              updated_at: new Date().toISOString(),
-            }));
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-            try {
-              await supabase.from('dms_pastas').upsert(rootPastasPayload, { onConflict: 'id' });
-            } catch (errRoot: any) {
-              console.warn('[dms_pastas] Root upsert notice:', errRoot?.message);
+            // 1. Inserir todas as pastas com pasta_pai_id = null primeiro para registrar com segurança
+            const rootPastasPayload = deduped
+              .filter((p: any) => p && p.id && uuidPattern.test(p.id))
+              .map((p: any) => ({
+                id: p.id,
+                nome: String(p.nome || 'Pasta'),
+                pasta_pai_id: null,
+                caminho_completo: String(p.caminho_completo || `/${p.nome || 'Pasta'}`),
+                modulo_vinculado: p.modulo_vinculado ? String(p.modulo_vinculado) : null,
+                updated_at: new Date().toISOString(),
+              }));
+
+            if (rootPastasPayload.length > 0) {
+              try {
+                await supabase.from('dms_pastas').upsert(rootPastasPayload, { onConflict: 'id' });
+              } catch (errRoot: any) {
+                console.warn('[dms_pastas] Root upsert notice:', errRoot?.message);
+              }
             }
 
-            // 2. Atualizar hierarquia de pastas filhas APENAS para os pais que comprovadamente existem
-            const existingIdSet = new Set(deduped.map((p: any) => p.id));
+            // 2. Atualizar hierarquia de pastas filhas APENAS para os pais que comprovadamente existem e são UUIDs válidos
+            const existingIdSet = new Set(rootPastasPayload.map((p: any) => p.id));
             const childPastas = deduped
-              .filter((p: any) => p.pasta_pai_id && existingIdSet.has(p.pasta_pai_id))
+              .filter((p: any) => 
+                p && 
+                p.id && 
+                uuidPattern.test(p.id) && 
+                p.pasta_pai_id && 
+                uuidPattern.test(p.pasta_pai_id) && 
+                existingIdSet.has(p.pasta_pai_id) &&
+                p.id !== p.pasta_pai_id
+              )
               .map((p: any) => ({
                 id: p.id,
                 nome: String(p.nome || 'Pasta'),

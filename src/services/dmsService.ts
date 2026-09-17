@@ -202,7 +202,9 @@ function toSafeParentPastaId(parentIdVal?: any, currentId?: any): string | null 
     }
     const caminhoCompleto = `${parentPath}/${nome}`.replace(/\/\/+/g, '/');
 
-    const folderId = customId || (entidadeId ? `p-${moduloVinculado.toLowerCase().replace(/\s+/g, '-')}-${entidadeId}` : `p-${Date.now()}-${Math.floor(Math.random() * 1000)}`);
+    const folderId = customId 
+      ? toValidUuid(customId) 
+      : (entidadeId ? toValidUuid(`dms-${moduloVinculado.toLowerCase().replace(/\s+/g, '-')}-${entidadeId}`) : crypto.randomUUID());
 
     const newFolder: PastaDMS = {
       id: folderId,
