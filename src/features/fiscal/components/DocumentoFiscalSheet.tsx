@@ -124,7 +124,7 @@ export function DocumentoFiscalSheet({ open, onOpenChange, documentoParaEditar }
         setEntidadeTipo('Cliente');
         setEntidadeId(clientes[0].id);
         setEntidadeNome(clientes[0].nomeFantasia || clientes[0].razaoSocial);
-        setEntidadeCnpjCpf(clientes[0].documento || '00.000.000/0001-00');
+        setEntidadeCnpjCpf(clientes[0].documento || '');
       } else {
         setEntidadeTipo('Cliente');
         setEntidadeId('cli-default');
@@ -242,7 +242,7 @@ export function DocumentoFiscalSheet({ open, onOpenChange, documentoParaEditar }
         tipo: entidadeTipo,
         id: entidadeId || 'cli-001',
         nome: entidadeNome || 'Cliente / Fornecedor',
-        cnpjCpf: entidadeCnpjCpf || '00.000.000/0001-00'
+        cnpjCpf: entidadeCnpjCpf || ''
       },
       vinculos: {
         projetoId: projetoId || undefined,
@@ -364,7 +364,7 @@ export function DocumentoFiscalSheet({ open, onOpenChange, documentoParaEditar }
                       if (c) {
                         setEntidadeId(c.id);
                         setEntidadeNome(c.nomeFantasia || c.razaoSocial);
-                        setEntidadeCnpjCpf(c.documento || '00.000.000/0001-00');
+                        setEntidadeCnpjCpf(c.documento || '');
                         setEntidadeTipo('Cliente');
                       } else {
                         setEntidadeId(val);
