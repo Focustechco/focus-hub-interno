@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { clienteService } from '@/services/clienteService';
 import { ClienteDTO } from '@/schemas/clienteSchema';
-import { supabase } from '@/lib/supabaseClient';
+import { realtimeManager } from '@/lib/realtimeManager';
 import { toast } from 'sonner';
 
 /**
@@ -27,7 +27,7 @@ export function useClientesQuery() {
     refetchOnReconnect: true,
   });
 
-  // Inscrição Realtime no Supabase para sincronização instantânea Desktop <-> Mobile
+  // Inscrição Realtime Multiplexada no Supabase para sincronização instantânea Desktop <-> Mobile
   useEffect(() => {
     let timeoutId: any = null;
     const debouncedInvalidate = () => {
@@ -37,25 +37,9 @@ export function useClientesQuery() {
       }, 300);
     };
 
-    const channelName = `rt_clientes_sync_${Math.random().toString(36).slice(2, 7)}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clientes' },
-        debouncedInvalidate
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'cliente_contatos' },
-        debouncedInvalidate
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clients' },
-        debouncedInvalidate
-      )
-      .subscribe();
+    const unsubClientes = realtimeManager.subscribe('clientes', debouncedInvalidate);
+    const unsubContatos = realtimeManager.subscribe('cliente_contatos', debouncedInvalidate);
+    const unsubClients = realtimeManager.subscribe('clients', debouncedInvalidate);
 
     const handleFocusOrVisibility = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -75,9 +59,9 @@ export function useClientesQuery() {
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
-      try {
-        supabase.removeChannel(channel);
-      } catch {}
+      unsubClientes();
+      unsubContatos();
+      unsubClients();
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus_clients_updated', debouncedInvalidate);
         window.removeEventListener('focus_storage_update', debouncedInvalidate);

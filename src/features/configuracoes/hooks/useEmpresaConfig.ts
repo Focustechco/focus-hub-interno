@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { empresaService, EmpresaConfig, DEFAULT_EMPRESA_CONFIG } from '@/services/empresaService';
+import { realtimeManager } from '@/lib/realtimeManager';
 import { toast } from 'sonner';
 
 export function useEmpresaConfig() {
@@ -30,30 +30,18 @@ export function useEmpresaConfig() {
     window.addEventListener('focus_empresa_updated', handleEmpresaUpdated);
     window.addEventListener('storage', handleEmpresaUpdated);
 
-    // Escutar mudanças em tempo real do Supabase
-    let channel: any = null;
-    try {
-      channel = supabase
-        .channel('empresa_config_realtime')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'empresa_config' },
-          () => {
-            empresaService.getEmpresaConfig().then((fresh) => {
-              if (isMounted && fresh) setEmpresa(fresh);
-            });
-          }
-        )
-        .subscribe();
-    } catch {}
+    // Escutar mudanças em tempo real multiplexadas do Supabase
+    const unsubRealtime = realtimeManager.subscribe('empresa_config', () => {
+      empresaService.getEmpresaConfig().then((fresh) => {
+        if (isMounted && fresh) setEmpresa(fresh);
+      });
+    });
 
     return () => {
       isMounted = false;
       window.removeEventListener('focus_empresa_updated', handleEmpresaUpdated);
       window.removeEventListener('storage', handleEmpresaUpdated);
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      unsubRealtime();
     };
   }, []);
 

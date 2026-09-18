@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocalStorageState } from "@/hooks/useDataStore";
 import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 import { supabase } from "@/lib/supabaseClient";
+import { realtimeManager } from "@/lib/realtimeManager";
 import { toast } from "sonner";
 import { ReportExecutionHistory, ReportSchedule, ReportModelTemplate, ReportFilterConfig, GeneratedReportData, ReportFormat } from "../types";
 import { REPORT_CATALOG } from "../data/catalog";
@@ -133,33 +134,14 @@ export function useRelatoriosStore() {
       }
     });
 
-    // Inscrição Realtime no Supabase
-    const channelName = `rt_relatorios_favs_${Math.random().toString(36).slice(2, 7)}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'clients', filter: `name=eq.${FAVORITES_STATE_NAME}` },
-        async () => {
-          const fresh = await fetchFavoritesFromDatabase();
-          if (isMounted && fresh) {
-            setFavorites(fresh);
-            persistFavoritesLocally(fresh);
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'relatorios_favoritos' },
-        async () => {
-          const fresh = await fetchFavoritesFromDatabase();
-          if (isMounted && fresh) {
-            setFavorites(fresh);
-            persistFavoritesLocally(fresh);
-          }
-        }
-      )
-      .subscribe();
+    // Inscrição Realtime Multiplexada no Supabase
+    const unsubClients = realtimeManager.subscribe('clients', async () => {
+      const fresh = await fetchFavoritesFromDatabase();
+      if (isMounted && fresh) {
+        setFavorites(fresh);
+        persistFavoritesLocally(fresh);
+      }
+    });
 
     const handleLocalSync = () => {
       if (isMounted) {
@@ -176,9 +158,7 @@ export function useRelatoriosStore() {
 
     return () => {
       isMounted = false;
-      try {
-        supabase.removeChannel(channel);
-      } catch {}
+      unsubClients();
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus_relatorios_favorites_updated', handleLocalSync);
         window.removeEventListener('focus_storage_update', handleLocalSync);

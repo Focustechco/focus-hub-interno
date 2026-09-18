@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { safeSetItem, safeGetItem, safeRemoveItem } from '@/lib/safeStorage';
 import { userService } from '@/services/userService';
 import { clienteService } from '@/services/clienteService';
+import { realtimeManager } from '@/lib/realtimeManager';
 
 /**
 const LEGACY_PASTA_MAP: Record<string, string> = {
@@ -2653,23 +2654,13 @@ export function useLocalStorageState<T extends { id: string }>(
       });
     }
 
-    // Supabase Realtime Subscription para Desktop & Mobile na tabela específica
-    let channels: any[] = [];
-    if (typeof window !== 'undefined') {
+    // Supabase Realtime Subscription Multiplexada para Desktop & Mobile na tabela específica
+    let unsubscribeRealtime: (() => void) | null = null;
+    if (typeof window !== 'undefined' && primaryDbTable) {
       try {
-        if (primaryDbTable) {
-          const relChannel = supabase
-            .channel(`rt_${primaryDbTable}_${Math.random().toString(36).slice(2, 7)}`)
-            .on(
-              'postgres_changes',
-              { event: '*', schema: 'public', table: primaryDbTable },
-              () => {
-                if (isMountedRef.current) fetchData();
-              }
-            )
-            .subscribe();
-          channels.push(relChannel);
-        }
+        unsubscribeRealtime = realtimeManager.subscribe(primaryDbTable, () => {
+          if (isMountedRef.current) fetchData();
+        });
       } catch (e) {
         console.warn('[useLocalStorageState] Realtime subscribe notice:', e);
       }
@@ -2699,9 +2690,7 @@ export function useLocalStorageState<T extends { id: string }>(
     return () => {
       isMountedRef.current = false;
       if (unsubscribeUsers) unsubscribeUsers();
-      channels.forEach((ch) => {
-        try { supabase.removeChannel(ch); } catch {}
-      });
+      if (unsubscribeRealtime) unsubscribeRealtime();
       if (typeof window !== 'undefined') {
         window.removeEventListener('storage', handleStorageUpdate);
         window.removeEventListener('focus', handleVisibilityOrFocus);

@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { Usuario } from '@/features/usuarios/types';
 import { INITIAL_USUARIOS } from '@/features/usuarios/data/initialData';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
+import { realtimeManager } from '@/lib/realtimeManager';
 
 const USERS_STORAGE_KEY = 'focus_app_focus_usuarios';
 const DELETED_USERS_STORAGE_KEY = 'focus_app_deleted_users_state';
@@ -501,37 +502,15 @@ export const userService = {
     window.addEventListener('focus_users_updated', handleLocalEvent);
     window.addEventListener('focus_storage_update', handleLocalEvent);
 
-    // Canal Realtime do Supabase com identificador único por instância
-    const uniqueChannelName = `focus_users_rt_${Math.random().toString(36).substring(2, 9)}`;
-    let channel: any = null;
-
-    try {
-      channel = supabase
-        .channel(uniqueChannelName)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'users' },
-          handleLocalEvent
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'clients' },
-          handleLocalEvent
-        )
-        .subscribe();
-    } catch (e) {
-      console.warn('[userService.subscribeUsers] Erro ao criar canal realtime:', e);
-    }
+    const unsubUsers = realtimeManager.subscribe('users', handleLocalEvent);
+    const unsubClients = realtimeManager.subscribe('clients', handleLocalEvent);
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
       window.removeEventListener('focus_users_updated', handleLocalEvent);
       window.removeEventListener('focus_storage_update', handleLocalEvent);
-      if (channel) {
-        try {
-          supabase.removeChannel(channel);
-        } catch {}
-      }
+      unsubUsers();
+      unsubClients();
     };
   },
 };
