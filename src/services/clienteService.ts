@@ -322,6 +322,7 @@ export const clienteService = {
           contatosFinais = sanitizeContacts(localClient.contatos, orgNome);
         } else {
           const defaultContactEmail = item.contact_email || item.email || '';
+          const defaultContactPhone = item.contact_phone || item.telefone || '';
           const defaultContactName = formatContactName(item.contact_name, defaultContactEmail, orgNome);
           contatosFinais = [
             {
@@ -329,7 +330,7 @@ export const clienteService = {
               nome: defaultContactName,
               email: defaultContactEmail,
               cargo: 'Responsável',
-              celular: item.contact_phone || item.telefone || '(11) 99999-9999',
+              celular: defaultContactPhone,
               whatsapp: true,
               principal: true,
             }
@@ -342,7 +343,7 @@ export const clienteService = {
           tipo: (item.tipo === 'Pessoa Física' || item.tipo === 'PF') ? 'Pessoa Física' : 'Pessoa Jurídica',
           razaoSocial: item.razao_social || localClient?.razaoSocial || 'Cliente',
           nomeFantasia: item.nome_fantasia || localClient?.nomeFantasia || item.razao_social || 'Cliente',
-          documento: item.documento || localClient?.documento || '00.000.000/0001-00',
+          documento: item.documento || localClient?.documento || '',
           inscricaoEstadual: item.inscricao_estadual || localClient?.inscricaoEstadual || 'Isento',
           inscricaoMunicipal: item.inscricao_municipal || localClient?.inscricaoMunicipal || '',
           dataFundacaoNascimento: item.data_fundacao || localClient?.dataFundacaoNascimento || '',
@@ -392,6 +393,7 @@ export const clienteService = {
 
               const orgNome = item.name || localClient?.nomeFantasia || localClient?.razaoSocial || 'Cliente';
               const defaultContactEmail = item.contact_email || localClient?.contatos?.[0]?.email || '';
+              const defaultContactPhone = item.contact_phone || localClient?.contatos?.[0]?.celular || localClient?.contatos?.[0]?.telefone || '';
               const defaultContactName = formatContactName(item.contact_name || localClient?.contatos?.[0]?.nome, defaultContactEmail, orgNome);
 
               const candidate: ClienteDTO = {
@@ -400,7 +402,7 @@ export const clienteService = {
                 tipo: localClient?.tipo || 'Pessoa Jurídica',
                 razaoSocial: localClient?.razaoSocial || item.name || 'Cliente',
                 nomeFantasia: item.name || localClient?.nomeFantasia || 'Cliente',
-                documento: localClient?.documento || '00.000.000/0001-00',
+                documento: localClient?.documento || '',
                 inscricaoEstadual: localClient?.inscricaoEstadual || 'Isento',
                 inscricaoMunicipal: localClient?.inscricaoMunicipal || '',
                 dataFundacaoNascimento: localClient?.dataFundacaoNascimento || '',
@@ -418,7 +420,7 @@ export const clienteService = {
                         nome: defaultContactName,
                         email: defaultContactEmail,
                         cargo: 'Responsável',
-                        celular: item.contact_phone || '(11) 99999-9999',
+                        celular: defaultContactPhone,
                         whatsapp: true,
                         principal: true,
                       }
@@ -470,7 +472,7 @@ export const clienteService = {
       tipo: cliente.tipo || 'Pessoa Jurídica',
       razaoSocial: cliente.razaoSocial || cliente.nomeFantasia || 'Cliente',
       nomeFantasia: cliente.nomeFantasia || cliente.razaoSocial || 'Cliente',
-      documento: cliente.documento || '00.000.000/0001-00',
+      documento: cliente.documento || '',
       inscricaoEstadual: cliente.inscricaoEstadual || 'Isento',
       inscricaoMunicipal: cliente.inscricaoMunicipal || '',
       dataFundacaoNascimento: cliente.dataFundacaoNascimento || '',
@@ -496,7 +498,7 @@ export const clienteService = {
 
     // 2. Persistir no Supabase na tabela principal 'clientes'
     try {
-      await supabase.from('clientes').upsert({
+      const { error: clErr } = await supabase.from('clientes').upsert({
         id,
         codigo: validatedWithId.codigo,
         razao_social: validatedWithId.razaoSocial,
@@ -514,22 +516,30 @@ export const clienteService = {
         estado: validatedWithId.endereco?.estado || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
+
+      if (clErr) {
+        console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clientes no Supabase:', clErr);
+      }
     } catch (e) {
-      console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clientes no Supabase:', e);
+      console.warn('[clienteService.saveCliente] Exceção ao sincronizar tabela clientes no Supabase:', e);
     }
 
     // 3. Persistir na tabela relacional 'clients' (para compatibilidade com FKs de projetos, contas_receber)
     try {
-      await supabase.from('clients').upsert({
+      const { error: clsErr } = await supabase.from('clients').upsert({
         id,
         name: validatedWithId.nomeFantasia || validatedWithId.razaoSocial,
         status: finalStatus === 'Inativo' ? 'inativo' : 'ativo',
         contact_email: validatedWithId.contatos?.[0]?.email || null,
-        contact_phone: validatedWithId.contatos?.[0]?.celular || null,
+        contact_phone: validatedWithId.contatos?.[0]?.celular || validatedWithId.contatos?.[0]?.telefone || null,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
+
+      if (clsErr) {
+        console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clients no Supabase:', clsErr);
+      }
     } catch (e) {
-      console.warn('[clienteService.saveCliente] Erro ao sincronizar tabela clients no Supabase:', e);
+      console.warn('[clienteService.saveCliente] Exceção ao sincronizar tabela clients no Supabase:', e);
     }
 
     // 4. Persistir contatos na tabela relacional 'cliente_contatos'
@@ -547,9 +557,12 @@ export const clienteService = {
           principal: idx === 0 ? true : Boolean(ct.principal),
           updated_at: new Date().toISOString(),
         }));
-        await supabase.from('cliente_contatos').upsert(contatosPayload, { onConflict: 'id' });
+        const { error: ctErr } = await supabase.from('cliente_contatos').upsert(contatosPayload, { onConflict: 'id' });
+        if (ctErr) {
+          console.warn('[clienteService.saveCliente] Erro ao sincronizar cliente_contatos:', ctErr);
+        }
       } catch (err) {
-        console.warn('[clienteService.saveCliente] Erro ao sincronizar cliente_contatos:', err);
+        console.warn('[clienteService.saveCliente] Exceção ao sincronizar cliente_contatos:', err);
       }
     }
 

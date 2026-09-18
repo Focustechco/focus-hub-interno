@@ -470,7 +470,7 @@ export function NovoClienteSheet({
 
     setIsUploadingDoc(true);
 
-    const targetId = clienteToEdit?.id || currentClienteId || crypto.randomUUID();
+    const targetId = activeCliente?.id || currentClienteId || crypto.randomUUID();
     const targetNome = clienteNomeOficial || 'Cliente';
 
     Array.from(files).forEach((file) => {
@@ -620,12 +620,12 @@ export function NovoClienteSheet({
       }
     }
 
-    const clienteId = clienteToEdit?.id || crypto.randomUUID();
+    const clienteId = activeCliente?.id || crypto.randomUUID();
     const cleanEmail = (contatoEmail || '').trim();
 
     const clienteData = {
       id: clienteId,
-      codigo: clienteToEdit?.codigo || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
+      codigo: activeCliente?.codigo || `CLI-${Math.floor(1000 + Math.random() * 9000)}`,
       tipo: tipoPessoa === 'pj' ? ('Pessoa Jurídica' as const) : ('Pessoa Física' as const),
       razaoSocial: razaoFinal,
       nomeFantasia: nomeFinal,
@@ -662,15 +662,15 @@ export function NovoClienteSheet({
           email: cleanEmail,
           principal: true
         },
-        ...(clienteToEdit?.contatos ? clienteToEdit.contatos.filter((c: any) => c.id !== contatoPrincipal?.id && !c.principal) : [])
+        ...(activeCliente?.contatos ? activeCliente.contatos.filter((c: any) => c.id !== contatoPrincipal?.id && !c.principal) : [])
       ]
     };
 
     try {
       // 1. Salvar ou Atualizar Cliente
-      if (clienteToEdit) {
+      if (activeCliente) {
         await saveCliente({
-          ...clienteToEdit,
+          ...activeCliente,
           ...clienteData,
         } as any);
       } else {
@@ -746,9 +746,9 @@ export function NovoClienteSheet({
   // Contratos vinculados a este cliente
   const contratosDoCliente = contratos.filter(
     c => c.clienteId === currentClienteId || 
-         (clienteToEdit && (
+         (activeCliente && (
            String(c.nome || (c as any).objetoContrato || (c as any).numeroContrato || '').toLowerCase().includes(clienteNomeOficial.toLowerCase()) || 
-           c.clienteId === clienteToEdit.id
+           c.clienteId === activeCliente.id
          ))
   );
 
@@ -761,9 +761,9 @@ export function NovoClienteSheet({
       )}
       <SheetContent side="right" className="w-full sm:max-w-4xl overflow-y-auto">
         <SheetHeader className="pb-4">
-          <SheetTitle>{clienteToEdit ? 'Editar Cliente' : 'Cadastro de Cliente'}</SheetTitle>
+          <SheetTitle>{activeCliente ? 'Editar Cliente' : 'Cadastro de Cliente'}</SheetTitle>
           <SheetDescription>
-            {clienteToEdit 
+            {activeCliente 
               ? 'Atualize os dados mestres, endereço completo, contatos, recorrência e documentos.' 
               : 'Este é o cadastro mestre. As informações salvas aqui refletirão em todo o sistema.'}
           </SheetDescription>
